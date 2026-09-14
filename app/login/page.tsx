@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { MicasoMark } from "@/components/MicasoMark";
 
 function LoginForm() {
   const router = useRouter();
@@ -52,10 +53,10 @@ function LoginForm() {
       >
         <Link href="/" className="flex items-center gap-2">
           <span
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold"
-            style={{ background: "linear-gradient(135deg, var(--accent), var(--gold))", color: "var(--accent-ink)" }}
+            className="flex h-7 w-7 items-center justify-center rounded-lg"
+            style={{ background: "linear-gradient(135deg, var(--accent), var(--gold))" }}
           >
-            M
+            <MicasoMark size={16} color="var(--accent-ink)" />
           </span>
           <span className="text-lg font-semibold" style={{ fontFamily: "var(--font-display)" }}>
             Micaso

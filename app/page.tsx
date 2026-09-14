@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ContactModal from "@/components/ContactModal";
 import StickyMobileCta from "@/components/StickyMobileCta";
+import { MicasoMark } from "@/components/MicasoMark";
 
 const BEFORE_AFTER = {
   before: {
@@ -129,10 +130,10 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <span className="flex items-center gap-2">
             <span
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold"
-              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+              className="flex h-7 w-7 items-center justify-center rounded-lg"
+              style={{ background: "linear-gradient(135deg, var(--accent), var(--gold))" }}
             >
-              M
+              <MicasoMark size={16} color="var(--accent-ink)" />
             </span>
             <span className="text-xl font-semibold" style={{ fontFamily: "var(--font-display)" }}>
               Micaso

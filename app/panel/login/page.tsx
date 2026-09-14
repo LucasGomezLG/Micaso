@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signIn } from "@/auth";
+import { MicasoMark } from "@/components/MicasoMark";
 
 export default async function PanelLoginPage(props: PageProps<"/panel/login">) {
   const searchParams = await props.searchParams;
@@ -25,10 +26,10 @@ export default async function PanelLoginPage(props: PageProps<"/panel/login">) {
       >
         <Link href="/" className="flex items-center justify-center gap-2">
           <span
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold"
-            style={{ background: "linear-gradient(135deg, var(--accent), var(--gold))", color: "var(--accent-ink)" }}
+            className="flex h-7 w-7 items-center justify-center rounded-lg"
+            style={{ background: "linear-gradient(135deg, var(--accent), var(--gold))" }}
           >
-            M
+            <MicasoMark size={16} color="var(--accent-ink)" />
           </span>
           <span className="text-lg font-semibold" style={{ fontFamily: "var(--font-display)" }}>
             Micaso

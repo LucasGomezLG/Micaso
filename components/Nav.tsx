@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { TipoCaso } from "@/lib/types";
+import { MicasoMark } from "@/components/MicasoMark";
 
 const BASE_LINKS = [
   { href: "/caso", label: "Inicio" },
@@ -43,10 +44,10 @@ export default function Nav({
             <img src={brokerImage} alt="" className="h-7 w-7 shrink-0 rounded-full" referrerPolicy="no-referrer" />
           ) : (
             <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
-              style={{ background: "linear-gradient(135deg, var(--accent), var(--gold))", color: "var(--accent-ink)" }}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+              style={{ background: "linear-gradient(135deg, var(--accent), var(--gold))" }}
             >
-              M
+              <MicasoMark size={16} color="var(--accent-ink)" />
             </span>
           )}
           <span className="flex min-w-0 flex-col leading-tight">

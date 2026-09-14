@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { MICASO_HOUSE_PATH } from "@/components/MicasoMark";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -24,15 +25,15 @@ export default function OpengraphImage() {
               width: 56,
               height: 56,
               borderRadius: 14,
-              background: "#1d4e89",
+              background: "linear-gradient(135deg, #1d4e89, #b8862e)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 30,
-              fontWeight: 700,
             }}
           >
-            M
+            <svg width="32" height="32" viewBox="0 0 24 24">
+              <path fillRule="evenodd" clipRule="evenodd" d={MICASO_HOUSE_PATH} fill="#ffffff" />
+            </svg>
           </div>
           <div style={{ fontSize: 34, fontWeight: 600 }}>Micaso</div>
         </div>
