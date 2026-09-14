@@ -5,6 +5,7 @@ import CreateCaseModal from "@/components/CreateCaseModal";
 import PanelLogoutButton from "@/components/PanelLogoutButton";
 import CaseRow from "@/components/CaseRow";
 import { MicasoMark } from "@/components/MicasoMark";
+import BrokerNameEditor from "@/components/BrokerNameEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export default async function PanelPage() {
                     {broker.nombreMarca.slice(0, 1).toUpperCase()}
                   </span>
                 )}
-                {broker.nombreMarca}
+                <BrokerNameEditor key={broker.nombreMarca} initialName={broker.nombreMarca} />
               </span>
             )}
             <PanelLogoutButton />
@@ -79,20 +80,45 @@ export default async function PanelPage() {
 
         {cases.length === 0 ? (
           <div
-            className="relative mt-10 overflow-hidden rounded-2xl border p-10 text-center"
-            style={{ borderColor: "var(--border)", background: "var(--surface)" }}
+            className="relative mt-10 overflow-hidden rounded-2xl border p-8 sm:p-10"
+            style={{ borderColor: "var(--border)", background: "var(--surface)", boxShadow: "var(--shadow-card)" }}
           >
             <div
               aria-hidden
               className="absolute inset-x-0 top-0 h-1.5"
               style={{ background: "linear-gradient(90deg, var(--accent), var(--gold))" }}
             />
-            <p className="text-lg" style={{ fontFamily: "var(--font-display)" }}>
-              Todavía no tenés ningún caso.
+            <p className="eyebrow mb-2">Bienvenido</p>
+            <h2 className="text-2xl" style={{ fontFamily: "var(--font-display)" }}>
+              ¡Arrancamos{broker ? `, ${broker.nombreMarca}` : ""}!
+            </h2>
+            <p className="mt-2 max-w-lg text-sm" style={{ color: "var(--ink-muted)" }}>
+              Un caso es la búsqueda de un cliente tuyo: le compartís un link
+              con usuario y contraseña, y ahí ve presupuesto, propiedades,
+              visitas y checklist — todo junto, con tu marca, no la de
+              Micaso.
             </p>
-            <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
-              Creá el primero para tu próximo cliente.
-            </p>
+
+            {broker && (
+              <div
+                className="mt-6 flex flex-col gap-2 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                style={{ borderColor: "var(--border)", background: "var(--paper)" }}
+              >
+                <span className="text-sm" style={{ color: "var(--ink-muted)" }}>
+                  Así te va a ver cada familia:
+                </span>
+                <BrokerNameEditor
+                  key={broker.nombreMarca}
+                  initialName={broker.nombreMarca}
+                  className="text-sm font-semibold"
+                  style={{ color: "var(--accent)" }}
+                />
+              </div>
+            )}
+
+            <div className="mt-6">
+              <CreateCaseModal label="Crear tu primer caso" />
+            </div>
           </div>
         ) : (
           <div className="mt-8 flex flex-col gap-3">

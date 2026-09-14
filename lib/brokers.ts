@@ -47,6 +47,18 @@ export async function getBroker(id: string): Promise<Broker | null> {
   return brokers[id] ?? null;
 }
 
+/** Edita a mano lo que `getOrCreateBroker` trajo de Google — hoy solo
+ * `nombreMarca` (la foto se sigue tomando de Google hasta que exista
+ * upload propio, ver ARQUITECTURA.md sección 8). */
+export async function updateBroker(id: string, patch: Pick<Broker, "nombreMarca">): Promise<Broker | null> {
+  const brokers = await getAllBrokers();
+  const existing = brokers[id];
+  if (!existing) return null;
+  const updated: Broker = { ...existing, ...patch };
+  await dbSet(BROKERS_KEY, { ...brokers, [id]: updated });
+  return updated;
+}
+
 /** El corredor de la sesión actual (Auth.js) — null si no hay sesión.
  * proxy.ts ya bloqueó `/panel/*` y `/api/panel/*` sin sesión antes de
  * llegar acá, así que null solo debería pasar si esto se llama desde
