@@ -6,9 +6,15 @@ import { daysUntil, formatArs, formatDate, formatDateTime, formatUsd, isOverdue 
 import StatusBadge from "@/components/StatusBadge";
 import CriteriaEditor from "@/components/CriteriaEditor";
 import PeopleEditor from "@/components/PeopleEditor";
-import { House, HouseStatus } from "@/lib/types";
+import { House, HouseStatus, TipoCaso } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+const INTRO: Record<TipoCaso, string> = {
+  compra: "Todo el crédito y la búsqueda de casa en un solo lugar: qué buscamos, qué propiedades vimos y qué falta para llegar a la escritura.",
+  alquiler: "Toda la búsqueda de alquiler en un solo lugar: qué buscamos, qué propiedades vimos y qué falta para llegar a las llaves en mano.",
+  otro: "Toda la búsqueda en un solo lugar: qué buscamos, qué propiedades vimos y qué falta para cerrar la operación.",
+};
 
 const STAT_TILES: { status: HouseStatus; label: string }[] = [
   { status: "pendiente", label: "Pendientes" },
@@ -27,6 +33,7 @@ export default async function HomePage() {
   const caseId = await getCaseId();
   const [criteria, allHouses, kase] = await Promise.all([getCriteria(caseId), getHouses(caseId), getCase(caseId)]);
   const people = kase?.people ?? [];
+  const tipoCaso = kase?.tipoCaso ?? "compra";
   const { loan, brief } = criteria;
   const houses = allHouses.filter((h) => h.status !== "borrada");
   const counts = countByStatus(houses);
@@ -42,11 +49,9 @@ export default async function HomePage() {
     <div className="flex flex-col gap-10">
       <section>
         <p className="eyebrow mb-2">Búsqueda activa</p>
-        <h1 className="text-3xl sm:text-4xl">Casa</h1>
+        <h1 className="text-3xl sm:text-4xl">{kase?.titulo ?? "Tu búsqueda"}</h1>
         <p className="mt-2 max-w-2xl" style={{ color: "var(--ink-muted)" }}>
-          Todo lo del crédito BBVA y la búsqueda de casa en un solo lugar:
-          qué buscamos, qué propiedades vimos y qué falta para llegar a la
-          escritura.
+          {INTRO[tipoCaso]}
           {remainingDays > 0 && (
             <>
               {" "}
@@ -114,7 +119,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      <section className="grid gap-4 sm:grid-cols-2">
+      <section className={tipoCaso === "compra" ? "grid gap-4 sm:grid-cols-2" : "grid gap-4"}>
         <div
           className="rounded-2xl border p-5"
           style={{
@@ -125,20 +130,22 @@ export default async function HomePage() {
         >
           <h2 className="text-lg">Lo que buscamos</h2>
           <dl className="mt-4 flex flex-col gap-4 text-sm">
-            <div>
-              <dt className="eyebrow mb-1.5">Capital</dt>
-              <dd style={{ color: "var(--ink-muted)" }}>
-                Hasta{" "}
-                <strong className="mono" style={{ color: "var(--ink)" }}>
-                  {formatUsd(loan.bankMaxUsd)}
-                </strong>{" "}
-                de crédito, más{" "}
-                <strong className="mono" style={{ color: "var(--ink)" }}>
-                  {formatUsd(loan.ownFundsMinUsd)}–{formatUsd(loan.ownFundsMaxUsd)}
-                </strong>{" "}
-                propios (incluye gastos administrativos).
-              </dd>
-            </div>
+            {tipoCaso === "compra" && (
+              <div>
+                <dt className="eyebrow mb-1.5">Capital</dt>
+                <dd style={{ color: "var(--ink-muted)" }}>
+                  Hasta{" "}
+                  <strong className="mono" style={{ color: "var(--ink)" }}>
+                    {formatUsd(loan.bankMaxUsd)}
+                  </strong>{" "}
+                  de crédito, más{" "}
+                  <strong className="mono" style={{ color: "var(--ink)" }}>
+                    {formatUsd(loan.ownFundsMinUsd)}–{formatUsd(loan.ownFundsMaxUsd)}
+                  </strong>{" "}
+                  propios (incluye gastos administrativos).
+                </dd>
+              </div>
+            )}
             <div>
               <dt className="eyebrow mb-1.5">Imprescindible</dt>
               <dd>
@@ -189,54 +196,56 @@ export default async function HomePage() {
           </dl>
         </div>
 
-        <div
-          className="rounded-2xl border p-5"
-          style={{
-            background: "var(--surface)",
-            borderColor: "var(--border)",
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg">Crédito pre-aprobado</h2>
-            <CriteriaEditor criteria={criteria} />
-          </div>
-          <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <dt className="eyebrow mb-1">Monto</dt>
-              <dd className="mono text-base">{formatArs(loan.approvedAmountArs)}</dd>
-            </div>
-            <div>
-              <dt className="eyebrow mb-1">Cuota aprox.</dt>
-              <dd className="mono text-base">{formatArs(loan.approvedInstallmentArs)}</dd>
-            </div>
-            <div>
-              <dt className="eyebrow mb-1">Tasa</dt>
-              <dd className="mono text-base">{loan.rateLabel}</dd>
-            </div>
-            <div>
-              <dt className="eyebrow mb-1">Plazo</dt>
-              <dd className="mono text-base">
-                {loan.termMonths} meses ({Math.round(loan.termMonths / 12)} años)
-              </dd>
-            </div>
-          </dl>
-          <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
-            <p className="eyebrow mb-1.5">Condiciones</p>
-            <ul className="flex flex-col gap-1 text-sm" style={{ color: "var(--ink-muted)" }}>
-              {loan.conditions.map((c) => (
-                <li key={c}>• {c}</li>
-              ))}
-            </ul>
-          </div>
-          <Link
-            href="/caso/calculadora"
-            className="mt-4 inline-block text-sm font-medium"
-            style={{ color: "var(--accent)" }}
+        {tipoCaso === "compra" && (
+          <div
+            className="rounded-2xl border p-5"
+            style={{
+              background: "var(--surface)",
+              borderColor: "var(--border)",
+              boxShadow: "var(--shadow-card)",
+            }}
           >
-            Ir a la calculadora →
-          </Link>
-        </div>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg">Crédito pre-aprobado</h2>
+              <CriteriaEditor criteria={criteria} />
+            </div>
+            <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <dt className="eyebrow mb-1">Monto</dt>
+                <dd className="mono text-base">{formatArs(loan.approvedAmountArs)}</dd>
+              </div>
+              <div>
+                <dt className="eyebrow mb-1">Cuota aprox.</dt>
+                <dd className="mono text-base">{formatArs(loan.approvedInstallmentArs)}</dd>
+              </div>
+              <div>
+                <dt className="eyebrow mb-1">Tasa</dt>
+                <dd className="mono text-base">{loan.rateLabel}</dd>
+              </div>
+              <div>
+                <dt className="eyebrow mb-1">Plazo</dt>
+                <dd className="mono text-base">
+                  {loan.termMonths} meses ({Math.round(loan.termMonths / 12)} años)
+                </dd>
+              </div>
+            </dl>
+            <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+              <p className="eyebrow mb-1.5">Condiciones</p>
+              <ul className="flex flex-col gap-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+                {loan.conditions.map((c) => (
+                  <li key={c}>• {c}</li>
+                ))}
+              </ul>
+            </div>
+            <Link
+              href="/caso/calculadora"
+              className="mt-4 inline-block text-sm font-medium"
+              style={{ color: "var(--accent)" }}
+            >
+              Ir a la calculadora →
+            </Link>
+          </div>
+        )}
       </section>
 
       <section>
@@ -245,7 +254,7 @@ export default async function HomePage() {
           {STAT_TILES.map((tile) => (
             <Link
               key={tile.status}
-              href={`/casas?status=${tile.status}`}
+              href={`/caso/casas?status=${tile.status}`}
               className="rounded-2xl border p-4 transition-colors hover:border-[var(--border-strong)]"
               style={{ background: "var(--surface)", borderColor: "var(--border)" }}
             >

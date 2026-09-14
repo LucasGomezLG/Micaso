@@ -2,16 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { TipoCaso } from "@/lib/types";
 
-const LINKS = [
+const BASE_LINKS = [
   { href: "/caso", label: "Inicio" },
   { href: "/caso/casas", label: "Casas" },
-  { href: "/caso/calculadora", label: "Calculadora" },
   { href: "/caso/checklist", label: "Checklist" },
 ];
+const CALCULADORA_LINK = { href: "/caso/calculadora", label: "Calculadora" };
 
-export default function Nav() {
+const TIPO_LABEL: Record<TipoCaso, string> = {
+  compra: "Compra",
+  alquiler: "Alquiler",
+  otro: "Búsqueda",
+};
+
+export default function Nav({
+  caseTitle,
+  tipoCaso,
+  brokerName,
+  brokerImage,
+}: {
+  caseTitle: string;
+  tipoCaso: TipoCaso;
+  brokerName: string | null;
+  brokerImage: string | null;
+}) {
   const pathname = usePathname();
+  const links = tipoCaso === "compra" ? [...BASE_LINKS.slice(0, 2), CALCULADORA_LINK, BASE_LINKS[2]] : BASE_LINKS;
 
   return (
     <header
@@ -19,17 +37,29 @@ export default function Nav() {
       style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface) 88%, transparent)" }}
     >
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link href="/caso" className="flex items-baseline gap-2">
-          <span
-            className="text-lg font-semibold"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            Casa
+        <Link href="/caso" className="flex min-w-0 items-center gap-2">
+          {brokerImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={brokerImage} alt="" className="h-7 w-7 shrink-0 rounded-full" referrerPolicy="no-referrer" />
+          ) : (
+            <span
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
+              style={{ background: "linear-gradient(135deg, var(--accent), var(--gold))", color: "var(--accent-ink)" }}
+            >
+              M
+            </span>
+          )}
+          <span className="flex min-w-0 flex-col leading-tight">
+            <span className="truncate text-base font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+              {caseTitle}
+            </span>
+            <span className="eyebrow hidden truncate sm:inline">
+              {brokerName ? `${brokerName} · ${TIPO_LABEL[tipoCaso]}` : TIPO_LABEL[tipoCaso]}
+            </span>
           </span>
-          <span className="eyebrow hidden sm:inline">crédito BBVA</span>
         </Link>
         <nav className="flex gap-1 text-sm">
-          {LINKS.map((link) => {
+          {links.map((link) => {
             const active =
               link.href === "/caso" ? pathname === "/caso" : pathname.startsWith(link.href);
             return (

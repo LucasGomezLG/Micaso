@@ -155,8 +155,8 @@ export default function CalculadoraClient({ loan }: { loan: LoanInfo }) {
               </p>
               <p className="mt-1 text-xs" style={{ color: "var(--ink-muted)" }}>
                 Los bancos suelen exigir que la cuota no supere el 25-30% del
-                ingreso familiar. Esto es una referencia general, no un límite
-                oficial de BBVA.
+                ingreso familiar. Esto es una referencia general, no el
+                límite exacto de tu banco.
               </p>
             </div>
           )}
