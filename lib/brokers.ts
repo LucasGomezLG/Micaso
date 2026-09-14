@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { DEV_BROKER_ID, FOUNDER_EMAIL } from "./auth";
-import { dbGet, dbSet } from "./db";
+import { dbGet, dbUpdate } from "./db";
 import { Broker } from "./types";
 
 const BROKERS_KEY = "brokers";
@@ -27,19 +27,19 @@ export async function getOrCreateBroker(
   googleImage: string | null | undefined
 ): Promise<Broker> {
   const id = resolveBrokerId(email);
-  const brokers = await getAllBrokers();
-  const existing = brokers[id];
-  if (existing) return existing;
-
-  const broker: Broker = {
-    id,
-    email,
-    nombreMarca: googleName || email,
-    imagenUrl: googleImage ?? null,
-    createdAt: new Date().toISOString(),
-  };
-  await dbSet(BROKERS_KEY, { ...brokers, [id]: broker });
-  return broker;
+  const brokers = await dbUpdate<Record<string, Broker>>(BROKERS_KEY, (current) => {
+    const brokers = current ?? {};
+    if (brokers[id]) return brokers;
+    const broker: Broker = {
+      id,
+      email,
+      nombreMarca: googleName || email,
+      imagenUrl: googleImage ?? null,
+      createdAt: new Date().toISOString(),
+    };
+    return { ...brokers, [id]: broker };
+  });
+  return brokers[id];
 }
 
 export async function getBroker(id: string): Promise<Broker | null> {
@@ -51,12 +51,13 @@ export async function getBroker(id: string): Promise<Broker | null> {
  * `nombreMarca` (la foto se sigue tomando de Google hasta que exista
  * upload propio, ver ARQUITECTURA.md sección 8). */
 export async function updateBroker(id: string, patch: Pick<Broker, "nombreMarca">): Promise<Broker | null> {
-  const brokers = await getAllBrokers();
-  const existing = brokers[id];
-  if (!existing) return null;
-  const updated: Broker = { ...existing, ...patch };
-  await dbSet(BROKERS_KEY, { ...brokers, [id]: updated });
-  return updated;
+  const brokers = await dbUpdate<Record<string, Broker>>(BROKERS_KEY, (current) => {
+    const brokers = current ?? {};
+    const existing = brokers[id];
+    if (!existing) return brokers;
+    return { ...brokers, [id]: { ...existing, ...patch } };
+  });
+  return brokers[id] ?? null;
 }
 
 /** El corredor de la sesión actual (Auth.js) — null si no hay sesión.

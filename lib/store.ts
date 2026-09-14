@@ -1,8 +1,8 @@
-import { dbGet, dbSet } from "./db";
+import { dbGet, dbSet, dbUpdate } from "./db";
 import { DEMO_CASE_ID, SEED_CHECKLIST, SEED_CRITERIA, SEED_HOUSES } from "./seed";
 import { buildChecklistTemplate } from "./checklistTemplates";
 import { getCase } from "./cases";
-import { ChecklistItem, Criteria, House, HouseChecklistItem, HouseComment, HouseStatus, PIPELINE_STATUSES } from "./types";
+import { ChecklistItem, Criteria, House, HouseChecklistItem, HouseComment, HouseStatus, LoanInfo, PIPELINE_STATUSES, SearchBrief } from "./types";
 
 const housesKey = (caseId: string) => `case:${caseId}:houses`;
 const checklistKey = (caseId: string) => `case:${caseId}:checklist`;
@@ -95,15 +95,23 @@ export async function getHouses(caseId: string): Promise<House[]> {
   return houses.map(normalizeHouse);
 }
 
-export async function saveHouses(caseId: string, houses: House[]): Promise<void> {
-  await dbSet(housesKey(caseId), houses);
+/** Todas las mutaciones (agregar, editar, comentar, borrar) pasan por
+ * acá en vez de hacer su propio getHouses()+dbSet(): dbUpdate lee,
+ * aplica `mutate` y guarda como una sola operación atómica, así dos
+ * cambios concurrentes sobre el mismo caso (dos personas de la misma
+ * familia comentando casas distintas al mismo tiempo, por ejemplo) no
+ * se pisan entre sí — ver lib/db.ts y el comentario de dbUpdate. */
+async function mutateHouses(caseId: string, mutate: (houses: House[]) => House[]): Promise<House[]> {
+  return dbUpdate<House[]>(housesKey(caseId), (current) => {
+    const houses = current === null ? (caseId === DEMO_CASE_ID ? SEED_HOUSES : []) : current.map(normalizeHouse);
+    return mutate(houses);
+  });
 }
 
 export async function addHouse(
   caseId: string,
   input: Pick<House, "url" | "addedBy"> & Partial<House>
 ): Promise<House> {
-  const houses = await getHouses(caseId);
   const now = new Date().toISOString();
   const house: House = {
     id: crypto.randomUUID(),
@@ -131,7 +139,7 @@ export async function addHouse(
     addedAt: input.addedAt ?? now,
     updatedAt: now,
   };
-  await saveHouses(caseId, [house, ...houses]);
+  await mutateHouses(caseId, (houses) => [house, ...houses]);
   return house;
 }
 
@@ -140,16 +148,15 @@ export async function updateHouse(
   id: string,
   patch: Partial<House>
 ): Promise<House | null> {
-  const houses = await getHouses(caseId);
   const safePatch = sanitizeHousePatch(patch);
   let updated: House | null = null;
-  const next = houses.map((house) => {
-    if (house.id !== id) return house;
-    updated = { ...house, ...safePatch, id: house.id, updatedAt: new Date().toISOString() };
-    return updated;
-  });
-  if (!updated) return null;
-  await saveHouses(caseId, next);
+  await mutateHouses(caseId, (houses) =>
+    houses.map((house) => {
+      if (house.id !== id) return house;
+      updated = { ...house, ...safePatch, id: house.id, updatedAt: new Date().toISOString() };
+      return updated;
+    })
+  );
   return updated;
 }
 
@@ -159,7 +166,6 @@ export async function addComment(
   author: string,
   text: string
 ): Promise<House | null> {
-  const houses = await getHouses(caseId);
   const comment: HouseComment = {
     id: crypto.randomUUID(),
     author,
@@ -167,13 +173,13 @@ export async function addComment(
     createdAt: new Date().toISOString(),
   };
   let updated: House | null = null;
-  const next = houses.map((house) => {
-    if (house.id !== houseId) return house;
-    updated = { ...house, comments: [...house.comments, comment], updatedAt: comment.createdAt };
-    return updated;
-  });
-  if (!updated) return null;
-  await saveHouses(caseId, next);
+  await mutateHouses(caseId, (houses) =>
+    houses.map((house) => {
+      if (house.id !== houseId) return house;
+      updated = { ...house, comments: [...house.comments, comment], updatedAt: comment.createdAt };
+      return updated;
+    })
+  );
   return updated;
 }
 
@@ -182,16 +188,15 @@ export async function addHouseChecklistItem(
   houseId: string,
   text: string
 ): Promise<House | null> {
-  const houses = await getHouses(caseId);
   const item: HouseChecklistItem = { id: crypto.randomUUID(), text, done: false };
   let updated: House | null = null;
-  const next = houses.map((house) => {
-    if (house.id !== houseId) return house;
-    updated = { ...house, checklist: [...house.checklist, item], updatedAt: new Date().toISOString() };
-    return updated;
-  });
-  if (!updated) return null;
-  await saveHouses(caseId, next);
+  await mutateHouses(caseId, (houses) =>
+    houses.map((house) => {
+      if (house.id !== houseId) return house;
+      updated = { ...house, checklist: [...house.checklist, item], updatedAt: new Date().toISOString() };
+      return updated;
+    })
+  );
   return updated;
 }
 
@@ -201,19 +206,18 @@ export async function updateHouseChecklistItem(
   itemId: string,
   patch: Partial<HouseChecklistItem>
 ): Promise<House | null> {
-  const houses = await getHouses(caseId);
   let updated: House | null = null;
-  const next = houses.map((house) => {
-    if (house.id !== houseId) return house;
-    updated = {
-      ...house,
-      checklist: house.checklist.map((item) => (item.id === itemId ? { ...item, ...patch, id: item.id } : item)),
-      updatedAt: new Date().toISOString(),
-    };
-    return updated;
-  });
-  if (!updated) return null;
-  await saveHouses(caseId, next);
+  await mutateHouses(caseId, (houses) =>
+    houses.map((house) => {
+      if (house.id !== houseId) return house;
+      updated = {
+        ...house,
+        checklist: house.checklist.map((item) => (item.id === itemId ? { ...item, ...patch, id: item.id } : item)),
+        updatedAt: new Date().toISOString(),
+      };
+      return updated;
+    })
+  );
   return updated;
 }
 
@@ -222,25 +226,23 @@ export async function deleteHouseChecklistItem(
   houseId: string,
   itemId: string
 ): Promise<House | null> {
-  const houses = await getHouses(caseId);
   let updated: House | null = null;
-  const next = houses.map((house) => {
-    if (house.id !== houseId) return house;
-    updated = {
-      ...house,
-      checklist: house.checklist.filter((item) => item.id !== itemId),
-      updatedAt: new Date().toISOString(),
-    };
-    return updated;
-  });
-  if (!updated) return null;
-  await saveHouses(caseId, next);
+  await mutateHouses(caseId, (houses) =>
+    houses.map((house) => {
+      if (house.id !== houseId) return house;
+      updated = {
+        ...house,
+        checklist: house.checklist.filter((item) => item.id !== itemId),
+        updatedAt: new Date().toISOString(),
+      };
+      return updated;
+    })
+  );
   return updated;
 }
 
 export async function deleteHouse(caseId: string, id: string): Promise<void> {
-  const houses = await getHouses(caseId);
-  await saveHouses(caseId, houses.filter((house) => house.id !== id));
+  await mutateHouses(caseId, (houses) => houses.filter((house) => house.id !== id));
 }
 
 export function guessSource(url: string): string {
@@ -286,15 +288,19 @@ export async function updateChecklistItem(
   id: string,
   patch: Partial<ChecklistItem>
 ): Promise<ChecklistItem | null> {
-  const items = await getChecklist(caseId);
+  // El tipoCaso se resuelve antes del dbUpdate (no adentro) para no
+  // reentrar el lock del store local desde otra clave — ver el
+  // comentario de dbUpdate en lib/db.ts.
+  const kase = caseId === DEMO_CASE_ID ? null : await getCase(caseId);
   let updated: ChecklistItem | null = null;
-  const next = items.map((item) => {
-    if (item.id !== id) return item;
-    updated = { ...item, ...patch, id: item.id };
-    return updated;
+  await dbUpdate<ChecklistItem[]>(checklistKey(caseId), (current) => {
+    const items = current ?? (caseId === DEMO_CASE_ID ? SEED_CHECKLIST : buildChecklistTemplate(kase?.tipoCaso ?? "compra"));
+    return items.map((item) => {
+      if (item.id !== id) return item;
+      updated = { ...item, ...patch, id: item.id };
+      return updated;
+    });
   });
-  if (!updated) return null;
-  await dbSet(checklistKey(caseId), next);
   return updated;
 }
 
@@ -308,6 +314,15 @@ export async function getCriteria(caseId: string): Promise<Criteria> {
   return criteria;
 }
 
-export async function saveCriteria(caseId: string, criteria: Criteria): Promise<void> {
-  await dbSet(criteriaKey(caseId), criteria);
+export async function updateCriteria(
+  caseId: string,
+  patch: { loan?: Partial<LoanInfo>; brief?: Partial<SearchBrief> }
+): Promise<Criteria> {
+  return dbUpdate<Criteria>(criteriaKey(caseId), (current) => {
+    const base = current ?? (caseId === DEMO_CASE_ID ? SEED_CRITERIA : EMPTY_CRITERIA);
+    return {
+      loan: { ...base.loan, ...(patch.loan ?? {}) },
+      brief: { ...base.brief, ...(patch.brief ?? {}) },
+    };
+  });
 }

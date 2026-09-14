@@ -1,5 +1,5 @@
 import { DEV_BROKER_ID } from "./auth";
-import { dbGet, dbSet } from "./db";
+import { dbGet, dbUpdate } from "./db";
 import { DEMO_CASE_ID } from "./seed";
 import { Case, TipoCaso } from "./types";
 
@@ -19,42 +19,42 @@ function randomCode(length: number): string {
 }
 
 async function addToBrokerIndex(brokerId: string, caseId: string): Promise<void> {
-  const key = brokerCasesKey(brokerId);
-  const ids = (await dbGet<string[]>(key)) ?? [];
-  if (!ids.includes(caseId)) {
-    await dbSet(key, [caseId, ...ids]);
-  }
+  await dbUpdate<string[]>(brokerCasesKey(brokerId), (current) => {
+    const ids = current ?? [];
+    return ids.includes(caseId) ? ids : [caseId, ...ids];
+  });
 }
 
 /** Se asegura de que el caso demo (la búsqueda real de Lucas y Abril,
  * migrada desde D:\Casa) siempre exista, con las mismas credenciales que
  * ya se usaban (usuario "casa", clave "1234") — así nadie queda afuera
  * la primera vez que corre este código nuevo. Ver ARQUITECTURA.md
- * sección 8, "No es solo agregar código". */
-async function ensureDemoCase(cases: Record<string, Case>): Promise<Record<string, Case>> {
-  if (cases[DEMO_CASE_ID]) return cases;
-  const now = new Date().toISOString();
-  const demoCase: Case = {
-    id: DEMO_CASE_ID,
-    brokerId: DEV_BROKER_ID,
-    titulo: "Lucas y Abril",
-    tipoCaso: "compra",
-    estado: "activo",
-    username: "casa",
-    password: "1234",
-    people: ["Lucas", "Abril", "Carolina"],
-    createdAt: now,
-    updatedAt: now,
-  };
-  const next = { ...cases, [DEMO_CASE_ID]: demoCase };
-  await dbSet(CASES_KEY, next);
-  await addToBrokerIndex(DEV_BROKER_ID, DEMO_CASE_ID);
-  return next;
-}
-
+ * sección 8, "No es solo agregar código". El chequeo y la creación
+ * pasan por dbUpdate para que no compita con otra escritura concurrente
+ * a la misma clave "cases" (ver lib/db.ts). */
 async function getAllCases(): Promise<Record<string, Case>> {
-  const cases = (await dbGet<Record<string, Case>>(CASES_KEY)) ?? {};
-  return ensureDemoCase(cases);
+  let createdDemo = false;
+  const cases = await dbUpdate<Record<string, Case>>(CASES_KEY, (current) => {
+    const cases = current ?? {};
+    if (cases[DEMO_CASE_ID]) return cases;
+    createdDemo = true;
+    const now = new Date().toISOString();
+    const demoCase: Case = {
+      id: DEMO_CASE_ID,
+      brokerId: DEV_BROKER_ID,
+      titulo: "Lucas y Abril",
+      tipoCaso: "compra",
+      estado: "activo",
+      username: "casa",
+      password: "1234",
+      people: ["Lucas", "Abril", "Carolina"],
+      createdAt: now,
+      updatedAt: now,
+    };
+    return { ...cases, [DEMO_CASE_ID]: demoCase };
+  });
+  if (createdDemo) await addToBrokerIndex(DEV_BROKER_ID, DEMO_CASE_ID);
+  return cases;
 }
 
 export async function createCase(
@@ -62,7 +62,6 @@ export async function createCase(
   titulo: string,
   tipoCaso: TipoCaso
 ): Promise<Case> {
-  const cases = await getAllCases();
   const now = new Date().toISOString();
   const kase: Case = {
     id: crypto.randomUUID(),
@@ -76,7 +75,7 @@ export async function createCase(
     createdAt: now,
     updatedAt: now,
   };
-  await dbSet(CASES_KEY, { ...cases, [kase.id]: kase });
+  await dbUpdate<Record<string, Case>>(CASES_KEY, (current) => ({ ...(current ?? {}), [kase.id]: kase }));
   await addToBrokerIndex(brokerId, kase.id);
   return kase;
 }
@@ -100,12 +99,18 @@ export async function getCaseByCredentials(username: string, password: string): 
 }
 
 async function updateCase(caseId: string, patch: Partial<Case>): Promise<Case | null> {
-  const cases = await getAllCases();
-  const current = cases[caseId];
-  if (!current) return null;
-  const updated: Case = { ...current, ...patch, id: current.id, updatedAt: new Date().toISOString() };
-  await dbSet(CASES_KEY, { ...cases, [caseId]: updated });
-  return updated;
+  // Se asegura de que el índice ya exista (y el caso demo esté creado)
+  // antes de la escritura atómica — updateCase no puede inventar un caso
+  // que nunca existió, solo modificar uno ya presente.
+  await getAllCases();
+  const result = await dbUpdate<Record<string, Case>>(CASES_KEY, (current) => {
+    const cases = current ?? {};
+    const existing = cases[caseId];
+    if (!existing) return cases;
+    const updated: Case = { ...existing, ...patch, id: existing.id, updatedAt: new Date().toISOString() };
+    return { ...cases, [caseId]: updated };
+  });
+  return result[caseId] ?? null;
 }
 
 export async function renameCase(caseId: string, titulo: string): Promise<Case | null> {

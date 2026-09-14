@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCriteria, saveCriteria } from "@/lib/store";
+import { getCriteria, updateCriteria } from "@/lib/store";
 import { getCaseIdFromRequest } from "@/lib/session";
 
 export async function GET(request: NextRequest) {
@@ -16,11 +16,6 @@ export async function PATCH(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
   }
-  const current = await getCriteria(caseId);
-  const next = {
-    loan: { ...current.loan, ...(patch.loan ?? {}) },
-    brief: { ...current.brief, ...(patch.brief ?? {}) },
-  };
-  await saveCriteria(caseId, next);
-  return NextResponse.json({ criteria: next });
+  const criteria = await updateCriteria(caseId, patch);
+  return NextResponse.json({ criteria });
 }
