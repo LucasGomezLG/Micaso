@@ -149,7 +149,7 @@ export default function LandingPage() {
             <Link
               href="/panel/login"
               className="btn btn-primary rounded-full px-4 py-2 text-sm font-semibold"
-              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+              style={{ background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, var(--gold)))", color: "var(--accent-ink)" }}
             >
               Empezar prueba gratis
             </Link>
@@ -161,13 +161,18 @@ export default function LandingPage() {
         {/* Hero */}
         <section className="relative overflow-hidden">
           <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="bg-dot-grid absolute inset-0" style={{ opacity: 0.6 }} />
             <div
-              className="absolute -top-40 -left-32 h-[26rem] w-[26rem] rounded-full blur-3xl"
-              style={{ background: "var(--accent)", opacity: 0.2 }}
+              className="animate-blob absolute -top-40 -left-32 h-[30rem] w-[30rem] rounded-full blur-3xl"
+              style={{ background: "var(--accent)", opacity: 0.4 }}
             />
             <div
-              className="absolute top-20 -right-32 h-96 w-96 rounded-full blur-3xl"
-              style={{ background: "var(--gold)", opacity: 0.18 }}
+              className="animate-blob absolute top-10 -right-40 h-[28rem] w-[28rem] rounded-full blur-3xl"
+              style={{ background: "var(--gold)", opacity: 0.32, animationDelay: "-7s" }}
+            />
+            <div
+              className="animate-blob absolute top-72 left-1/3 h-72 w-72 rounded-full blur-3xl"
+              style={{ background: "color-mix(in srgb, var(--accent) 50%, var(--gold))", opacity: 0.22, animationDelay: "-4s" }}
             />
           </div>
 
@@ -189,7 +194,7 @@ export default function LandingPage() {
                   className="mt-2 text-3xl sm:text-4xl lg:text-[2.75rem]"
                   style={{ fontFamily: "var(--font-display)", color: "var(--ink-muted)", letterSpacing: "-0.01em" }}
                 >
-                  Cada búsqueda, <span style={{ color: "var(--gold)" }}>bajo control</span>.
+                  Cada búsqueda, <span className="gradient-text">bajo control</span>.
                 </p>
                 <p className="mt-6 max-w-lg text-base sm:text-lg" style={{ color: "var(--ink-muted)" }}>
                   Micaso organiza la búsqueda de casa de cada uno de tus
@@ -201,7 +206,7 @@ export default function LandingPage() {
                   <Link
                     href="/panel/login"
                     className="btn btn-primary rounded-full px-6 py-3.5 text-sm font-semibold"
-                    style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+                    style={{ background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, var(--gold)))", color: "var(--accent-ink)" }}
                   >
                     Empezar prueba gratis
                   </Link>
@@ -234,9 +239,14 @@ export default function LandingPage() {
                 </div>
 
                 <div
-                  className="relative z-10 rotate-[1.5deg] rounded-2xl border p-4 sm:p-5"
+                  className="relative z-10 rotate-[1.5deg] overflow-hidden rounded-2xl border p-4 sm:p-5"
                   style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "0 24px 48px -16px rgba(27, 36, 48, 0.22)" }}
                 >
+                  <div
+                    aria-hidden
+                    className="absolute inset-x-0 top-0 h-1.5"
+                    style={{ background: "linear-gradient(90deg, var(--accent), var(--gold))" }}
+                  />
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="eyebrow mb-1">Caso</p>
@@ -307,7 +317,11 @@ export default function LandingPage() {
               </div>
               <div
                 className="rounded-2xl border-2 p-6"
-                style={{ background: "var(--surface)", borderColor: "var(--accent)", boxShadow: "var(--shadow-card)" }}
+                style={{
+                  background: "linear-gradient(160deg, var(--surface), var(--accent-soft))",
+                  borderColor: "var(--accent)",
+                  boxShadow: "var(--shadow-card)",
+                }}
               >
                 <h3 className="text-base font-medium" style={{ color: "var(--accent)" }}>
                   {BEFORE_AFTER.after.title}
@@ -336,8 +350,8 @@ export default function LandingPage() {
                   style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
                 >
                   <span
-                    className="flex h-11 w-11 items-center justify-center rounded-xl text-xl"
-                    style={{ background: "var(--accent-soft)" }}
+                    className="flex h-11 w-11 items-center justify-center rounded-xl text-xl shadow-sm"
+                    style={{ background: "linear-gradient(135deg, var(--accent-soft), var(--gold-soft))" }}
                   >
                     {f.icon}
                   </span>
@@ -352,7 +366,11 @@ export default function LandingPage() {
         </section>
 
         {/* Cómo funciona */}
-        <section id="como-funciona" className="border-t" style={{ borderColor: "var(--border)" }}>
+        <section
+          id="como-funciona"
+          className="border-t"
+          style={{ borderColor: "var(--border)", background: "linear-gradient(180deg, var(--accent-soft) 0%, var(--paper) 65%)" }}
+        >
           <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
             <p className="eyebrow mb-2">Cómo funciona</p>
             <h2 className="text-2xl sm:text-3xl">Tres pasos, nada de onboarding largo</h2>
@@ -399,14 +417,22 @@ export default function LandingPage() {
               {PLANS.map((p) => (
                 <div
                   key={p.name}
-                  className="card-hover flex flex-col rounded-2xl border p-6"
+                  className="card-hover relative flex flex-col rounded-2xl border p-6"
                   style={{
-                    background: "var(--surface)",
+                    background: p.highlight ? "linear-gradient(160deg, var(--surface), var(--accent-soft))" : "var(--surface)",
                     borderColor: p.highlight ? "var(--accent)" : "var(--border)",
                     borderWidth: p.highlight ? 2 : 1,
-                    boxShadow: "var(--shadow-card)",
+                    boxShadow: p.highlight ? "0 16px 32px -12px rgba(29, 78, 137, 0.35)" : "var(--shadow-card)",
                   }}
                 >
+                  {p.highlight && (
+                    <span
+                      className="absolute -top-3 right-6 rounded-full px-3 py-1 text-[11px] font-semibold shadow-sm"
+                      style={{ background: "linear-gradient(135deg, var(--accent), var(--gold))", color: "var(--accent-ink)" }}
+                    >
+                      Más elegido
+                    </span>
+                  )}
                   <h3 className="text-lg">{p.name}</h3>
                   <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
                     {p.blurb}
@@ -436,7 +462,7 @@ export default function LandingPage() {
                       className="btn mt-6 rounded-full px-5 py-2.5 text-center text-sm font-semibold"
                       style={
                         p.highlight
-                          ? { background: "var(--accent)", color: "var(--accent-ink)" }
+                          ? { background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, var(--gold)))", color: "var(--accent-ink)" }
                           : { border: "1px solid var(--border-strong)", color: "var(--ink)" }
                       }
                     >

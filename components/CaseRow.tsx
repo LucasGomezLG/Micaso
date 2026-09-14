@@ -69,10 +69,11 @@ export default function CaseRow({ initialCase }: { initialCase: Case }) {
 
   return (
     <div
-      className="flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between"
+      className="card-hover relative flex flex-col gap-4 overflow-hidden rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between"
       style={{ borderColor: "var(--border)", background: "var(--surface)", boxShadow: "var(--shadow-card)" }}
     >
-      <div className="min-w-0">
+      <div aria-hidden className="absolute inset-y-0 left-0 w-1" style={{ background: estadoColor.fg, opacity: isArchivado ? 0.4 : 0.9 }} />
+      <div className="min-w-0 pl-2">
         <div className="flex flex-wrap items-center gap-2">
           {editing ? (
             <input

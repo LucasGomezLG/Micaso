@@ -209,3 +209,27 @@ a {
 .animate-fade-up {
   animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+.gradient-text {
+  background-image: linear-gradient(100deg, var(--accent), var(--gold));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+@keyframes blob-drift {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(3%, -4%) scale(1.08);
+  }
+}
+.animate-blob {
+  animation: blob-drift 16s ease-in-out infinite;
+}
+
+.bg-dot-grid {
+  background-image: radial-gradient(color-mix(in srgb, var(--border-strong) 70%, transparent) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+}
