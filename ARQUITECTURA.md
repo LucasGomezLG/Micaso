@@ -302,13 +302,21 @@ prueba se le pide un método de pago para seguir.
 
 **Decisión revisada:** un precio mensual fijo, pero no todo-lo-que-quieras
 — la versión anterior de este documento lo dejaba sin tope. Cada plan
-incluye una cantidad máxima de **casos activos simultáneos** (el número
-exacto y el precio quedan para más adelante, junto con el resto de
-"tema precios"); abrir más que eso implica pasar a un plan superior o un
-cargo por caso extra. Sigue sin ser cobro por-caso puro — eso ya se había
-descartado por complicar la facturación desde el día uno — pero tampoco
-es un precio plano desconectado de cuánto usa la herramienta un corredor
-grande frente a uno chico.
+incluye una cantidad máxima de **casos activos simultáneos**; abrir más
+que eso implica pasar a un plan superior o un cargo por caso extra. Sigue
+sin ser cobro por-caso puro — eso ya se había descartado por complicar la
+facturación desde el día uno — pero tampoco es un precio plano
+desconectado de cuánto usa la herramienta un corredor grande frente a uno
+chico.
+
+**Decidido (14 sept 2026): precio y topes — ver sección 11** para el
+análisis de costos y el razonamiento completo. Los tres planes:
+
+| Plan | Tope de casos activos | Precio |
+|---|---|---|
+| Para arrancar | 5 | USD 13/mes (referencia; cobro en pesos) |
+| Para tu cartera | 20 | USD 29/mes (referencia; cobro en pesos) |
+| Volumen alto | a medida | a convenir, sin número fijo |
 
 Esto es la razón concreta por la que **cerrar un caso** deja de ser solo
 prolijidad — ver "Ciclo de vida de un caso" abajo.
@@ -457,19 +465,39 @@ producto comercial. Antes de vender esto, conviene una revisión real de
 los términos de uso de esos sitios, no asumir que lo razonable para 3
 personas lo sigue siendo a escala.
 
-**Costo de infraestructura — cómo estimarlo antes de fijar precio**
+**Costo de infraestructura — resuelto (14 sept 2026), con supuestos
+explícitos en vez de datos medidos**
 Upstash cobra por volumen de comandos y almacenamiento; Vercel por
 invocaciones de función y ancho de banda. El proxy de imágenes
 (`/api/image`) en particular hace pasar cada foto de cada aviso por
-nuestro servidor — escala directo con corredores × casos × fotos. No hay
-un número confiable para poner acá sin datos reales — pero el cálculo es
-simple una vez que Carolina use un caso real: tomar sus métricas de una
-semana típica (comandos a Redis, invocaciones de función, ancho de banda
-del proxy de imágenes) del dashboard de Vercel y Upstash, multiplicarlas
-por el número de casos que se esperan mantener simultáneos, y compararlo
-contra el precio del plan (sección 6) antes de cerrarlo. Es un cálculo de
-una tarde, no una investigación — pero depende de tener un caso real
-corriendo primero (sección 12).
+nuestro servidor — escala directo con corredores × casos × fotos. Sin un
+caso real corriendo todavía en Micaso (Carolina sigue en `D:\Casa`), no
+hay datos medidos — pero alcanza con los precios públicos de cada
+proveedor (verificados 14 sept 2026) y un supuesto de uso conservador:
+
+- **Fijo de la plataforma, no depende de cuántos corredores haya:**
+  Vercel Pro USD 20/mes (Hobby no permite uso comercial) + dominio
+  prorrateado (~USD 1,5/mes) + Upstash Redis USD 0 (free tier: 500K
+  comandos/mes y 256MB, alcanza mucho tiempo antes de necesitar el plan
+  pago) ≈ **USD 22/mes en total**, sea 1 corredor o 50.
+- **Marginal por caso activo/mes:** Redis (lecturas/escrituras de
+  pipeline, checklist, comentarios) cuesta centavos de dólar incluso a
+  varias decenas de casos ($0,20 cada 100K comandos, $0,25/GB de storage
+  pasado el primer GB gratis). El driver más variable es el ancho de
+  banda del proxy de imágenes: con el supuesto de ~40 casas × 8 fotos ×
+  300KB revisualizadas ~20 veces/mes, un caso mueve del orden de 2GB/mes
+  — muy por debajo del 1TB incluido en Vercel Pro hasta varios cientos de
+  casos simultáneos (pasado eso, USD 0,15–0,35/GB según región). El
+  storage de la foto de perfil del corredor (Vercel Blob) es insignificante,
+  es por corredor, no por caso.
+
+**Conclusión: el costo no es la restricción para fijar precio.** Con los
+volúmenes esperados (decenas de casos por corredor, no miles — ya
+asumido arriba), cualquier precio de plan por encima de unos pocos
+dólares por mes deja margen bruto superior al 90%. El techo real es
+cuánto esté dispuesto a pagar un corredor — ver sección 11 para el precio
+decidido y sección 12 para la validación con Carolina, que sigue
+pendiente.
 
 **Seguridad de las credenciales por caso — ya resuelto**
 - **Límite de intentos:** bloquear el login de un caso después de 10
@@ -607,10 +635,40 @@ Ninguno de estos bloquea el diseño — son números y decisiones de
 negocio, no arquitectura, y no hace falta resolverlos para considerar
 este documento completo.
 
-**Precio y tope de casos incluidos por plan** (sección 6) — depende del
-cálculo de costo de infraestructura (sección 9) y de lo que Carolina esté
-dispuesta a pagar (sección 12), en ese orden. No se puede fijar un número
-responsable sin esos dos datos primero.
+**Precio y tope de casos incluidos por plan — decidido (14 sept 2026),
+sin esperar la validación de la sección 12.** El cálculo de costo de
+infraestructura (sección 9) confirmó que el costo no es la restricción —
+cualquier precio razonable deja margen enorme. Lo que faltaba, y sigue
+faltando, es la segunda pata original de este párrafo: lo que Carolina
+(u otro corredor) esté realmente dispuesta a pagar, algo que todavía no
+se le preguntó. Coherente con la decisión general del proyecto de no
+esperar validación de pago para avanzar, se publicó un precio de
+lanzamiento igual, apoyado en dos referencias externas en vez de en la
+respuesta de Carolina:
+
+- **2clics** (CRM inmobiliario completo — sitio propio, multi-portal,
+  WhatsApp, mucho más alcance que Micaso): ARS 60.545–173.745/mes, unos
+  USD 39–112 al dólar blue del 14 sept 2026 ($1.545).
+- **Portales de colaboración cliente-agente en EEUU** (sección 2, ya
+  investigado): USD 14–199/mes.
+
+Micaso es más angosto que un CRM completo (no publica en portales, no
+arma embudo de ventas), así que el ancla elegida queda más cerca del piso
+de esos rangos — como herramienta complementaria, no reemplazo de CRM:
+
+| Plan | Tope de casos activos | Precio |
+|---|---|---|
+| Para arrancar | 5 | USD 13/mes |
+| Para tu cartera | 20 | USD 29/mes |
+| Volumen alto | a medida | a convenir (botón "Hablar con nosotros", no cobro automático) |
+
+Los topes de casos (5 y 20) son una suposición de partida, no un dato
+medido — ningún corredor real todavía maneja múltiples casos simultáneos
+en Micaso. Precio mostrado en USD como referencia en la landing; el cobro
+real vía Mercado Pago es en pesos al tipo de cambio del día (Argentina
+tiene inflación alta, un ARS fijo se desactualizaría rápido). Todo esto
+es precio de lanzamiento, no un número grabado en piedra — se revisa en
+cuanto haya uso real o la respuesta de Carolina de la sección 12.
 
 **Nombre público del producto — resuelto: Micaso**
 De cara al corredor y a la familia, el producto se llama **Micaso** —

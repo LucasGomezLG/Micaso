@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 
 const CONTACT_EMAIL = "luccaass96@gmail.com";
 
@@ -11,7 +11,7 @@ export default function ContactModal({
 }: {
   label?: string;
   className?: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
