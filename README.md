@@ -7,9 +7,12 @@ de [Casa](../Casa) — hoy una herramienta privada de búsqueda de casa para
 3 personas (Lucas, Abril, Carolina) — generalizada a muchos corredores y
 muchas familias en simultáneo.
 
-**Estado: diseño cerrado, sin construir.** No hay código todavía en esta
-carpeta — ver `ARQUITECTURA.md` para el porqué y para el camino de
-validación antes de escribir la primera línea.
+**Estado: diseño cerrado, sin construir.** El código que hay en esta
+carpeta (`app/`, `components/`, `lib/`, etc.) es una **copia sin
+modificar** de `D:\Casa` — el punto de partida, no el producto SaaS
+todavía. No se escribió ni una línea nueva de la capa multi-corredor
+(auth, cobro, paneles) — ver `ARQUITECTURA.md` para el porqué y para el
+camino de validación antes de tocar ese código.
 
 ## Contenido
 
@@ -24,15 +27,22 @@ validación antes de escribir la primera línea.
 - [`brand/logo.html`](brand/logo.html) — propuesta de logo y wordmark
   (ícono de casa con ventana iluminada + wordmark en Fraunces). También
   publicado como [artifact](https://claude.ai/code/artifact/ba1a3f32-80b1-4137-8db7-5014456ec12c).
+- `app/`, `components/`, `lib/`, `proxy.ts` y el resto de los archivos de
+  Next.js — la base de código, copiada tal cual de `D:\Casa` el 14 de
+  septiembre de 2026. Sigue siendo la app de un solo caso (usuario/clave
+  `casa`/`1234`, 41 propiedades semilla) hasta que se construya la capa
+  de la sección 8.
 
 ## Relación con Casa
 
 `D:\Casa` sigue siendo el proyecto en producción (real, en uso diario) —
 esta carpeta es donde eventualmente vive la versión multi-corredor de esa
 misma herramienta, una vez validado que alguien más, además de Carolina,
-pagaría por esto. Cuando llegue el momento de construir, este repo
-probablemente arranque como un fork o extensión del código de `D:\Casa`
-(ver sección 8 de `ARQUITECTURA.md` para el detalle archivo por archivo).
+pagaría por esto. El código de acá es un punto de partida congelado, no
+un fork que se vaya a mantener sincronizado con los cambios futuros de
+`D:\Casa` — a partir de ahora son dos bases de código independientes (ver
+sección 8 de `ARQUITECTURA.md` para el detalle archivo por archivo de qué
+cambia).
 
 ## Antes de escribir código
 
