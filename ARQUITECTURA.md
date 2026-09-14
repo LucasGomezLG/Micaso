@@ -610,6 +610,36 @@ con cuidado (idealmente con alguien que conozca la ley de protección de
 datos argentina) antes de publicar la landing — eso ya no es una
 decisión de diseño, es contenido que no se improvisa en una tarde.
 
+**Condición de carrera en el store local — pasó de verdad (14 sept
+2026), resuelto para local; queda un resto menor en Redis**
+El fallback de archivo local (`.data/store.json`, usado en desarrollo
+sin credenciales de Upstash configuradas) perdió datos reales una vez:
+cada mutación hacía su propio "leer todo el archivo" y, en una llamada
+aparte, su propio "guardar todo el archivo" — dos requests
+concurrentes leen el mismo estado viejo, y el segundo guardado pisa
+por completo lo que el primero acababa de escribir. Se perdieron
+`case:demo:houses`, `case:demo:criteria`, `case:demo:checklist` y
+`brokers` enteros (se recuperaron sin pérdida real porque las
+propiedades y el checklist demo viven como semilla en `lib/seed.ts`,
+y el perfil del corredor se recrea solo desde la sesión de Google).
+**Resuelto para el store local:** `lib/db.ts` expone `dbUpdate(key,
+mutate)`, que hace lectura+escritura como una sola operación atómica;
+se reescribió cada punto del código que hacía "leer, después guardar"
+por separado (`lib/cases.ts`, `lib/brokers.ts`, `lib/store.ts`) para
+usarla. Confirmado con un test de estrés real (15 creaciones de caso
+concurrentes): antes del arreglo sobrevivía 1 de 15, después las 15.
+**Sin resolver del todo en Redis (producción):** `dbUpdate` ahí sigue
+siendo un GET y despues un SET, no una transacción real (no hay
+WATCH/MULTI vía el cliente REST de Upstash que se usa) — el mismo
+patrón de carrera podría repetirse con dos requests verdaderamente
+simultáneas para el mismo caso. Riesgo aceptado por ahora: Vercel rara
+vez sirve dos requests al mismo tiempo para el mismo caso con el
+volumen esperado (sección 9, "Costo de infraestructura"). Si alguna
+vez se vuelve un problema real observado, la solución es mover el
+índice de casos por corredor y la lista de casos a estructuras
+atómicas nativas de Redis (`SADD`/listas) en vez de un objeto JSON
+grande por clave.
+
 ## 10. Fuera de alcance (v1)
 
 Explícitamente afuera hasta tener señal real de que el resto funciona:
