@@ -4,7 +4,15 @@ import { useState } from "react";
 
 const CONTACT_EMAIL = "luccaass96@gmail.com";
 
-export default function ContactModal({ label = "Escribinos" }: { label?: string }) {
+export default function ContactModal({
+  label = "Escribinos",
+  className,
+  style,
+}: {
+  label?: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -26,8 +34,8 @@ export default function ContactModal({ label = "Escribinos" }: { label?: string 
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-sm font-medium underline-offset-2 hover:underline"
-        style={{ color: "var(--accent)" }}
+        className={className ?? "text-sm font-medium underline-offset-2 hover:underline"}
+        style={style ?? { color: "var(--accent)" }}
       >
         {label}
       </button>

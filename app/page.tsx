@@ -82,20 +82,26 @@ const PLANS = [
   {
     name: "Para arrancar",
     blurb: "Para probarlo con tus primeros clientes.",
-    limit: "Unos pocos casos activos a la vez",
+    price: "USD 13",
+    limit: "Hasta 5 casos activos a la vez",
     highlight: false,
+    custom: false,
   },
   {
     name: "Para tu cartera",
     blurb: "Cuando ya es tu herramienta de todos los días.",
-    limit: "Más casos activos en simultáneo",
+    price: "USD 29",
+    limit: "Hasta 20 casos activos a la vez",
     highlight: true,
+    custom: false,
   },
   {
     name: "Volumen alto",
     blurb: "¿Manejás muchos clientes a la vez? Lo ajustamos con vos.",
+    price: "Hablemos",
     limit: "Casos activos a medida",
     highlight: false,
+    custom: true,
   },
 ];
 
@@ -406,10 +412,10 @@ export default function LandingPage() {
                     {p.blurb}
                   </p>
                   <p className="mt-6 text-3xl" style={{ fontFamily: "var(--font-display)" }}>
-                    A confirmar
+                    {p.price}
                   </p>
                   <p className="mt-1 text-xs" style={{ color: "var(--ink-faint)" }}>
-                    precio mensual
+                    {p.custom ? "a medida" : "por mes, cobrado en pesos"}
                   </p>
                   <p
                     className="mt-5 flex items-center gap-2 border-t pt-5 text-sm"
@@ -418,23 +424,32 @@ export default function LandingPage() {
                     <span style={{ color: "var(--status-gusto)" }}>✓</span>
                     {p.limit}
                   </p>
-                  <Link
-                    href="/panel/login"
-                    className="btn mt-6 rounded-full px-5 py-2.5 text-center text-sm font-semibold"
-                    style={
-                      p.highlight
-                        ? { background: "var(--accent)", color: "var(--accent-ink)" }
-                        : { border: "1px solid var(--border-strong)", color: "var(--ink)" }
-                    }
-                  >
-                    Empezar prueba gratis
-                  </Link>
+                  {p.custom ? (
+                    <ContactModal
+                      label="Hablar con nosotros"
+                      className="btn mt-6 w-full rounded-full px-5 py-2.5 text-center text-sm font-semibold"
+                      style={{ border: "1px solid var(--border-strong)", color: "var(--ink)" }}
+                    />
+                  ) : (
+                    <Link
+                      href="/panel/login"
+                      className="btn mt-6 rounded-full px-5 py-2.5 text-center text-sm font-semibold"
+                      style={
+                        p.highlight
+                          ? { background: "var(--accent)", color: "var(--accent-ink)" }
+                          : { border: "1px solid var(--border-strong)", color: "var(--ink)" }
+                      }
+                    >
+                      Empezar prueba gratis
+                    </Link>
+                  )}
                 </div>
               ))}
             </div>
             <p className="mt-6 text-xs" style={{ color: "var(--ink-muted)" }}>
-              Vas a conocer el precio final antes de que se cobre nada — la
-              prueba de 14 días no pide tarjeta.
+              Precios de referencia en dólares — el cobro se hace en pesos,
+              al tipo de cambio del día, a través de Mercado Pago. La prueba
+              de 14 días no pide tarjeta.
             </p>
           </div>
         </section>
