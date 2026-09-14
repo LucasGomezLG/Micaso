@@ -4,7 +4,7 @@ import CasasBoard from "@/components/CasasBoard";
 
 export const dynamic = "force-dynamic";
 
-export default async function CasasPage(props: PageProps<"/casas">) {
+export default async function CasasPage(props: PageProps<"/caso/casas">) {
   const searchParams = await props.searchParams;
   const initialStatus =
     typeof searchParams.status === "string" ? searchParams.status : "todas";

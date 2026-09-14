@@ -4,15 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const LINKS = [
-  { href: "/", label: "Inicio" },
-  { href: "/casas", label: "Casas" },
-  { href: "/calculadora", label: "Calculadora" },
-  { href: "/checklist", label: "Checklist" },
+  { href: "/caso", label: "Inicio" },
+  { href: "/caso/casas", label: "Casas" },
+  { href: "/caso/calculadora", label: "Calculadora" },
+  { href: "/caso/checklist", label: "Checklist" },
 ];
 
 export default function Nav() {
   const pathname = usePathname();
-  if (pathname === "/login") return null;
 
   return (
     <header
@@ -20,7 +19,7 @@ export default function Nav() {
       style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface) 88%, transparent)" }}
     >
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link href="/" className="flex items-baseline gap-2">
+        <Link href="/caso" className="flex items-baseline gap-2">
           <span
             className="text-lg font-semibold"
             style={{ fontFamily: "var(--font-display)" }}
@@ -32,7 +31,7 @@ export default function Nav() {
         <nav className="flex gap-1 text-sm">
           {LINKS.map((link) => {
             const active =
-              link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
+              link.href === "/caso" ? pathname === "/caso" : pathname.startsWith(link.href);
             return (
               <Link
                 key={link.href}

@@ -19,7 +19,7 @@ export default async function CompararPage() {
             Las casas marcadas con ⭐, lado a lado.
           </p>
         </div>
-        <Link href="/casas" className="text-sm font-medium" style={{ color: "var(--accent)" }}>
+        <Link href="/caso/casas" className="text-sm font-medium" style={{ color: "var(--accent)" }}>
           ← Volver a Casas
         </Link>
       </div>

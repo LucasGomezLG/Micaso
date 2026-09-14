@@ -86,7 +86,7 @@ export default function CasasBoard({
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href="/casas/mapa"
+            href="/caso/casas/mapa"
             className="rounded-full border px-4 py-2 text-sm font-medium"
             style={{ borderColor: "var(--border)", color: "var(--ink-muted)" }}
           >
@@ -94,7 +94,7 @@ export default function CasasBoard({
           </Link>
           {destacadasCount > 0 && (
             <Link
-              href="/casas/comparar"
+              href="/caso/casas/comparar"
               className="rounded-full border px-4 py-2 text-sm font-medium"
               style={{ borderColor: "var(--border)", color: "var(--ink-muted)" }}
             >

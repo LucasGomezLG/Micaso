@@ -3,7 +3,9 @@ import { BROKER_PASSWORD } from "@/lib/auth";
 import { getCase } from "@/lib/cases";
 import { BROKER_COOKIE, CASE_COOKIE } from "@/lib/session";
 
-const PUBLIC_PATHS = ["/login", "/api/login", "/panel/login", "/api/panel/login"];
+// "/" es la landing pública (marketing, dirigida al corredor) — ver
+// ARQUITECTURA.md sección 6.
+const PUBLIC_PATHS = ["/", "/login", "/api/login", "/panel/login", "/api/panel/login"];
 const BROKER_PREFIXES = ["/panel", "/api/panel"];
 
 function isUnder(pathname: string, prefixes: string[]): boolean {
@@ -31,9 +33,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Todo lo demás es un caso: cookie con el id, validado contra lo
-  // guardado en la base (no una contraseña compartida) — un caso
-  // archivado (cerrado o de baja hace más de 90 días) pierde el acceso.
+  // Todo lo demás (el dashboard del caso en /caso/* y las API que usa)
+  // requiere cookie con el id de caso, validado contra lo guardado en la
+  // base (no una contraseña compartida) — un caso archivado (cerrado o
+  // de baja hace más de 90 días) pierde el acceso.
   const caseId = request.cookies.get(CASE_COOKIE)?.value;
   const kase = caseId ? await getCase(caseId) : null;
   if (kase && kase.estado !== "archivado") {

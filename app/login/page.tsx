@@ -22,7 +22,7 @@ function LoginForm() {
     });
     setLoading(false);
     if (res.ok) {
-      router.push(searchParams.get("next") || "/");
+      router.push(searchParams.get("next") || "/caso");
       router.refresh();
     } else {
       const data = await res.json().catch(() => ({}));
