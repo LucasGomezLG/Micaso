@@ -419,6 +419,22 @@ demasiados corredores para tocarlos a mano de a uno.
 > vez de esperar a que pase por el flujo de signup público — el mismo
 > mecanismo (Google OAuth) sirve para los dos casos.
 
+> **Implementado (14 sept 2026), antes de Mercado Pago.** `/superadmin`
+> ya existe — lista de corredores con plan, estado de cobro y casos
+> activos contra el tope de su plan (ver Cobro, sección 6), editable a
+> mano desde ahí, más el alta manual de un corredor por email. `brokers`
+> suma los campos que la sección 4 ya preveía (`plan`, `trialEndsAt`,
+> `mpPreapprovalId`) y uno nuevo, `subscriptionStatus`, con cuatro
+> valores: `prueba` (los 14 días sin tarjeta), `activa` (paga),
+> `atrasada` (falló un cobro o venció la prueba — mismo trato que
+> solo_lectura, sección 9) y `cancelada` (de baja). Como Mercado Pago
+> todavía no está conectado, ese campo solo lo cambia un admin a mano;
+> el día que exista el webhook (sección 8), pasa a actualizarlo también.
+> `createCase` ya bloquea contra el tope de casos activos del plan del
+> corredor (sección 6) — corredores creados antes de este cambio migran
+> solos a `para_arrancar`/`activa` la primera vez que se leen (ver el
+> backfill en `lib/brokers.ts`, mismo patrón que `normalizeHouse`).
+
 ## 8. Qué cambia respecto al código de Casa
 
 Es una extensión del código existente de `D:\Casa`, no una reescritura.

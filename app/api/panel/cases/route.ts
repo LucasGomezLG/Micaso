@@ -24,6 +24,11 @@ export async function POST(request: NextRequest) {
   }
   const tipoCaso = VALID_TIPOS.includes(body.tipoCaso as TipoCaso) ? (body.tipoCaso as TipoCaso) : "compra";
 
-  const kase = await createCase(broker.id, titulo, tipoCaso);
-  return NextResponse.json({ case: kase }, { status: 201 });
+  try {
+    const kase = await createCase(broker.id, titulo, tipoCaso);
+    return NextResponse.json({ case: kase }, { status: 201 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "No se pudo crear el caso.";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }

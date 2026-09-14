@@ -1,7 +1,8 @@
 import { DEV_BROKER_ID } from "./auth";
+import { getBroker } from "./brokers";
 import { dbGet, dbUpdate } from "./db";
 import { DEMO_CASE_ID } from "./seed";
-import { Case, TipoCaso } from "./types";
+import { Case, PLAN_CASE_LIMIT, TipoCaso } from "./types";
 
 const CASES_KEY = "cases";
 const brokerCasesKey = (brokerId: string) => `broker:${brokerId}:cases`;
@@ -58,11 +59,29 @@ async function getAllCases(): Promise<Record<string, Case>> {
   return cases;
 }
 
+/** Tope de casos activos simultáneos del plan (ARQUITECTURA.md sección
+ * 6) — createCase lo chequea antes de crear, no proxy.ts ni la ruta, así
+ * que cualquier lugar que llegue a crear un caso queda cubierto. Sin
+ * corredor (no debería pasar, brokerId siempre viene de una sesión ya
+ * autenticada) no bloquea: dejarlo pasar es más seguro que un caso
+ * imposible de crear por un dato faltante. */
+async function assertUnderCaseLimit(brokerId: string): Promise<void> {
+  const broker = await getBroker(brokerId);
+  if (!broker) return;
+  const limit = PLAN_CASE_LIMIT[broker.plan];
+  if (limit === null) return;
+  const activos = (await listCasesForBroker(brokerId)).filter((c) => c.estado === "activo").length;
+  if (activos >= limit) {
+    throw new Error(`Llegaste al tope de ${limit} casos activos de tu plan. Cerrá uno o cambiá de plan para crear otro.`);
+  }
+}
+
 export async function createCase(
   brokerId: string,
   titulo: string,
   tipoCaso: TipoCaso
 ): Promise<Case> {
+  await assertUnderCaseLimit(brokerId);
   const now = new Date().toISOString();
   const kase: Case = {
     id: crypto.randomUUID(),

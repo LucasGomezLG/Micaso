@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { ADMIN_EMAILS } from "@/lib/auth";
 import { getCase } from "@/lib/cases";
 import { CASE_COOKIE } from "@/lib/session";
 
@@ -25,6 +26,7 @@ const PUBLIC_PATHS = [
   "/sitemap.xml",
 ];
 const BROKER_PREFIXES = ["/panel", "/api/panel"];
+const ADMIN_PREFIXES = ["/superadmin", "/api/superadmin"];
 
 function isUnder(pathname: string, prefixes: string[]): boolean {
   return prefixes.some((p) => pathname === p || pathname.startsWith(p + "/"));
@@ -45,6 +47,26 @@ export const proxy = auth((request) => {
     }
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+    const loginUrl = new URL("/panel/login", request.url);
+    loginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Panel de super-admin: mismo login de Google, pero el email tiene que
+  // estar en ADMIN_EMAILS — ver ARQUITECTURA.md sección 7 y lib/auth.ts.
+  if (isUnder(pathname, ADMIN_PREFIXES)) {
+    const email = request.auth?.user?.email;
+    if (email && ADMIN_EMAILS.has(email)) {
+      return NextResponse.next();
+    }
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "No autorizado" }, { status: email ? 403 : 401 });
+    }
+    if (email) {
+      // Logueado pero no es admin: no tiene sentido mandarlo a loguearse
+      // de nuevo, lo manda a su propio panel de corredor.
+      return NextResponse.redirect(new URL("/panel", request.url));
     }
     const loginUrl = new URL("/panel/login", request.url);
     loginUrl.searchParams.set("next", pathname);

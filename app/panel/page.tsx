@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCurrentBroker } from "@/lib/brokers";
+import { getCurrentAdminEmail, getCurrentBroker } from "@/lib/brokers";
 import { listCasesForBroker } from "@/lib/cases";
 import CreateCaseModal from "@/components/CreateCaseModal";
 import PanelLogoutButton from "@/components/PanelLogoutButton";
@@ -10,7 +10,7 @@ import BrokerNameEditor from "@/components/BrokerNameEditor";
 export const dynamic = "force-dynamic";
 
 export default async function PanelPage() {
-  const broker = await getCurrentBroker();
+  const [broker, adminEmail] = await Promise.all([getCurrentBroker(), getCurrentAdminEmail()]);
   const cases = broker ? await listCasesForBroker(broker.id) : [];
   const activos = cases.filter((c) => c.estado === "activo").length;
 
@@ -33,6 +33,11 @@ export default async function PanelPage() {
             </span>
           </Link>
           <div className="flex items-center gap-3">
+            {adminEmail && (
+              <Link href="/superadmin" className="eyebrow" style={{ color: "var(--accent)" }}>
+                Super-admin
+              </Link>
+            )}
             {broker && (
               <span className="flex items-center gap-2 text-sm" style={{ color: "var(--ink-muted)" }}>
                 {broker.imagenUrl ? (

@@ -1,0 +1,67 @@
+import Link from "next/link";
+import { listAllBrokers } from "@/lib/brokers";
+import { listCasesForBroker } from "@/lib/cases";
+import AdminBrokerRow from "@/components/AdminBrokerRow";
+import CreateBrokerModal from "@/components/CreateBrokerModal";
+import PanelLogoutButton from "@/components/PanelLogoutButton";
+import { MicasoMark } from "@/components/MicasoMark";
+
+export const dynamic = "force-dynamic";
+
+export default async function SuperadminPage() {
+  const brokers = await listAllBrokers();
+  const casesByBroker = await Promise.all(brokers.map((b) => listCasesForBroker(b.id)));
+
+  return (
+    <div className="min-h-full" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+      <header
+        className="sticky top-0 z-20 border-b backdrop-blur-md"
+        style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface) 85%, transparent)" }}
+      >
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+          <Link href="/" className="flex items-center gap-2">
+            <span
+              className="flex h-7 w-7 items-center justify-center rounded-lg"
+              style={{ background: "linear-gradient(135deg, var(--accent), var(--gold))" }}
+            >
+              <MicasoMark size={16} color="var(--accent-ink)" />
+            </span>
+            <span className="text-lg font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+              Micaso
+            </span>
+            <span className="eyebrow ml-1">Super-admin</span>
+          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/panel" className="text-sm font-medium" style={{ color: "var(--ink-muted)" }}>
+              Ir a mi panel
+            </Link>
+            <PanelLogoutButton />
+          </div>
+        </div>
+      </header>
+
+      <main className="relative mx-auto max-w-5xl px-4 py-10 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl">Corredores</h1>
+            <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+              {brokers.length} en total — plan y estado se editan a mano
+              hasta que Mercado Pago esté conectado.
+            </p>
+          </div>
+          <CreateBrokerModal />
+        </div>
+
+        <div className="mt-8 flex flex-col gap-3">
+          {brokers.map((broker, i) => {
+            const cases = casesByBroker[i];
+            const activeCases = cases.filter((c) => c.estado === "activo").length;
+            return (
+              <AdminBrokerRow key={broker.id} broker={broker} activeCases={activeCases} totalCases={cases.length} />
+            );
+          })}
+        </div>
+      </main>
+    </div>
+  );
+}

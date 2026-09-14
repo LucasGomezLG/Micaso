@@ -1,5 +1,38 @@
 export type AptoCredito = "no_se" | "si" | "no";
 
+export type Plan = "para_arrancar" | "para_tu_cartera" | "volumen_alto";
+
+export const PLAN_LABEL: Record<Plan, string> = {
+  para_arrancar: "Para arrancar",
+  para_tu_cartera: "Para tu cartera",
+  volumen_alto: "Volumen alto",
+};
+
+/** Tope de casos activos simultáneos por plan — ver ARQUITECTURA.md
+ * sección 6. `null` en "volumen_alto" es a medida, sin número fijo, así
+ * que no bloquea la creación de casos. */
+export const PLAN_CASE_LIMIT: Record<Plan, number | null> = {
+  para_arrancar: 5,
+  para_tu_cartera: 20,
+  volumen_alto: null,
+};
+
+/** Estado del cobro de un corredor. Mercado Pago todavía no está
+ * conectado (ver ARQUITECTURA.md sección 7 y 12), así que hoy este
+ * campo solo se edita a mano desde /superadmin — "prueba" mientras
+ * dura la prueba de 14 días sin tarjeta, "activa" mientras paga,
+ * "atrasada" si falló un cobro o venció la prueba sin cargar tarjeta
+ * (mismo tratamiento que un caso en solo_lectura, ver sección 9),
+ * "cancelada" si dio de baja. */
+export type SubscriptionStatus = "prueba" | "activa" | "atrasada" | "cancelada";
+
+export const SUBSCRIPTION_STATUS_LABEL: Record<SubscriptionStatus, string> = {
+  prueba: "Prueba",
+  activa: "Activa",
+  atrasada: "Atrasada",
+  cancelada: "Cancelada",
+};
+
 export type HouseStatus =
   | "pendiente"
   | "duda_visitar"
@@ -124,6 +157,16 @@ export interface Broker {
   email: string;
   nombreMarca: string;
   imagenUrl: string | null;
+  plan: Plan;
+  subscriptionStatus: SubscriptionStatus;
+  /** Fin de la prueba de 14 días sin tarjeta (ver ARQUITECTURA.md
+   * sección 6) — se ignora una vez que subscriptionStatus pasa a
+   * "activa". */
+  trialEndsAt: string;
+  /** ID de la suscripción en Mercado Pago — null hasta que esa
+   * integración exista (ver ARQUITECTURA.md sección 7/12); mientras
+   * tanto subscriptionStatus se edita a mano desde /superadmin. */
+  mpPreapprovalId: string | null;
   createdAt: string;
 }
 
