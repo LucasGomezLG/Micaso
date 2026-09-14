@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { X } from "lucide-react";
 import { House } from "@/lib/types";
 import { proxiedImage } from "@/lib/format";
+import Select from "@/components/Select";
 
 export default function EditHouseModal({
   house,
@@ -12,7 +14,7 @@ export default function EditHouseModal({
 }: {
   house: House;
   onClose: () => void;
-  onChange: (id: string, patch: Partial<House>) => void | Promise<void>;
+  onChange: (id: string, patch: Partial<House>) => Promise<boolean>;
 }) {
   const [title, setTitle] = useState(house.title);
   const [priceUsd, setPriceUsd] = useState(house.priceUsd !== null ? String(house.priceUsd) : "");
@@ -49,9 +51,12 @@ export default function EditHouseModal({
       proximaAccionFecha: proximaAccionFecha || null,
       visitaFecha: visitaFecha || null,
     };
-    await onChange(house.id, patch);
+    const ok = await onChange(house.id, patch);
     setSaving(false);
-    onClose();
+    if (ok) {
+      toast.success("Cambios guardados.");
+      onClose();
+    }
   }
 
   return (
@@ -119,7 +124,7 @@ export default function EditHouseModal({
             </label>
             <label className="flex flex-col gap-1">
               <span className="eyebrow">Cochera</span>
-              <select
+              <Select
                 className="field"
                 value={cochera}
                 onChange={(e) => setCochera(e.target.value as "unknown" | "yes" | "no")}
@@ -127,7 +132,7 @@ export default function EditHouseModal({
                 <option value="unknown">Sin dato</option>
                 <option value="yes">Sí</option>
                 <option value="no">No</option>
-              </select>
+              </Select>
             </label>
           </div>
 

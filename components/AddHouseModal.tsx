@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { X } from "lucide-react";
 import { proxiedImage } from "@/lib/format";
+import { apiErrorMessage } from "@/lib/http";
+import Select from "@/components/Select";
 
 const URL_PATTERN = /^https?:\/\/.+\..+/i;
 
@@ -96,7 +99,7 @@ export default function AddHouseModal({
   async function save() {
     if (!draft.url) return;
     setSaving(true);
-    await fetch("/api/houses", {
+    const res = await fetch("/api/houses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -114,6 +117,11 @@ export default function AddHouseModal({
       }),
     });
     setSaving(false);
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo agregar la casa."));
+      return;
+    }
+    toast.success("Casa agregada.");
     onCreated();
   }
 
@@ -240,7 +248,7 @@ export default function AddHouseModal({
           <label className="flex flex-col gap-1">
             <span className="eyebrow">Quién la agrega</span>
             {people.length > 0 ? (
-              <select
+              <Select
                 className="field"
                 value={draft.addedBy}
                 onChange={(e) => setDraft({ ...draft, addedBy: e.target.value })}
@@ -250,7 +258,7 @@ export default function AddHouseModal({
                     {p}
                   </option>
                 ))}
-              </select>
+              </Select>
             ) : (
               <input
                 className="field"

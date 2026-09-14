@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
+import { apiErrorMessage } from "@/lib/http";
 import { Broker, Plan, PLAN_CASE_LIMIT, PLAN_LABEL, SubscriptionStatus, SUBSCRIPTION_STATUS_LABEL } from "@/lib/types";
 
 const PLANS: Plan[] = ["para_arrancar", "para_tu_cartera", "volumen_alto"];
@@ -35,7 +37,11 @@ export default function AdminBrokerRow({
       body: JSON.stringify(body),
     });
     setSaving(false);
-    if (res.ok) router.refresh();
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo guardar el cambio."));
+      return;
+    }
+    router.refresh();
   }
 
   const limit = PLAN_CASE_LIMIT[broker.plan];

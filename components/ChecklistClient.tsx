@@ -1,8 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { ChecklistItem, TipoCaso } from "@/lib/types";
+import { apiErrorMessage } from "@/lib/http";
+import Select from "@/components/Select";
 
 const SUBTITLE: Record<TipoCaso, string> = {
   compra: "Todo lo que falta para llegar de un pre-aprobado a la escritura.",
@@ -34,19 +37,32 @@ export default function ChecklistClient({
   const done = items.filter((i) => i.done).length;
   const progress = items.length ? Math.round((done / items.length) * 100) : 0;
 
+  // Arranca en 0 y sube al progreso real después del primer render, para
+  // que la barra se llene animada al entrar a la página (no solo cuando
+  // cambia un ítem más tarde).
+  const [barWidth, setBarWidth] = useState(0);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setBarWidth(progress));
+    return () => cancelAnimationFrame(id);
+  }, [progress]);
+
   async function patch(id: string, body: Partial<ChecklistItem>) {
     setPending((s) => new Set(s).add(id));
-    await fetch(`/api/checklist/${id}`, {
+    const res = await fetch(`/api/checklist/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    router.refresh();
     setPending((s) => {
       const next = new Set(s);
       next.delete(id);
       return next;
     });
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo actualizar el ítem."));
+      return;
+    }
+    router.refresh();
   }
 
   return (
@@ -65,8 +81,8 @@ export default function ChecklistClient({
         </div>
         <div className="mt-2 h-2 overflow-hidden rounded-full" style={{ background: "var(--border)" }}>
           <div
-            className="h-full rounded-full transition-all"
-            style={{ width: `${progress}%`, background: "var(--status-gusto)" }}
+            className="h-full rounded-full transition-[width] duration-700 ease-out"
+            style={{ width: `${barWidth}%`, background: "var(--status-gusto)" }}
           />
         </div>
       </div>
@@ -97,9 +113,10 @@ export default function ChecklistClient({
                   >
                     {item.label}
                   </span>
-                  <select
+                  <Select
                     value={item.assignedTo ?? ""}
                     onChange={(e) => patch(item.id, { assignedTo: e.target.value || null })}
+                    wrapperClassName="shrink-0"
                     className="rounded-lg border px-2 py-1 text-xs"
                     style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
                   >
@@ -109,7 +126,7 @@ export default function ChecklistClient({
                         {p}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               ))}
             </div>

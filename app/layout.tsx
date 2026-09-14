@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Toaster } from "sonner";
+import GlobalErrorToasts from "@/components/GlobalErrorToasts";
 import "./globals.css";
 
 const TITLE = "Micaso — la búsqueda de casa de cada cliente, en un solo lugar";
@@ -30,7 +32,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="es" className="h-full">
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <Toaster theme="system" position="bottom-right" richColors closeButton />
+        <GlobalErrorToasts />
+      </body>
     </html>
   );
 }

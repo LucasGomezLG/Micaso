@@ -8,7 +8,7 @@ import { frenchInstallment } from "@/lib/mortgage";
 const STORAGE_KEY = "casa-norte-calculadora";
 
 export default function CalculadoraClient({ loan }: { loan: LoanInfo }) {
-  const impliedFx = Math.round(loan.approvedAmountArs / loan.bankMaxUsd);
+  const impliedFx = loan.bankMaxUsd > 0 ? Math.round(loan.approvedAmountArs / loan.bankMaxUsd) : 1000;
   // rateLabel uses Argentine comma-decimal ("7,5% + UVA") — parseFloat alone
   // stops at the comma and silently returns 7 instead of 7.5.
   const tnaDefault = parseFloat(loan.rateLabel.replace(",", ".")) || 7.5;

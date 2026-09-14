@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   Calendar,
   Car,
@@ -22,10 +23,12 @@ import {
 } from "lucide-react";
 import { AptoCredito, House, HouseStatus, LoanInfo, PIPELINE_STATUSES, STATUS_LABEL } from "@/lib/types";
 import { formatDate, formatDateTime, formatUsd, isOverdue, proxiedImage } from "@/lib/format";
+import { apiErrorMessage } from "@/lib/http";
 import { cashNeededRange, pricePerM2 } from "@/lib/mortgage";
 import StatusBadge from "@/components/StatusBadge";
 import EditHouseModal from "@/components/EditHouseModal";
 import VisitReview from "@/components/VisitReview";
+import Select from "@/components/Select";
 
 const AUTHOR_KEY = "casa-comment-author";
 
@@ -63,8 +66,8 @@ export default function HouseCard({
   house: House;
   loan: LoanInfo;
   people: string[];
-  onChange: (id: string, patch: Partial<House>) => void;
-  onDelete: (id: string) => void;
+  onChange: (id: string, patch: Partial<House>) => Promise<boolean>;
+  onDelete: (id: string) => Promise<boolean>;
 }) {
   const router = useRouter();
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -96,13 +99,17 @@ export default function HouseCard({
     try {
       localStorage.setItem(AUTHOR_KEY, commentAuthor);
     } catch {}
-    await fetch(`/api/houses/${house.id}/comments`, {
+    const res = await fetch(`/api/houses/${house.id}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ author: commentAuthor, text }),
     });
-    setCommentText("");
     setPosting(false);
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo publicar el comentario."));
+      return;
+    }
+    setCommentText("");
     router.refresh();
   }
 
@@ -110,31 +117,43 @@ export default function HouseCard({
     const text = checklistText.trim();
     if (!text) return;
     setAddingItem(true);
-    await fetch(`/api/houses/${house.id}/checklist`, {
+    const res = await fetch(`/api/houses/${house.id}/checklist`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
     });
-    setChecklistText("");
     setAddingItem(false);
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo agregar el ítem."));
+      return;
+    }
+    setChecklistText("");
     router.refresh();
   }
 
   async function toggleChecklistItem(itemId: string, done: boolean) {
-    await fetch(`/api/houses/${house.id}/checklist/${itemId}`, {
+    const res = await fetch(`/api/houses/${house.id}/checklist/${itemId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ done }),
     });
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo actualizar el ítem."));
+      return;
+    }
     router.refresh();
   }
 
   async function deleteChecklistItem(itemId: string) {
-    await fetch(`/api/houses/${house.id}/checklist/${itemId}`, { method: "DELETE" });
+    const res = await fetch(`/api/houses/${house.id}/checklist/${itemId}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo eliminar el ítem."));
+      return;
+    }
     router.refresh();
   }
 
-  const cash = house.priceUsd ? cashNeededRange(house.priceUsd, loan.bankMaxUsd) : null;
+  const cash = house.priceUsd ? cashNeededRange(house.priceUsd, loan.hasCredit ? loan.bankMaxUsd : 0) : null;
   const cashFit = cash
     ? cash.high <= loan.ownFundsMaxUsd
       ? "gusto"
@@ -153,12 +172,22 @@ export default function HouseCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: house.url }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}) as { error?: string });
+      if (!res.ok || data.error) {
+        toast.error(data.error || "No se pudo leer el aviso.");
+        return;
+      }
       const patch: Partial<House> = {};
       if (data.images?.length > house.images.length) patch.images = data.images;
       if (data.title && house.title === house.url) patch.title = data.title;
       if (data.priceUsd && !house.priceUsd) patch.priceUsd = data.priceUsd;
-      if (Object.keys(patch).length > 0) onChange(house.id, patch);
+      if (Object.keys(patch).length > 0) {
+        await onChange(house.id, patch);
+      } else {
+        toast.info("No encontramos nada nuevo en el aviso.");
+      }
+    } catch {
+      toast.error("No se pudo leer el aviso.");
     } finally {
       setRefreshing(false);
     }
@@ -366,9 +395,10 @@ export default function HouseCard({
               )}
               <div className="flex gap-1.5">
                 {people.length > 0 ? (
-                  <select
+                  <Select
                     value={commentAuthor}
                     onChange={(e) => setCommentAuthor(e.target.value)}
+                    wrapperClassName="shrink-0"
                     className="rounded-lg border px-1.5 text-xs"
                     style={{ borderColor: "var(--border)", background: "var(--surface)", color: "var(--ink)" }}
                   >
@@ -377,7 +407,7 @@ export default function HouseCard({
                         {p}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 ) : (
                   <input
                     value={commentAuthor}
@@ -507,10 +537,11 @@ export default function HouseCard({
           </div>
         ) : (
           <div className="flex items-center gap-2 border-t pt-3" style={{ borderColor: "var(--border)" }}>
-            <select
+            <Select
               value={house.status}
               onChange={(e) => onChange(house.id, { status: e.target.value as HouseStatus })}
-              className="flex-1 rounded-lg border px-2 py-1.5 text-xs"
+              wrapperClassName="flex-1"
+              className="rounded-lg border px-2 py-1.5 text-xs"
               style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
             >
               {PIPELINE_STATUSES.map((s) => (
@@ -518,7 +549,7 @@ export default function HouseCard({
                   {STATUS_LABEL[s]}
                 </option>
               ))}
-            </select>
+            </Select>
             <button
               title="Actualizar imagen/precio desde el aviso"
               onClick={refreshFromSource}

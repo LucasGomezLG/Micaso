@@ -41,6 +41,17 @@
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
   --shadow-card: 0 1px 2px rgba(27, 36, 48, 0.04), 0 4px 16px rgba(27, 36, 48, 0.06);
+
+  /* Banner final de la landing (app/page.tsx): en claro se invierte a
+   * oscuro para destacar: sobre --paper claro, un panel casi negro
+   * (#12181f) contrasta fuerte. En oscuro esa misma constante quedaba
+   * casi idéntica a --paper oscuro (#14181d) y el banner desaparecía —
+   * ahí usamos --surface-raised (más claro que --paper) en vez de
+   * repetir el truco de "invertir a oscuro" sobre una página que ya es oscura. */
+  --cta-band-bg: #12181f;
+  --cta-band-fg: #f4f5f3;
+  --cta-band-fg-muted: rgba(244, 245, 243, 0.7);
+  --cta-band-border: rgba(255, 255, 255, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -80,6 +91,11 @@
     --status-borrada-bg: #2a2f36;
 
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 20px rgba(0, 0, 0, 0.28);
+
+    --cta-band-bg: var(--surface-raised);
+    --cta-band-fg: var(--ink);
+    --cta-band-fg-muted: var(--ink-muted);
+    --cta-band-border: var(--accent-soft-border);
   }
 }
 
@@ -119,6 +135,11 @@
   --status-borrada-bg: #2a2f36;
 
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 20px rgba(0, 0, 0, 0.28);
+
+  --cta-band-bg: var(--surface-raised);
+  --cta-band-fg: var(--ink);
+  --cta-band-fg-muted: var(--ink-muted);
+  --cta-band-border: var(--accent-soft-border);
 }
 
 * {
@@ -273,3 +294,62 @@ a {
 .animate-modal-pop {
   animation: modal-pop-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* components/Select.tsx: oculta la flecha nativa del <select> y le deja
+ * lugar a la de lucide que dibuja el componente por encima. */
+.select-custom {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2rem;
+}
+
+/* components/HousesMap.tsx: el popup de Leaflet viene blanco fijo por
+ * defecto — lo alineamos a los tokens del sistema para que respete el
+ * modo oscuro en vez de desentonar con el resto del panel. */
+.leaflet-popup-content-wrapper {
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+}
+.leaflet-popup-tip {
+  background: var(--surface);
+}
+.leaflet-popup-close-button {
+  color: var(--ink-faint) !important;
+}
+
+/* sonner (toasts): pisa la paleta gris propia del paquete con los
+ * tokens del sistema — sonner inyecta su propio <style> en el cliente,
+ * así que !important es la única forma confiable de ganarle sin
+ * depender del orden de carga. Ver app/layout.tsx por el <Toaster/>. */
+[data-sonner-toaster] {
+  --border-radius: 14px !important;
+  --normal-bg: var(--surface) !important;
+  --normal-border: var(--border) !important;
+  --normal-text: var(--ink) !important;
+  --success-bg: var(--status-gusto-bg) !important;
+  --success-border: var(--status-gusto) !important;
+  --success-text: var(--status-gusto) !important;
+  --error-bg: var(--status-descartada-bg) !important;
+  --error-border: var(--status-descartada) !important;
+  --error-text: var(--status-descartada) !important;
+  --warning-bg: var(--status-pendiente-bg) !important;
+  --warning-border: var(--status-pendiente) !important;
+  --warning-text: var(--status-pendiente) !important;
+  font-family: var(--font-body) !important;
+}
+[data-sonner-toast] {
+  box-shadow: var(--shadow-card) !important;
+}
+[data-sonner-toast] [data-button] {
+  background: var(--accent) !important;
+  color: var(--accent-ink) !important;
+  border-radius: 999px !important;
+}
+[data-sonner-toast] [data-cancel] {
+  background: transparent !important;
+  color: var(--ink-muted) !important;
+}
+

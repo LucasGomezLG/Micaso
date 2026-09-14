@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { apiErrorMessage } from "@/lib/http";
 
 export default function BrokerNameEditor({
   initialName,
@@ -33,11 +35,12 @@ export default function BrokerNameEditor({
       body: JSON.stringify({ nombreMarca: next }),
     });
     setSaving(false);
-    if (res.ok) {
-      router.refresh();
-    } else {
+    if (!res.ok) {
       setName(initialName);
+      toast.error(await apiErrorMessage(res, "No se pudo cambiar el nombre."));
+      return;
     }
+    router.refresh();
   }
 
   if (editing) {

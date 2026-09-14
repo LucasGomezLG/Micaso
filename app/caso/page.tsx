@@ -6,6 +6,7 @@ import { getCase } from "@/lib/cases";
 import { daysUntil, formatArs, formatDate, formatDateTime, formatUsd, isOverdue } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
 import CriteriaEditor from "@/components/CriteriaEditor";
+import BriefEditor from "@/components/BriefEditor";
 import PeopleEditor from "@/components/PeopleEditor";
 import { House, HouseStatus, TipoCaso } from "@/lib/types";
 
@@ -131,21 +132,36 @@ export default async function HomePage() {
             boxShadow: "var(--shadow-card)",
           }}
         >
-          <h2 className="text-lg">Lo que buscamos</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg">Lo que buscamos</h2>
+            <BriefEditor brief={brief} />
+          </div>
           <dl className="mt-4 flex flex-col gap-4 text-sm">
             {tipoCaso === "compra" && (
               <div>
                 <dt className="eyebrow mb-1.5">Capital</dt>
                 <dd style={{ color: "var(--ink-muted)" }}>
-                  Hasta{" "}
-                  <strong className="mono" style={{ color: "var(--ink)" }}>
-                    {formatUsd(loan.bankMaxUsd)}
-                  </strong>{" "}
-                  de crédito, más{" "}
-                  <strong className="mono" style={{ color: "var(--ink)" }}>
-                    {formatUsd(loan.ownFundsMinUsd)}–{formatUsd(loan.ownFundsMaxUsd)}
-                  </strong>{" "}
-                  propios (incluye gastos administrativos).
+                  {loan.hasCredit ? (
+                    <>
+                      Hasta{" "}
+                      <strong className="mono" style={{ color: "var(--ink)" }}>
+                        {formatUsd(loan.bankMaxUsd)}
+                      </strong>{" "}
+                      de crédito, más{" "}
+                      <strong className="mono" style={{ color: "var(--ink)" }}>
+                        {formatUsd(loan.ownFundsMinUsd)}–{formatUsd(loan.ownFundsMaxUsd)}
+                      </strong>{" "}
+                      propios (incluye gastos administrativos).
+                    </>
+                  ) : (
+                    <>
+                      Al contado, con{" "}
+                      <strong className="mono" style={{ color: "var(--ink)" }}>
+                        {formatUsd(loan.ownFundsMinUsd)}–{formatUsd(loan.ownFundsMaxUsd)}
+                      </strong>{" "}
+                      disponibles (incluye gastos administrativos).
+                    </>
+                  )}
                 </dd>
               </div>
             )}
@@ -153,8 +169,8 @@ export default async function HomePage() {
               <dt className="eyebrow mb-1.5">Imprescindible</dt>
               <dd>
                 <ul className="flex flex-col gap-1">
-                  {brief.mustHave.map((item) => (
-                    <li key={item} className="flex items-start gap-2">
+                  {brief.mustHave.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2">
                       <Check size={15} className="mt-0.5 shrink-0" style={{ color: "var(--status-gusto)" }} />
                       <span style={{ color: "var(--ink-muted)" }}>{item}</span>
                     </li>
@@ -171,9 +187,9 @@ export default async function HomePage() {
             <div>
               <dt className="eyebrow mb-1.5">Zonas de interés</dt>
               <dd className="flex flex-wrap gap-1.5">
-                {brief.zones.map((zone) => (
+                {brief.zones.map((zone, i) => (
                   <span
-                    key={zone}
+                    key={i}
                     className="rounded-full px-2.5 py-1 text-xs font-medium"
                     style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
                   >
@@ -185,9 +201,9 @@ export default async function HomePage() {
             <div>
               <dt className="eyebrow mb-1.5">Si aparece algo en Capital</dt>
               <dd className="flex flex-wrap gap-1.5">
-                {brief.capitalZones.map((zone) => (
+                {brief.capitalZones.map((zone, i) => (
                   <span
-                    key={zone}
+                    key={i}
                     className="rounded-full px-2.5 py-1 text-xs font-medium"
                     style={{ background: "var(--gold-soft)", color: "var(--gold)" }}
                   >
@@ -208,45 +224,61 @@ export default async function HomePage() {
               boxShadow: "var(--shadow-card)",
             }}
           >
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg">Crédito pre-aprobado</h2>
-              <CriteriaEditor criteria={criteria} />
-            </div>
-            <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <dt className="eyebrow mb-1">Monto</dt>
-                <dd className="mono text-base">{formatArs(loan.approvedAmountArs)}</dd>
-              </div>
-              <div>
-                <dt className="eyebrow mb-1">Cuota aprox.</dt>
-                <dd className="mono text-base">{formatArs(loan.approvedInstallmentArs)}</dd>
-              </div>
-              <div>
-                <dt className="eyebrow mb-1">Tasa</dt>
-                <dd className="mono text-base">{loan.rateLabel}</dd>
-              </div>
-              <div>
-                <dt className="eyebrow mb-1">Plazo</dt>
-                <dd className="mono text-base">
-                  {loan.termMonths} meses ({Math.round(loan.termMonths / 12)} años)
-                </dd>
-              </div>
-            </dl>
-            <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
-              <p className="eyebrow mb-1.5">Condiciones</p>
-              <ul className="flex flex-col gap-1 text-sm" style={{ color: "var(--ink-muted)" }}>
-                {loan.conditions.map((c) => (
-                  <li key={c}>• {c}</li>
-                ))}
-              </ul>
-            </div>
-            <Link
-              href="/caso/calculadora"
-              className="mt-4 inline-block text-sm font-medium"
-              style={{ color: "var(--accent)" }}
-            >
-              Ir a la calculadora →
-            </Link>
+            {loan.hasCredit ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg">Crédito pre-aprobado{loan.bankName ? ` — ${loan.bankName}` : ""}</h2>
+                  <CriteriaEditor criteria={criteria} />
+                </div>
+                <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <dt className="eyebrow mb-1">Monto</dt>
+                    <dd className="mono text-base">{formatArs(loan.approvedAmountArs)}</dd>
+                  </div>
+                  <div>
+                    <dt className="eyebrow mb-1">Cuota aprox.</dt>
+                    <dd className="mono text-base">{formatArs(loan.approvedInstallmentArs)}</dd>
+                  </div>
+                  <div>
+                    <dt className="eyebrow mb-1">Tasa</dt>
+                    <dd className="mono text-base">{loan.rateLabel}</dd>
+                  </div>
+                  <div>
+                    <dt className="eyebrow mb-1">Plazo</dt>
+                    <dd className="mono text-base">
+                      {loan.termMonths} meses ({Math.round(loan.termMonths / 12)} años)
+                    </dd>
+                  </div>
+                </dl>
+                {loan.conditions.length > 0 && (
+                  <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+                    <p className="eyebrow mb-1.5">Condiciones</p>
+                    <ul className="flex flex-col gap-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+                      {loan.conditions.map((c) => (
+                        <li key={c}>• {c}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <Link
+                  href="/caso/calculadora"
+                  className="mt-4 inline-block text-sm font-medium"
+                  style={{ color: "var(--accent)" }}
+                >
+                  Ir a la calculadora →
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg">Sin crédito</h2>
+                  <CriteriaEditor criteria={criteria} />
+                </div>
+                <p className="mt-2 text-sm" style={{ color: "var(--ink-muted)" }}>
+                  Esta compra es al contado, sin financiación bancaria.
+                </p>
+              </>
+            )}
           </div>
         )}
       </section>

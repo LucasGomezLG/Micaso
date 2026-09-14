@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { TipoCaso } from "@/lib/types";
+import Select from "@/components/Select";
 
 export default function CreateCaseModal({ label = "+ Nuevo caso" }: { label?: string }) {
   const router = useRouter();
@@ -23,6 +25,7 @@ export default function CreateCaseModal({ label = "+ Nuevo caso" }: { label?: st
     });
     setLoading(false);
     if (res.ok) {
+      toast.success("Caso creado.");
       setOpen(false);
       setTitulo("");
       setTipoCaso("compra");
@@ -85,7 +88,7 @@ export default function CreateCaseModal({ label = "+ Nuevo caso" }: { label?: st
               </label>
               <label className="flex flex-col gap-1 text-sm">
                 <span className="eyebrow">Tipo de búsqueda</span>
-                <select
+                <Select
                   value={tipoCaso}
                   onChange={(e) => setTipoCaso(e.target.value as TipoCaso)}
                   className="rounded-lg border px-3 py-2"
@@ -94,7 +97,7 @@ export default function CreateCaseModal({ label = "+ Nuevo caso" }: { label?: st
                   <option value="compra">Compra</option>
                   <option value="alquiler">Alquiler</option>
                   <option value="otro">Otro</option>
-                </select>
+                </Select>
               </label>
               {error && (
                 <p className="text-xs" style={{ color: "var(--status-descartada)" }}>

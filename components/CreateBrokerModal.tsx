@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function CreateBrokerModal() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function CreateBrokerModal() {
     });
     setLoading(false);
     if (res.ok) {
+      toast.success("Corredor dado de alta.");
       setOpen(false);
       setEmail("");
       setNombreMarca("");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { ClipboardCheck, ClipboardList } from "lucide-react";
 import { House } from "@/lib/types";
 
@@ -9,7 +10,7 @@ export default function VisitReview({
   onChange,
 }: {
   house: House;
-  onChange: (id: string, patch: Partial<House>) => void | Promise<void>;
+  onChange: (id: string, patch: Partial<House>) => Promise<boolean>;
 }) {
   const [open, setOpen] = useState(false);
   const [bien, setBien] = useState(house.visitReview?.bien ?? "");
@@ -21,11 +22,14 @@ export default function VisitReview({
 
   async function save() {
     setSaving(true);
-    await onChange(house.id, {
+    const ok = await onChange(house.id, {
       visitReview: { bien: bien.trim(), faltante: faltante.trim(), aMejorar: aMejorar.trim() },
     });
     setSaving(false);
-    setOpen(false);
+    if (ok) {
+      toast.success("Revisión guardada.");
+      setOpen(false);
+    }
   }
 
   return (

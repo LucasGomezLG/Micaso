@@ -14,6 +14,8 @@ export const DEMO_CASE_ID = "demo";
 
 export const SEED_CRITERIA: Criteria = {
   loan: {
+    hasCredit: true,
+    bankName: "BBVA",
     bankMaxUsd: 77000,
     ownFundsMinUsd: 30000,
     ownFundsMaxUsd: 35000,

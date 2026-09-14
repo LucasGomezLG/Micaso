@@ -30,12 +30,19 @@ export default function HousesMap({ houses }: { houses: House[] }) {
         maxZoom: 18,
       }).addTo(map);
 
+      // Los marcadores son SVG con atributos de color directos — no
+      // entienden var(), así que resolvemos los tokens una vez acá. El
+      // contenido del popup sí es HTML real insertado en el documento, y
+      // ese usa var(...) para seguir el tema claro/oscuro sin duplicar colores.
+      const rootStyle = getComputedStyle(document.documentElement);
+      const accent = rootStyle.getPropertyValue("--accent").trim() || "#1d4e89";
+
       for (const [zoneName, group] of groups) {
         const radius = Math.min(10 + group.houses.length * 3, 28);
         const marker = L.circleMarker([group.lat, group.lng], {
           radius,
-          color: "#1d4e89",
-          fillColor: "#1d4e89",
+          color: accent,
+          fillColor: accent,
           fillOpacity: 0.45,
           weight: 2,
         }).addTo(map!);
@@ -43,11 +50,11 @@ export default function HousesMap({ houses }: { houses: House[] }) {
         const items = group.houses
           .map(
             (h) => `
-              <div style="padding:6px 0;border-top:1px solid #e5e7eb;">
-                <a href="${h.url}" target="_blank" rel="noreferrer" style="font-weight:600;color:#1d4e89;text-decoration:none;">
+              <div style="padding:6px 0;border-top:1px solid var(--border);">
+                <a href="${h.url}" target="_blank" rel="noreferrer" style="font-weight:600;color:var(--accent);text-decoration:none;">
                   ${h.title.replace(/</g, "&lt;")}
                 </a>
-                <div style="font-size:12px;color:#5b6472;">
+                <div style="font-size:12px;color:var(--ink-muted);">
                   ${formatUsd(h.priceUsd)} · ${STATUS_LABEL[h.status]}
                 </div>
               </div>`
@@ -55,7 +62,7 @@ export default function HousesMap({ houses }: { houses: House[] }) {
           .join("");
 
         marker.bindPopup(
-          `<div style="min-width:220px;max-height:260px;overflow-y:auto;font-family:system-ui,sans-serif;">
+          `<div style="min-width:220px;max-height:260px;overflow-y:auto;font-family:var(--font-body);color:var(--ink);">
              <div style="font-weight:700;margin-bottom:2px;">${zoneName} — ${group.houses.length} casa${group.houses.length > 1 ? "s" : ""}</div>
              ${items}
            </div>`

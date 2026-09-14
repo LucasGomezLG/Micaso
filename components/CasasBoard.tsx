@@ -3,10 +3,13 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Map, Plus, Star, Trash2 } from "lucide-react";
 import { House, HouseStatus, LoanInfo, PIPELINE_STATUSES, STATUS_LABEL } from "@/lib/types";
+import { apiErrorMessage } from "@/lib/http";
 import HouseCard from "@/components/HouseCard";
 import AddHouseModal from "@/components/AddHouseModal";
+import Select from "@/components/Select";
 
 type Tab = "todas" | HouseStatus;
 
@@ -64,18 +67,29 @@ export default function CasasBoard({
     return list;
   }, [houses, tab, zone, sort]);
 
-  async function handleChange(id: string, patch: Partial<House>) {
-    await fetch(`/api/houses/${id}`, {
+  async function handleChange(id: string, patch: Partial<House>): Promise<boolean> {
+    const res = await fetch(`/api/houses/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo guardar el cambio."));
+      return false;
+    }
     router.refresh();
+    return true;
   }
 
-  async function handleDelete(id: string) {
-    await fetch(`/api/houses/${id}`, { method: "DELETE" });
+  async function handleDelete(id: string): Promise<boolean> {
+    const res = await fetch(`/api/houses/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo eliminar la propiedad."));
+      return false;
+    }
+    toast.success("Casa eliminada para siempre.");
     router.refresh();
+    return true;
   }
 
   return (
@@ -142,7 +156,7 @@ export default function CasasBoard({
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <select
+        <Select
           value={zone}
           onChange={(e) => setZone(e.target.value)}
           className="rounded-lg border px-3 py-1.5 text-sm"
@@ -154,8 +168,8 @@ export default function CasasBoard({
               {z}
             </option>
           ))}
-        </select>
-        <select
+        </Select>
+        <Select
           value={sort}
           onChange={(e) => setSort(e.target.value as Sort)}
           className="rounded-lg border px-3 py-1.5 text-sm"
@@ -164,7 +178,7 @@ export default function CasasBoard({
           <option value="recientes">Más recientes</option>
           <option value="precio-asc">Precio: menor a mayor</option>
           <option value="precio-desc">Precio: mayor a menor</option>
-        </select>
+        </Select>
       </div>
 
       {visible.length === 0 ? (

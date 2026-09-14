@@ -543,16 +543,16 @@ export default function LandingPage() {
           <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
             <div
               className="relative flex flex-col items-start gap-6 overflow-hidden rounded-3xl border p-8 sm:flex-row sm:items-center sm:justify-between sm:p-12"
-              style={{ background: "#12181f", borderColor: "rgba(255, 255, 255, 0.08)" }}
+              style={{ background: "var(--cta-band-bg)", borderColor: "var(--cta-band-border)" }}
             >
               <div aria-hidden className="pointer-events-none absolute inset-0">
-                <div className="absolute -bottom-24 -right-16 h-72 w-72 rounded-full blur-3xl" style={{ background: "#d9ab5c", opacity: 0.2 }} />
+                <div className="absolute -bottom-24 -right-16 h-72 w-72 rounded-full blur-3xl" style={{ background: "var(--gold)", opacity: 0.2 }} />
               </div>
               <div className="relative">
-                <h2 className="text-2xl sm:text-3xl" style={{ color: "#f4f5f3" }}>
+                <h2 className="text-2xl sm:text-3xl" style={{ color: "var(--cta-band-fg)" }}>
                   Probalo gratis 14 días
                 </h2>
-                <p className="mt-2 max-w-md text-sm" style={{ color: "rgba(244, 245, 243, 0.7)" }}>
+                <p className="mt-2 max-w-md text-sm" style={{ color: "var(--cta-band-fg-muted)" }}>
                   Sin tarjeta, sin instalar nada. Entrás con tu cuenta de
                   Google y creás tu primer caso en el momento.
                 </p>
@@ -560,7 +560,7 @@ export default function LandingPage() {
               <Link
                 href="/panel/login"
                 className="btn relative shrink-0 rounded-full px-6 py-3.5 text-sm font-semibold"
-                style={{ background: "#d9ab5c", color: "#12181f" }}
+                style={{ background: "var(--gold)", color: "#12181f" }}
               >
                 Empezar prueba gratis
               </Link>

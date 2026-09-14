@@ -113,6 +113,12 @@ export interface ChecklistItem {
 }
 
 export interface LoanInfo {
+  /** Si la compra usa crédito hipotecario o es de contado — cuando es
+   * `false`, el resto de los campos de este tipo (banco, monto, cuota,
+   * tasa, plazo, condiciones) no se muestran ni se usan en los cálculos
+   * de plata necesaria (ver lib/mortgage.ts y sus llamadas). */
+  hasCredit: boolean;
+  bankName: string;
   bankMaxUsd: number;
   ownFundsMinUsd: number;
   ownFundsMaxUsd: number;

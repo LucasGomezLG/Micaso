@@ -23,11 +23,16 @@ export default function Nav({
   tipoCaso,
   brokerName,
   brokerImage,
+  viewingAsBroker = false,
 }: {
   caseTitle: string;
   tipoCaso: TipoCaso;
   brokerName: string | null;
   brokerImage: string | null;
+  /** El corredor entró a este caso desde su panel ("Entrar como este
+   * caso", ver components/CaseRow.tsx) — le mostramos cómo volver, o
+   * quedaría atrapado en la vista de la familia. */
+  viewingAsBroker?: boolean;
 }) {
   const pathname = usePathname();
   const links = tipoCaso === "compra" ? [...BASE_LINKS.slice(0, 2), CALCULADORA_LINK, BASE_LINKS[2]] : BASE_LINKS;
@@ -37,6 +42,17 @@ export default function Nav({
       className="sticky top-0 z-10 border-b backdrop-blur"
       style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface) 88%, transparent)" }}
     >
+      {viewingAsBroker && (
+        <div
+          className="flex items-center justify-center gap-1.5 border-b px-4 py-1.5 text-xs font-medium"
+          style={{ borderColor: "var(--accent-soft-border)", background: "var(--accent-soft)", color: "var(--accent)" }}
+        >
+          Estás viendo este caso como corredor ·{" "}
+          <Link href="/panel" className="underline underline-offset-2">
+            ← Volver a tu panel
+          </Link>
+        </div>
+      )}
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link href="/caso" className="flex min-w-0 items-center gap-2">
           {brokerImage ? (

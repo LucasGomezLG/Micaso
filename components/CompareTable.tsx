@@ -1,10 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Calendar, Check, Pin, X } from "lucide-react";
 import { House, LoanInfo, STATUS_LABEL } from "@/lib/types";
 import { formatDate, formatDateTime, formatUsd, proxiedImage } from "@/lib/format";
 import { cashNeededRange, pricePerM2 } from "@/lib/mortgage";
+import { apiErrorMessage } from "@/lib/http";
 import StatusBadge from "@/components/StatusBadge";
 
 function cell(className = ""): string {
@@ -15,11 +17,15 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
   const router = useRouter();
 
   async function unstar(id: string) {
-    await fetch(`/api/houses/${id}`, {
+    const res = await fetch(`/api/houses/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ highlighted: false }),
     });
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo quitar de la comparación."));
+      return;
+    }
     router.refresh();
   }
 
@@ -73,7 +79,7 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
       label: "Plata necesaria",
       render: (h) => {
         if (!h.priceUsd) return "—";
-        const cash = cashNeededRange(h.priceUsd, loan.bankMaxUsd);
+        const cash = cashNeededRange(h.priceUsd, loan.hasCredit ? loan.bankMaxUsd : 0);
         const fit =
           cash.high <= loan.ownFundsMaxUsd ? "gusto" : cash.low <= loan.ownFundsMaxUsd ? "pendiente" : "descartada";
         return (
