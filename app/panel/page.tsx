@@ -9,6 +9,7 @@ import CaseRow from "@/components/CaseRow";
 import PanelDashboard, { AttentionItem } from "@/components/PanelDashboard";
 import { MicasoMark } from "@/components/MicasoMark";
 import BrokerNameEditor from "@/components/BrokerNameEditor";
+import BrokerAvatarEditor from "@/components/BrokerAvatarEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -84,17 +85,12 @@ export default async function PanelPage() {
             )}
             {broker && (
               <span className="flex items-center gap-2 text-sm" style={{ color: "var(--ink-muted)" }}>
-                {broker.imagenUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={broker.imagenUrl} alt="" className="h-6 w-6 rounded-full" referrerPolicy="no-referrer" />
-                ) : (
-                  <span
-                    className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold"
-                    style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-                  >
-                    {broker.nombreMarca.slice(0, 1).toUpperCase()}
-                  </span>
-                )}
+                <BrokerAvatarEditor
+                  key={broker.imagenUrl}
+                  initialImagenUrl={broker.imagenUrl}
+                  nombreMarca={broker.nombreMarca}
+                  size={24}
+                />
                 <BrokerNameEditor key={broker.nombreMarca} initialName={broker.nombreMarca} />
               </span>
             )}
@@ -167,12 +163,20 @@ export default async function PanelPage() {
                 <span className="text-sm" style={{ color: "var(--ink-muted)" }}>
                   Así te va a ver cada familia:
                 </span>
-                <BrokerNameEditor
-                  key={broker.nombreMarca}
-                  initialName={broker.nombreMarca}
-                  className="text-sm font-semibold"
-                  style={{ color: "var(--accent)" }}
-                />
+                <span className="flex items-center gap-2">
+                  <BrokerAvatarEditor
+                    key={broker.imagenUrl}
+                    initialImagenUrl={broker.imagenUrl}
+                    nombreMarca={broker.nombreMarca}
+                    size={32}
+                  />
+                  <BrokerNameEditor
+                    key={broker.nombreMarca}
+                    initialName={broker.nombreMarca}
+                    className="text-sm font-semibold"
+                    style={{ color: "var(--accent)" }}
+                  />
+                </span>
               </div>
             )}
 

@@ -114,6 +114,14 @@ export async function getCase(caseId: string): Promise<Case | null> {
   return cases[caseId] ?? null;
 }
 
+/** Todos los casos de todos los corredores — usado por el backup
+ * completo de /superadmin (ver lib/backup.ts), no por ninguna pantalla
+ * de corredor (esos siempre pasan por listCasesForBroker). */
+export async function listAllCases(): Promise<Case[]> {
+  const cases = await getAllCases();
+  return Object.values(cases);
+}
+
 export async function getCaseByCredentials(username: string, password: string): Promise<Case | null> {
   const cases = await getAllCases();
   return Object.values(cases).find((c) => c.username === username && c.password === password) ?? null;

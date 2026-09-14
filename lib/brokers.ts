@@ -87,14 +87,13 @@ export async function getBroker(id: string): Promise<Broker | null> {
 }
 
 /** Edita a mano lo que `getOrCreateBroker` trajo de Google —
- * `nombreMarca` la cambia el propio corredor desde su panel; `plan`,
- * `subscriptionStatus` y `trialEndsAt` los cambia un admin desde
- * /superadmin, a falta de Mercado Pago conectado (ver ARQUITECTURA.md
- * sección 7). La foto se sigue tomando de Google hasta que exista
- * upload propio (sección 8). */
+ * `nombreMarca`/`imagenUrl` los cambia el propio corredor desde su
+ * panel; `plan`, `subscriptionStatus` y `trialEndsAt` los cambia un
+ * admin desde /superadmin, a falta de Mercado Pago conectado (ver
+ * ARQUITECTURA.md sección 7). */
 export async function updateBroker(
   id: string,
-  patch: Partial<Pick<Broker, "nombreMarca" | "plan" | "subscriptionStatus" | "trialEndsAt">>
+  patch: Partial<Pick<Broker, "nombreMarca" | "imagenUrl" | "plan" | "subscriptionStatus" | "trialEndsAt">>
 ): Promise<Broker | null> {
   const brokers = await dbUpdate<Record<string, Broker>>(BROKERS_KEY, (current) => {
     const brokers = current ?? {};

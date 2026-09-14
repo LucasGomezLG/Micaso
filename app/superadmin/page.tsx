@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Download } from "lucide-react";
 import { listAllBrokers } from "@/lib/brokers";
 import { listCasesForBroker } from "@/lib/cases";
 import { isUsingRemoteDb } from "@/lib/db";
@@ -62,7 +63,17 @@ export default async function SuperadminPage() {
               hasta que Mercado Pago esté conectado.
             </p>
           </div>
-          <CreateBrokerModal />
+          <div className="flex items-center gap-3">
+            <a
+              href="/api/superadmin/backup"
+              title="Descarga un JSON con todos los corredores, casos, casas, checklist y criterios"
+              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold"
+              style={{ borderColor: "var(--border-strong)", color: "var(--ink-muted)" }}
+            >
+              <Download size={13} /> Descargar backup
+            </a>
+            <CreateBrokerModal />
+          </div>
         </div>
 
         <div className="mt-8 flex flex-col gap-3">
