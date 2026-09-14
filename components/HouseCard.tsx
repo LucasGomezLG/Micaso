@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { House, HouseStatus, LoanInfo, PEOPLE, PIPELINE_STATUSES, STATUS_LABEL } from "@/lib/types";
+import { House, HouseStatus, LoanInfo, PIPELINE_STATUSES, STATUS_LABEL } from "@/lib/types";
 import { formatDate, formatDateTime, formatUsd, isOverdue, proxiedImage } from "@/lib/format";
 import { cashNeededRange, pricePerM2 } from "@/lib/mortgage";
 import StatusBadge from "@/components/StatusBadge";
@@ -14,18 +14,20 @@ const AUTHOR_KEY = "casa-comment-author";
 export default function HouseCard({
   house,
   loan,
+  people,
   onChange,
   onDelete,
 }: {
   house: House;
   loan: LoanInfo;
+  people: string[];
   onChange: (id: string, patch: Partial<House>) => void;
   onDelete: (id: string) => void;
 }) {
   const router = useRouter();
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentText, setCommentText] = useState("");
-  const [commentAuthor, setCommentAuthor] = useState<string>(PEOPLE[0]);
+  const [commentAuthor, setCommentAuthor] = useState<string>(people[0] ?? "");
   const [posting, setPosting] = useState(false);
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [checklistText, setChecklistText] = useState("");
@@ -303,18 +305,28 @@ export default function HouseCard({
                 </div>
               )}
               <div className="flex gap-1.5">
-                <select
-                  value={commentAuthor}
-                  onChange={(e) => setCommentAuthor(e.target.value)}
-                  className="rounded-lg border px-1.5 text-xs"
-                  style={{ borderColor: "var(--border)", background: "var(--surface)", color: "var(--ink)" }}
-                >
-                  {PEOPLE.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
+                {people.length > 0 ? (
+                  <select
+                    value={commentAuthor}
+                    onChange={(e) => setCommentAuthor(e.target.value)}
+                    className="rounded-lg border px-1.5 text-xs"
+                    style={{ borderColor: "var(--border)", background: "var(--surface)", color: "var(--ink)" }}
+                  >
+                    {people.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    value={commentAuthor}
+                    onChange={(e) => setCommentAuthor(e.target.value)}
+                    placeholder="Tu nombre"
+                    className="w-20 shrink-0 rounded-lg border px-1.5 text-xs"
+                    style={{ borderColor: "var(--border)", background: "var(--surface)", color: "var(--ink)" }}
+                  />
+                )}
                 <input
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}

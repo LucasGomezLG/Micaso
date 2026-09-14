@@ -112,6 +112,14 @@ export async function renameCase(caseId: string, titulo: string): Promise<Case |
   return updateCase(caseId, { titulo });
 }
 
+/** Editable desde adentro del caso (no desde el panel del corredor) —
+ * la familia es quien sabe sus propios nombres. Sin duplicados ni
+ * strings vacíos. */
+export async function updatePeople(caseId: string, people: string[]): Promise<Case | null> {
+  const cleaned = Array.from(new Set(people.map((p) => p.trim()).filter(Boolean)));
+  return updateCase(caseId, { people: cleaned });
+}
+
 export async function regeneratePassword(caseId: string): Promise<Case | null> {
   return updateCase(caseId, { password: randomCode(8) });
 }

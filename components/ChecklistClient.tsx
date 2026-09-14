@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChecklistItem, PEOPLE } from "@/lib/types";
+import { ChecklistItem } from "@/lib/types";
 
-export default function ChecklistClient({ items }: { items: ChecklistItem[] }) {
+export default function ChecklistClient({ items, people }: { items: ChecklistItem[]; people: string[] }) {
   const router = useRouter();
   const [pending, setPending] = useState<Set<string>>(new Set());
 
@@ -90,7 +90,7 @@ export default function ChecklistClient({ items }: { items: ChecklistItem[] }) {
                     style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
                   >
                     <option value="">Sin asignar</option>
-                    {PEOPLE.map((p) => (
+                    {people.map((p) => (
                       <option key={p} value={p}>
                         {p}
                       </option>

@@ -25,11 +25,13 @@ export default function CasasBoard({
   zones,
   initialStatus,
   loan,
+  people,
 }: {
   houses: House[];
   zones: string[];
   initialStatus: string;
   loan: LoanInfo;
+  people: string[];
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>(
@@ -81,7 +83,7 @@ export default function CasasBoard({
         <div>
           <h1 className="text-2xl">Casas</h1>
           <p className="text-sm" style={{ color: "var(--ink-muted)" }}>
-            {activeHouses.length} propiedades cargadas entre los tres.
+            {activeHouses.length} propiedades cargadas.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -170,13 +172,14 @@ export default function CasasBoard({
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((house) => (
-            <HouseCard key={house.id} house={house} loan={loan} onChange={handleChange} onDelete={handleDelete} />
+            <HouseCard key={house.id} house={house} loan={loan} people={people} onChange={handleChange} onDelete={handleDelete} />
           ))}
         </div>
       )}
 
       {showAdd && (
         <AddHouseModal
+          people={people}
           onClose={() => setShowAdd(false)}
           onCreated={() => {
             setShowAdd(false);

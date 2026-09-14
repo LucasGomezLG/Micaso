@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { getCriteria, getHouses, countByStatus } from "@/lib/store";
 import { getCaseId } from "@/lib/session";
+import { getCase } from "@/lib/cases";
 import { daysUntil, formatArs, formatDate, formatDateTime, formatUsd, isOverdue } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
 import CriteriaEditor from "@/components/CriteriaEditor";
+import PeopleEditor from "@/components/PeopleEditor";
 import { House, HouseStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +25,8 @@ function upcomingSortKey(house: House): string {
 
 export default async function HomePage() {
   const caseId = await getCaseId();
-  const [criteria, allHouses] = await Promise.all([getCriteria(caseId), getHouses(caseId)]);
+  const [criteria, allHouses, kase] = await Promise.all([getCriteria(caseId), getHouses(caseId), getCase(caseId)]);
+  const people = kase?.people ?? [];
   const { loan, brief } = criteria;
   const houses = allHouses.filter((h) => h.status !== "borrada");
   const counts = countByStatus(houses);
@@ -55,6 +58,10 @@ export default async function HomePage() {
             </>
           )}
         </p>
+        <div className="mt-3">
+          <p className="eyebrow mb-1.5">Buscan</p>
+          <PeopleEditor initialPeople={people} />
+        </div>
       </section>
 
       {upcoming.length > 0 && (

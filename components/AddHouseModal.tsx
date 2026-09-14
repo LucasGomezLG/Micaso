@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { PEOPLE } from "@/lib/types";
 import { proxiedImage } from "@/lib/format";
 
 const URL_PATTERN = /^https?:\/\/.+\..+/i;
@@ -18,26 +17,30 @@ type Draft = {
   addedBy: string;
 };
 
-const EMPTY: Draft = {
-  url: "",
-  title: "",
-  images: [],
-  priceUsd: "",
-  zone: "",
-  ambientes: "",
-  cochera: false,
-  notes: "",
-  addedBy: "Lucas",
-};
+function emptyDraft(people: string[]): Draft {
+  return {
+    url: "",
+    title: "",
+    images: [],
+    priceUsd: "",
+    zone: "",
+    ambientes: "",
+    cochera: false,
+    notes: "",
+    addedBy: people[0] ?? "",
+  };
+}
 
 export default function AddHouseModal({
+  people,
   onClose,
   onCreated,
 }: {
+  people: string[];
   onClose: () => void;
   onCreated: () => void;
 }) {
-  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [draft, setDraft] = useState<Draft>(() => emptyDraft(people));
   const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [scrapeMsg, setScrapeMsg] = useState<string | null>(null);
@@ -235,17 +238,26 @@ export default function AddHouseModal({
 
           <label className="flex flex-col gap-1">
             <span className="eyebrow">Quién la agrega</span>
-            <select
-              className="field"
-              value={draft.addedBy}
-              onChange={(e) => setDraft({ ...draft, addedBy: e.target.value })}
-            >
-              {PEOPLE.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
+            {people.length > 0 ? (
+              <select
+                className="field"
+                value={draft.addedBy}
+                onChange={(e) => setDraft({ ...draft, addedBy: e.target.value })}
+              >
+                {people.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                className="field"
+                placeholder="Tu nombre"
+                value={draft.addedBy}
+                onChange={(e) => setDraft({ ...draft, addedBy: e.target.value })}
+              />
+            )}
           </label>
         </div>
 

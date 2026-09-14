@@ -95,16 +95,14 @@ export interface Criteria {
   brief: SearchBrief;
 }
 
-export const PEOPLE = ["Lucas", "Abril", "Carolina"] as const;
-export type Person = (typeof PEOPLE)[number];
-
 export type TipoCaso = "compra" | "alquiler" | "otro";
 
-/** `activo`: en uso normal. `solo_lectura`: impago en el período de
- * gracia de 90 días — reservado para cuando exista cobro (Mercado
- * Pago), todavía no se llega a este estado desde ningún lado.
- * `archivado`: cerrado (a mano, de inmediato) o venció la gracia de
- * impago — el link deja de funcionar. Ver ARQUITECTURA.md sección 9. */
+/** `activo`: en uso normal. `solo_lectura`: cerrado a mano desde el
+ * panel (lib/cases.ts closeCase()) o impago en el período de gracia de
+ * 90 días (Mercado Pago, todavía no construido) — la familia sigue
+ * viendo su historial pero no puede cargar nada nuevo (bloqueado en
+ * proxy.ts). `archivado`: venció la gracia de impago, o de baja — el
+ * link deja de funcionar del todo. Ver ARQUITECTURA.md sección 6 y 9. */
 export type CaseEstado = "activo" | "solo_lectura" | "archivado";
 
 /** Un corredor — dueño de uno o más casos. `id` es el email de su
@@ -132,9 +130,11 @@ export interface Case {
   estado: CaseEstado;
   username: string;
   password: string;
-  /** Nombres de la familia — hoy sin usar en la UI (PIPELINE/comments
-   * siguen leyendo el `PEOPLE` global de arriba); wiring pendiente,
-   * ver ARQUITECTURA.md sección 8. */
+  /** Nombres de la familia — empieza vacío al crear el caso; se edita
+   * desde adentro del caso (components/PeopleEditor.tsx, app/api/case/
+   * people), no desde el panel del corredor. Alimenta los selectores de
+   * autor/asignado en comentarios y checklist (antes un `PEOPLE` global
+   * hardcodeado a Lucas/Abril/Carolina). */
   people: string[];
   createdAt: string;
   updatedAt: string;
