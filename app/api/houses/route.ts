@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addHouse, getHouses } from "@/lib/store";
 import { House } from "@/lib/types";
+import { getCaseIdFromRequest } from "@/lib/session";
 
-export async function GET() {
-  const houses = await getHouses();
+export async function GET(request: NextRequest) {
+  const caseId = getCaseIdFromRequest(request);
+  const houses = await getHouses(caseId);
   return NextResponse.json({ houses });
 }
 
 export async function POST(request: NextRequest) {
+  const caseId = getCaseIdFromRequest(request);
   let body: Partial<House>;
   try {
     body = await request.json();
@@ -20,6 +23,6 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  const house = await addHouse(body as Pick<House, "url" | "addedBy"> & Partial<House>);
+  const house = await addHouse(caseId, body as Pick<House, "url" | "addedBy"> & Partial<House>);
   return NextResponse.json({ house }, { status: 201 });
 }

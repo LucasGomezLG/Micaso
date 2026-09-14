@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCriteria, getHouses, countByStatus } from "@/lib/store";
+import { getCaseId } from "@/lib/session";
 import { daysUntil, formatArs, formatDate, formatDateTime, formatUsd, isOverdue } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
 import CriteriaEditor from "@/components/CriteriaEditor";
@@ -21,7 +22,8 @@ function upcomingSortKey(house: House): string {
 }
 
 export default async function HomePage() {
-  const [criteria, allHouses] = await Promise.all([getCriteria(), getHouses()]);
+  const caseId = await getCaseId();
+  const [criteria, allHouses] = await Promise.all([getCriteria(caseId), getHouses(caseId)]);
   const { loan, brief } = criteria;
   const houses = allHouses.filter((h) => h.status !== "borrada");
   const counts = countByStatus(houses);

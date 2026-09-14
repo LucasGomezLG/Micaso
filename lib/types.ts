@@ -98,6 +98,34 @@ export interface Criteria {
 export const PEOPLE = ["Lucas", "Abril", "Carolina"] as const;
 export type Person = (typeof PEOPLE)[number];
 
+export type TipoCaso = "compra" | "alquiler" | "otro";
+
+/** `activo`: en uso normal. `solo_lectura`: impago en el período de
+ * gracia de 90 días — reservado para cuando exista cobro (Mercado
+ * Pago), todavía no se llega a este estado desde ningún lado.
+ * `archivado`: cerrado (a mano, de inmediato) o venció la gracia de
+ * impago — el link deja de funcionar. Ver ARQUITECTURA.md sección 9. */
+export type CaseEstado = "activo" | "solo_lectura" | "archivado";
+
+/** Un caso: el acceso privado de una familia, dentro del panel de un
+ * corredor. Namespacing de datos (houses/checklist/criteria) se hace
+ * por `id` — ver lib/store.ts. */
+export interface Case {
+  id: string;
+  brokerId: string;
+  titulo: string;
+  tipoCaso: TipoCaso;
+  estado: CaseEstado;
+  username: string;
+  password: string;
+  /** Nombres de la familia — hoy sin usar en la UI (PIPELINE/comments
+   * siguen leyendo el `PEOPLE` global de arriba); wiring pendiente,
+   * ver ARQUITECTURA.md sección 8. */
+  people: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const STATUS_LABEL: Record<HouseStatus, string> = {
   pendiente: "Pendiente",
   coordinada: "Visita coordinada",

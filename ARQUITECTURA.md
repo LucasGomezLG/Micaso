@@ -624,6 +624,14 @@ trámite.
 
 ## 12. Camino de validación sugerido
 
+> **Actualización (14 sept 2026):** este camino de validación dejó de ser
+> un gate para escribir código. Lucas decidió construir Micaso igual,
+> como proyecto personal para aprender — sin importar si alguien paga
+> todavía; eso se evalúa más adelante. Lo que sigue abajo queda como
+> registro de las señales reales ya observadas con Carolina, y como algo
+> a retomar cuando la construcción esté más avanzada, no como condición
+> para empezar.
+
 **No construir nada de esto todavía — pero ya hay una señal real que vale
 la pena seguir.**
 

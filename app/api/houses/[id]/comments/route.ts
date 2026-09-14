@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addComment } from "@/lib/store";
+import { getCaseIdFromRequest } from "@/lib/session";
 
 export async function POST(
   request: NextRequest,
   ctx: RouteContext<"/api/houses/[id]/comments">
 ) {
+  const caseId = getCaseIdFromRequest(request);
   const { id } = await ctx.params;
   let body: { author?: string; text?: string };
   try {
@@ -19,7 +21,7 @@ export async function POST(
       { status: 400 }
     );
   }
-  const house = await addComment(id, body.author, text);
+  const house = await addComment(caseId, id, body.author, text);
   if (!house) {
     return NextResponse.json({ error: "No encontrada" }, { status: 404 });
   }

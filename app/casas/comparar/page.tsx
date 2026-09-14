@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { getCriteria, getHouses } from "@/lib/store";
+import { getCaseId } from "@/lib/session";
 import CompareTable from "@/components/CompareTable";
 
 export const dynamic = "force-dynamic";
 
 export default async function CompararPage() {
-  const [houses, criteria] = await Promise.all([getHouses(), getCriteria()]);
+  const caseId = await getCaseId();
+  const [houses, criteria] = await Promise.all([getHouses(caseId), getCriteria(caseId)]);
   const destacadas = houses.filter((h) => h.highlighted && h.status !== "borrada");
 
   return (

@@ -1,17 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SITE_PASSWORD } from "@/lib/auth";
+import { BROKER_PASSWORD } from "@/lib/auth";
+import { getCase } from "@/lib/cases";
+import { BROKER_COOKIE, CASE_COOKIE } from "@/lib/session";
 
-const COOKIE_NAME = "casa_auth";
-const PUBLIC_PATHS = ["/login", "/api/login"];
+const PUBLIC_PATHS = ["/login", "/api/login", "/panel/login", "/api/panel/login"];
+const BROKER_PREFIXES = ["/panel", "/api/panel"];
 
-export function proxy(request: NextRequest) {
+function isUnder(pathname: string, prefixes: string[]): boolean {
+  return prefixes.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+
+  if (isUnder(pathname, PUBLIC_PATHS)) {
     return NextResponse.next();
   }
 
-  const cookie = request.cookies.get(COOKIE_NAME)?.value;
-  if (cookie === SITE_PASSWORD) return NextResponse.next();
+  // Panel del corredor: login placeholder simple hasta que se conecte
+  // Auth.js (Google OAuth) — ver ARQUITECTURA.md sección 8 y lib/auth.ts.
+  if (isUnder(pathname, BROKER_PREFIXES)) {
+    if (request.cookies.get(BROKER_COOKIE)?.value === BROKER_PASSWORD) {
+      return NextResponse.next();
+    }
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+    const loginUrl = new URL("/panel/login", request.url);
+    loginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Todo lo demás es un caso: cookie con el id, validado contra lo
+  // guardado en la base (no una contraseña compartida) — un caso
+  // archivado (cerrado o de baja hace más de 90 días) pierde el acceso.
+  const caseId = request.cookies.get(CASE_COOKIE)?.value;
+  const kase = caseId ? await getCase(caseId) : null;
+  if (kase && kase.estado !== "archivado") {
+    return NextResponse.next();
+  }
 
   if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });

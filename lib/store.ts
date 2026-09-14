@@ -1,10 +1,29 @@
 import { dbGet, dbSet } from "./db";
-import { SEED_CHECKLIST, SEED_CRITERIA, SEED_HOUSES } from "./seed";
+import { DEMO_CASE_ID, SEED_CHECKLIST, SEED_CRITERIA, SEED_HOUSES } from "./seed";
 import { ChecklistItem, Criteria, House, HouseChecklistItem, HouseComment, HouseStatus, PIPELINE_STATUSES } from "./types";
 
-const HOUSES_KEY = "houses";
-const CHECKLIST_KEY = "checklist";
-const CRITERIA_KEY = "criteria";
+const housesKey = (caseId: string) => `case:${caseId}:houses`;
+const checklistKey = (caseId: string) => `case:${caseId}:checklist`;
+const criteriaKey = (caseId: string) => `case:${caseId}:criteria`;
+
+/** Un caso nuevo arranca sin criterios cargados — el corredor o la
+ * familia los completa desde la misma pantalla de Criterios que ya
+ * existe (ver ARQUITECTURA.md sección 6). Solo el caso demo arranca con
+ * los datos reales de Lucas y Abril (SEED_CRITERIA). */
+const EMPTY_CRITERIA: Criteria = {
+  loan: {
+    bankMaxUsd: 0,
+    ownFundsMinUsd: 0,
+    ownFundsMaxUsd: 0,
+    approvedAmountArs: 0,
+    approvedInstallmentArs: 0,
+    rateLabel: "",
+    termMonths: 0,
+    conditions: [],
+    moveOutDeadline: "",
+  },
+  brief: { mustHave: [], flexible: [], zones: [], capitalZones: [] },
+};
 
 const VALID_STATUSES = new Set<string>([...PIPELINE_STATUSES, "borrada"]);
 
@@ -64,23 +83,25 @@ function normalizeHouse(house: House & { notes?: string; image?: string | null }
   };
 }
 
-export async function getHouses(): Promise<House[]> {
-  const houses = await dbGet<House[]>(HOUSES_KEY);
+export async function getHouses(caseId: string): Promise<House[]> {
+  const houses = await dbGet<House[]>(housesKey(caseId));
   if (houses === null) {
-    await dbSet(HOUSES_KEY, SEED_HOUSES);
-    return SEED_HOUSES;
+    const initial = caseId === DEMO_CASE_ID ? SEED_HOUSES : [];
+    await dbSet(housesKey(caseId), initial);
+    return initial;
   }
   return houses.map(normalizeHouse);
 }
 
-export async function saveHouses(houses: House[]): Promise<void> {
-  await dbSet(HOUSES_KEY, houses);
+export async function saveHouses(caseId: string, houses: House[]): Promise<void> {
+  await dbSet(housesKey(caseId), houses);
 }
 
 export async function addHouse(
+  caseId: string,
   input: Pick<House, "url" | "addedBy"> & Partial<House>
 ): Promise<House> {
-  const houses = await getHouses();
+  const houses = await getHouses(caseId);
   const now = new Date().toISOString();
   const house: House = {
     id: crypto.randomUUID(),
@@ -108,15 +129,16 @@ export async function addHouse(
     addedAt: input.addedAt ?? now,
     updatedAt: now,
   };
-  await saveHouses([house, ...houses]);
+  await saveHouses(caseId, [house, ...houses]);
   return house;
 }
 
 export async function updateHouse(
+  caseId: string,
   id: string,
   patch: Partial<House>
 ): Promise<House | null> {
-  const houses = await getHouses();
+  const houses = await getHouses(caseId);
   const safePatch = sanitizeHousePatch(patch);
   let updated: House | null = null;
   const next = houses.map((house) => {
@@ -125,16 +147,17 @@ export async function updateHouse(
     return updated;
   });
   if (!updated) return null;
-  await saveHouses(next);
+  await saveHouses(caseId, next);
   return updated;
 }
 
 export async function addComment(
+  caseId: string,
   houseId: string,
   author: string,
   text: string
 ): Promise<House | null> {
-  const houses = await getHouses();
+  const houses = await getHouses(caseId);
   const comment: HouseComment = {
     id: crypto.randomUUID(),
     author,
@@ -148,15 +171,16 @@ export async function addComment(
     return updated;
   });
   if (!updated) return null;
-  await saveHouses(next);
+  await saveHouses(caseId, next);
   return updated;
 }
 
 export async function addHouseChecklistItem(
+  caseId: string,
   houseId: string,
   text: string
 ): Promise<House | null> {
-  const houses = await getHouses();
+  const houses = await getHouses(caseId);
   const item: HouseChecklistItem = { id: crypto.randomUUID(), text, done: false };
   let updated: House | null = null;
   const next = houses.map((house) => {
@@ -165,16 +189,17 @@ export async function addHouseChecklistItem(
     return updated;
   });
   if (!updated) return null;
-  await saveHouses(next);
+  await saveHouses(caseId, next);
   return updated;
 }
 
 export async function updateHouseChecklistItem(
+  caseId: string,
   houseId: string,
   itemId: string,
   patch: Partial<HouseChecklistItem>
 ): Promise<House | null> {
-  const houses = await getHouses();
+  const houses = await getHouses(caseId);
   let updated: House | null = null;
   const next = houses.map((house) => {
     if (house.id !== houseId) return house;
@@ -186,15 +211,16 @@ export async function updateHouseChecklistItem(
     return updated;
   });
   if (!updated) return null;
-  await saveHouses(next);
+  await saveHouses(caseId, next);
   return updated;
 }
 
 export async function deleteHouseChecklistItem(
+  caseId: string,
   houseId: string,
   itemId: string
 ): Promise<House | null> {
-  const houses = await getHouses();
+  const houses = await getHouses(caseId);
   let updated: House | null = null;
   const next = houses.map((house) => {
     if (house.id !== houseId) return house;
@@ -206,13 +232,13 @@ export async function deleteHouseChecklistItem(
     return updated;
   });
   if (!updated) return null;
-  await saveHouses(next);
+  await saveHouses(caseId, next);
   return updated;
 }
 
-export async function deleteHouse(id: string): Promise<void> {
-  const houses = await getHouses();
-  await saveHouses(houses.filter((house) => house.id !== id));
+export async function deleteHouse(caseId: string, id: string): Promise<void> {
+  const houses = await getHouses(caseId);
+  await saveHouses(caseId, houses.filter((house) => house.id !== id));
 }
 
 export function guessSource(url: string): string {
@@ -237,20 +263,22 @@ export function countByStatus(houses: House[]): Record<HouseStatus, number> {
   return counts;
 }
 
-export async function getChecklist(): Promise<ChecklistItem[]> {
-  const items = await dbGet<ChecklistItem[]>(CHECKLIST_KEY);
+export async function getChecklist(caseId: string): Promise<ChecklistItem[]> {
+  const items = await dbGet<ChecklistItem[]>(checklistKey(caseId));
   if (items === null) {
-    await dbSet(CHECKLIST_KEY, SEED_CHECKLIST);
-    return SEED_CHECKLIST;
+    const initial = caseId === DEMO_CASE_ID ? SEED_CHECKLIST : [];
+    await dbSet(checklistKey(caseId), initial);
+    return initial;
   }
   return items;
 }
 
 export async function updateChecklistItem(
+  caseId: string,
   id: string,
   patch: Partial<ChecklistItem>
 ): Promise<ChecklistItem | null> {
-  const items = await getChecklist();
+  const items = await getChecklist(caseId);
   let updated: ChecklistItem | null = null;
   const next = items.map((item) => {
     if (item.id !== id) return item;
@@ -258,19 +286,20 @@ export async function updateChecklistItem(
     return updated;
   });
   if (!updated) return null;
-  await dbSet(CHECKLIST_KEY, next);
+  await dbSet(checklistKey(caseId), next);
   return updated;
 }
 
-export async function getCriteria(): Promise<Criteria> {
-  const criteria = await dbGet<Criteria>(CRITERIA_KEY);
+export async function getCriteria(caseId: string): Promise<Criteria> {
+  const criteria = await dbGet<Criteria>(criteriaKey(caseId));
   if (criteria === null) {
-    await dbSet(CRITERIA_KEY, SEED_CRITERIA);
-    return SEED_CRITERIA;
+    const initial = caseId === DEMO_CASE_ID ? SEED_CRITERIA : EMPTY_CRITERIA;
+    await dbSet(criteriaKey(caseId), initial);
+    return initial;
   }
   return criteria;
 }
 
-export async function saveCriteria(criteria: Criteria): Promise<void> {
-  await dbSet(CRITERIA_KEY, criteria);
+export async function saveCriteria(caseId: string, criteria: Criteria): Promise<void> {
+  await dbSet(criteriaKey(caseId), criteria);
 }

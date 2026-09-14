@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { getHouses } from "@/lib/store";
+import { getCaseId } from "@/lib/session";
 import MapPageClient from "@/components/MapPageClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function MapaPage() {
-  const houses = (await getHouses()).filter((h) => h.status !== "borrada");
+  const caseId = await getCaseId();
+  const houses = (await getHouses(caseId)).filter((h) => h.status !== "borrada");
 
   return (
     <div className="flex flex-col gap-5">

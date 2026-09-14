@@ -1,5 +1,13 @@
 import { ChecklistItem, Criteria, House, HouseComment, VisitReview } from "./types";
 
+/** El único caso que arranca con datos reales (la búsqueda actual de
+ * Lucas y Abril) en vez de vacío — ver lib/cases.ts (se auto-crea con
+ * las credenciales que ya se usaban: usuario "casa", clave "1234") y
+ * lib/store.ts (único caso que se siembra con SEED_HOUSES/CHECKLIST/
+ * CRITERIA). Cualquier caso nuevo que se cree de acá en más arranca
+ * vacío — ver ARQUITECTURA.md sección 8. */
+export const DEMO_CASE_ID = "demo";
+
 // Extraído de los chats de WhatsApp "Con Caro🏡" y "🏡 haganlo x ellos"
 // (9 al 12 de septiembre de 2026). Los precios están en USD, tal como se
 // comparten los avisos de venta de propiedades en Argentina.

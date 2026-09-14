@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateChecklistItem } from "@/lib/store";
+import { getCaseIdFromRequest } from "@/lib/session";
 
 export async function PATCH(
   request: NextRequest,
   ctx: RouteContext<"/api/checklist/[id]">
 ) {
+  const caseId = getCaseIdFromRequest(request);
   const { id } = await ctx.params;
   let patch: Record<string, unknown>;
   try {
@@ -12,7 +14,7 @@ export async function PATCH(
   } catch {
     return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
   }
-  const item = await updateChecklistItem(id, patch);
+  const item = await updateChecklistItem(caseId, id, patch);
   if (!item) {
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }

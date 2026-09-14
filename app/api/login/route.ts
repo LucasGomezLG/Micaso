@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SITE_PASSWORD, SITE_USERNAME } from "@/lib/auth";
-
-const COOKIE_NAME = "casa_auth";
+import { getCaseByCredentials } from "@/lib/cases";
+import { CASE_COOKIE } from "@/lib/session";
 
 export async function POST(request: NextRequest) {
   let body: { username?: string; password?: string };
@@ -11,12 +10,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
   }
 
-  if (body.username !== SITE_USERNAME || body.password !== SITE_PASSWORD) {
+  if (!body.username || !body.password) {
+    return NextResponse.json({ error: "Usuario o contraseña incorrectos" }, { status: 401 });
+  }
+
+  const kase = await getCaseByCredentials(body.username, body.password);
+  if (!kase || kase.estado === "archivado") {
     return NextResponse.json({ error: "Usuario o contraseña incorrectos" }, { status: 401 });
   }
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(COOKIE_NAME, SITE_PASSWORD, {
+  res.cookies.set(CASE_COOKIE, kase.id, {
     httpOnly: true,
     secure: true,
     sameSite: "lax",

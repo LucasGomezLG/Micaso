@@ -7,12 +7,13 @@ de [Casa](../Casa) — hoy una herramienta privada de búsqueda de casa para
 3 personas (Lucas, Abril, Carolina) — generalizada a muchos corredores y
 muchas familias en simultáneo.
 
-**Estado: diseño cerrado, sin construir.** El código que hay en esta
-carpeta (`app/`, `components/`, `lib/`, etc.) es una **copia sin
-modificar** de `D:\Casa` — el punto de partida, no el producto SaaS
-todavía. No se escribió ni una línea nueva de la capa multi-corredor
-(auth, cobro, paneles) — ver `ARQUITECTURA.md` para el porqué y para el
-camino de validación antes de tocar ese código.
+**Estado: diseño cerrado, en construcción.** El código que hay en esta
+carpeta (`app/`, `components/`, `lib/`, etc.) partió como una **copia sin
+modificar** de `D:\Casa` (14 sept 2026) y ahora se está extendiendo hacia
+la capa multi-corredor (auth, cobro, paneles) que describe
+`ARQUITECTURA.md`. Se construye como proyecto personal para aprender,
+sin esperar a que un corredor confirme que pagaría — ver sección 12 de
+`ARQUITECTURA.md` para el contexto de esa decisión.
 
 ## Contenido
 
@@ -44,8 +45,13 @@ un fork que se vaya a mantener sincronizado con los cambios futuros de
 sección 8 de `ARQUITECTURA.md` para el detalle archivo por archivo de qué
 cambia).
 
-## Antes de escribir código
+## Cómo se está construyendo
 
-Ver la sección 12 ("Camino de validación sugerido") de `ARQUITECTURA.md`.
-El paso pendiente, a la fecha, es que un corredor real — no solo
-Carolina, gratis — confirme que pagaría algo mensual por esto.
+Siguiendo la sección 8 de `ARQUITECTURA.md` ("Qué cambia respecto al
+código de Casa"), archivo por archivo. Orden elegido: primero el núcleo
+multi-caso (tipos, storage namespaced por caso, alta/baja de casos) que
+no depende de credenciales externas; Auth.js (Google OAuth) y Mercado
+Pago quedan para cuando haya credenciales configuradas. No se esperó la
+validación de pago de la sección 12 — decisión de Lucas (14 sept 2026):
+es un proyecto personal para aprender, esa validación se evalúa más
+adelante, no es un requisito para empezar.

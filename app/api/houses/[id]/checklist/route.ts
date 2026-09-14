@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addHouseChecklistItem } from "@/lib/store";
+import { getCaseIdFromRequest } from "@/lib/session";
 
 export async function POST(
   request: NextRequest,
   ctx: RouteContext<"/api/houses/[id]/checklist">
 ) {
+  const caseId = getCaseIdFromRequest(request);
   const { id } = await ctx.params;
   let body: { text?: string };
   try {
@@ -16,7 +18,7 @@ export async function POST(
   if (!text) {
     return NextResponse.json({ error: "Falta el campo obligatorio: text" }, { status: 400 });
   }
-  const house = await addHouseChecklistItem(id, text);
+  const house = await addHouseChecklistItem(caseId, id, text);
   if (!house) {
     return NextResponse.json({ error: "No encontrada" }, { status: 404 });
   }
