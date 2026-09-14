@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Calendar, Check, Pin, X } from "lucide-react";
-import { House, LoanInfo, STATUS_LABEL } from "@/lib/types";
+import { House, LoanInfo } from "@/lib/types";
 import { formatDate, formatDateTime, formatUsd, proxiedImage } from "@/lib/format";
 import { cashNeededRange, pricePerM2 } from "@/lib/mortgage";
 import { apiErrorMessage } from "@/lib/http";

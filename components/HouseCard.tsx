@@ -88,7 +88,9 @@ export default function HouseCard({
   useEffect(() => {
     try {
       const saved = localStorage.getItem(AUTHOR_KEY);
-      if (saved) setCommentAuthor(saved);
+      if (saved) {
+        setTimeout(() => setCommentAuthor(saved), 0);
+      }
     } catch {}
   }, []);
 

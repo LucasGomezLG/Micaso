@@ -76,7 +76,7 @@ export default function CreateCaseModal({ label = "+ Nuevo caso" }: { label?: st
             </p>
             <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
               <label className="flex flex-col gap-1 text-sm">
-                <span className="eyebrow">Título (ej. "Familia Pérez")</span>
+                <span className="eyebrow">Título (ej. &quot;Familia Pérez&quot;)</span>
                 <input
                   required
                   autoFocus

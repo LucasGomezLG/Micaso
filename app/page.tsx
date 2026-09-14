@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { Check, Home, Link2, Lock, Palette, X } from "lucide-react";
+import { Check, Home, Link2, Lock, Palette, Sparkles, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import ContactModal from "@/components/ContactModal";
 import StickyMobileCta from "@/components/StickyMobileCta";
+import LandingShowcase from "@/components/LandingShowcase";
 import { MicasoMark } from "@/components/MicasoMark";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const BEFORE_AFTER = {
   before: {
@@ -142,6 +144,7 @@ export default function LandingPage() {
             </span>
           </span>
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <Link
               href="/login"
               className="rounded-full px-3 py-2 text-sm font-medium sm:px-4"
@@ -151,7 +154,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/panel/login"
-              className="btn btn-primary rounded-full px-4 py-2 text-sm font-semibold"
+              className="btn btn-primary hidden rounded-full px-4 py-2 text-sm font-semibold sm:inline-flex"
               style={{ background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, var(--gold)))", color: "var(--accent-ink)" }}
             >
               Empezar prueba gratis
@@ -214,11 +217,12 @@ export default function LandingPage() {
                     Empezar prueba gratis
                   </Link>
                   <a
-                    href="#como-funciona"
-                    className="btn rounded-full border px-6 py-3.5 text-sm font-medium"
-                    style={{ borderColor: "var(--border-strong)", color: "var(--ink)" }}
+                    href="/api/demo-access"
+                    className="btn card-hover rounded-full border px-6 py-3.5 text-sm font-medium inline-flex items-center gap-2"
+                    style={{ borderColor: "var(--border-strong)", background: "var(--surface)", color: "var(--ink)" }}
                   >
-                    Ver cómo funciona
+                    <Sparkles size={14} style={{ color: "var(--gold)" }} />
+                    Ver caso demo en vivo
                   </a>
                 </div>
                 <p className="mt-4 inline-flex items-center gap-3 text-xs" style={{ color: "var(--ink-muted)" }}>
@@ -344,6 +348,23 @@ export default function LandingPage() {
                 </ul>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Showcase visual interactivo */}
+        <section className="border-t" style={{ borderColor: "var(--border)", background: "linear-gradient(180deg, var(--paper) 0%, var(--surface) 100%)" }}>
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+            <div className="mx-auto max-w-2xl text-center mb-12">
+              <p className="eyebrow mb-2">Recorrido visual</p>
+              <h2 className="text-3xl sm:text-4xl" style={{ fontFamily: "var(--font-display)" }}>
+                Mirá cómo se ve por dentro
+              </h2>
+              <p className="mt-3 text-sm sm:text-base" style={{ color: "var(--ink-muted)" }}>
+                Desde la primera propiedad que compartís hasta la firma de la escritura.
+              </p>
+            </div>
+
+            <LandingShowcase />
           </div>
         </section>
 
@@ -483,7 +504,10 @@ export default function LandingPage() {
             <p className="mt-6 text-xs" style={{ color: "var(--ink-muted)" }}>
               Precios de referencia en dólares — el cobro se hace en pesos,
               al tipo de cambio del día, a través de Mercado Pago. La prueba
-              de 14 días no pide tarjeta.
+              de 14 días no pide tarjeta. Cancelás cuando quieras sin penalidad. Consulta nuestros{" "}
+              <Link href="/terminos" className="underline underline-offset-2">
+                términos de contratación
+              </Link>.
             </p>
           </div>
         </section>
@@ -570,12 +594,18 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t px-4 py-8 sm:px-6" style={{ borderColor: "var(--border)" }}>
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-xs sm:flex-row" style={{ color: "var(--ink-muted)" }}>
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 text-xs sm:flex-row" style={{ color: "var(--ink-muted)" }}>
           <span>Micaso — organizá la búsqueda de casa de cada cliente.</span>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link href="/terminos" className="hover:underline">
+              Términos de servicio
+            </Link>
+            <Link href="/privacidad" className="hover:underline">
+              Privacidad
+            </Link>
             <ContactModal label="Contacto" />
-            <Link href="/login" style={{ color: "var(--ink-muted)" }}>
-              ¿Ya sos cliente de un corredor? Ingresá a tu caso →
+            <Link href="/login" style={{ color: "var(--ink-muted)" }} className="hover:underline">
+              ¿Ya sos cliente? Ingresá a tu caso →
             </Link>
           </div>
         </div>

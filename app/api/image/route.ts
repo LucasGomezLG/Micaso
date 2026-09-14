@@ -37,10 +37,18 @@ export async function GET(request: NextRequest) {
       return new Response("No se pudo obtener la imagen", { status: 502 });
     }
 
+    const contentType = (res.headers.get("content-type") || "image/jpeg").toLowerCase();
+    // Bloquear SVGs y HTML para evitar inyección de scripts/XSS en el dominio
+    if (!contentType.startsWith("image/") || contentType.includes("svg") || contentType.includes("html")) {
+      return new Response("Tipo de imagen no permitido", { status: 400 });
+    }
+
     return new Response(res.body, {
       headers: {
-        "Content-Type": res.headers.get("content-type") || "image/jpeg",
+        "Content-Type": contentType,
         "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'",
       },
     });
   } catch {

@@ -71,6 +71,8 @@ function LoginForm() {
             type="text"
             autoFocus
             autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             className="rounded-lg border px-3 py-2"
@@ -100,6 +102,27 @@ function LoginForm() {
         >
           {loading ? "Entrando…" : "Entrar"}
         </button>
+
+        <div className="mt-4 border-t pt-3 text-center" style={{ borderColor: "var(--border)" }}>
+          <a
+            href="/api/demo-access"
+            className="inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+            style={{ color: "var(--accent)" }}
+          >
+            ¿Querés probar la app? Ver caso demo interactivo →
+          </a>
+        </div>
+
+        <p className="mt-4 text-center text-[11px] leading-relaxed" style={{ color: "var(--ink-faint)" }}>
+          El uso de tu caso se rige por la{" "}
+          <Link href="/privacidad" className="underline underline-offset-2" style={{ color: "var(--ink-muted)" }}>
+            Política de privacidad
+          </Link>{" "}
+          y los{" "}
+          <Link href="/terminos" className="underline underline-offset-2" style={{ color: "var(--ink-muted)" }}>
+            Términos de servicio
+          </Link>.
+        </p>
       </form>
     </div>
   );

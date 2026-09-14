@@ -18,6 +18,10 @@ const PUBLIC_PATHS = [
   "/login",
   "/api/login",
   "/panel/login",
+  "/api/dev-login",
+  "/api/demo-access",
+  "/terminos",
+  "/privacidad",
   "/api/auth",
   "/api/cron",
   "/icon",
@@ -39,10 +43,14 @@ export const proxy = auth((request) => {
     return NextResponse.next();
   }
 
-  // Panel del corredor: sesión de Google vía Auth.js — ver auth.ts y
-  // ARQUITECTURA.md sección 8.
+  // Dev mock user support
+  const devEmail =
+    process.env.NODE_ENV !== "production" ? request.cookies.get("micaso_dev_user")?.value : null;
+  const userEmail = request.auth?.user?.email || devEmail;
+
+  // Panel del corredor: sesión de Google vía Auth.js o dev mock
   if (isUnder(pathname, BROKER_PREFIXES)) {
-    if (request.auth?.user?.email) {
+    if (userEmail) {
       return NextResponse.next();
     }
     if (pathname.startsWith("/api/")) {
@@ -56,14 +64,13 @@ export const proxy = auth((request) => {
   // Panel de super-admin: mismo login de Google, pero el email tiene que
   // estar en ADMIN_EMAILS — ver ARQUITECTURA.md sección 7 y lib/auth.ts.
   if (isUnder(pathname, ADMIN_PREFIXES)) {
-    const email = request.auth?.user?.email;
-    if (email && ADMIN_EMAILS.has(email)) {
+    if (userEmail && ADMIN_EMAILS.has(userEmail)) {
       return NextResponse.next();
     }
     if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "No autorizado" }, { status: email ? 403 : 401 });
+      return NextResponse.json({ error: "No autorizado" }, { status: userEmail ? 403 : 401 });
     }
-    if (email) {
+    if (userEmail) {
       // Logueado pero no es admin: no tiene sentido mandarlo a loguearse
       // de nuevo, lo manda a su propio panel de corredor.
       return NextResponse.redirect(new URL("/panel", request.url));

@@ -102,7 +102,8 @@ function guessPriceFromEmbeddedJson(html: string): number | null {
 function guessPriceUsd(...texts: (string | null)[]): number | null {
   for (const text of texts) {
     if (!text) continue;
-    const match = text.match(/(?:USD|US\$|U\$D|\$)\s?([\d.,]{4,})/i);
+    // Soporta USD, US$, U$S, U$D y como último recurso $ si no hay símbolo de dólar explícito
+    const match = text.match(/(?:USD|US\$|U\$S|U\$D|\$)\s?([\d.,]{4,})/i);
     if (match) {
       const digits = match[1].replace(/[.,](?=\d{3}\b)/g, "").replace(",", ".");
       const value = parseFloat(digits);

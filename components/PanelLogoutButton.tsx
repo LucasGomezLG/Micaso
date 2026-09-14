@@ -5,6 +5,11 @@ export default function PanelLogoutButton() {
     <form
       action={async () => {
         "use server";
+        if (process.env.NODE_ENV !== "production") {
+          const { cookies } = await import("next/headers");
+          const cookieStore = await cookies();
+          cookieStore.delete("micaso_dev_user");
+        }
         await signOut({ redirectTo: "/" });
       }}
     >

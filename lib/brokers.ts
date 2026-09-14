@@ -110,9 +110,14 @@ export async function updateBroker(
  * otro lado. */
 export async function getCurrentBroker(): Promise<Broker | null> {
   const session = await auth();
-  const email = session?.user?.email;
+  let email = session?.user?.email;
+  if (!email && process.env.NODE_ENV !== "production") {
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    email = cookieStore.get("micaso_dev_user")?.value;
+  }
   if (!email) return null;
-  return getOrCreateBroker(email, session.user?.name, session.user?.image);
+  return getOrCreateBroker(email, session?.user?.name, session?.user?.image);
 }
 
 /** El email de la sesión actual, solo si está en ADMIN_EMAILS — null en
@@ -122,7 +127,12 @@ export async function getCurrentBroker(): Promise<Broker | null> {
  * getCurrentBroker con `/panel/*`. */
 export async function getCurrentAdminEmail(): Promise<string | null> {
   const session = await auth();
-  const email = session?.user?.email;
+  let email = session?.user?.email;
+  if (!email && process.env.NODE_ENV !== "production") {
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    email = cookieStore.get("micaso_dev_user")?.value;
+  }
   return email && ADMIN_EMAILS.has(email) ? email : null;
 }
 

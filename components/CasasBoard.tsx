@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Map, Plus, Star, Trash2 } from "lucide-react";
+import { Map, Plus, Search, Star, Trash2, X } from "lucide-react";
 import { House, HouseStatus, LoanInfo, PIPELINE_STATUSES, STATUS_LABEL } from "@/lib/types";
 import { apiErrorMessage } from "@/lib/http";
 import HouseCard from "@/components/HouseCard";
@@ -43,6 +43,7 @@ export default function CasasBoard({
   );
   const [zone, setZone] = useState("todas");
   const [sort, setSort] = useState<Sort>("recientes");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showAdd, setShowAdd] = useState(false);
 
   const activeHouses = useMemo(() => houses.filter((h) => h.status !== "borrada"), [houses]);
@@ -59,13 +60,25 @@ export default function CasasBoard({
   const visible = useMemo(() => {
     let list = tab === "todas" ? activeHouses : houses.filter((h) => h.status === tab);
     if (zone !== "todas") list = list.filter((h) => h.zone === zone);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (h) =>
+          h.title.toLowerCase().includes(q) ||
+          (h.zone && h.zone.toLowerCase().includes(q)) ||
+          h.source.toLowerCase().includes(q) ||
+          (h.contactoNombre && h.contactoNombre.toLowerCase().includes(q)) ||
+          h.addedBy.toLowerCase().includes(q) ||
+          h.comments.some((c) => c.text.toLowerCase().includes(q))
+      );
+    }
     list = [...list].sort((a, b) => {
       if (sort === "precio-asc") return (a.priceUsd ?? Infinity) - (b.priceUsd ?? Infinity);
       if (sort === "precio-desc") return (b.priceUsd ?? -Infinity) - (a.priceUsd ?? -Infinity);
       return a.addedAt < b.addedAt ? 1 : -1;
     });
     return list;
-  }, [houses, tab, zone, sort]);
+  }, [houses, activeHouses, tab, zone, sort, searchQuery]);
 
   async function handleChange(id: string, patch: Partial<House>): Promise<boolean> {
     const res = await fetch(`/api/houses/${id}`, {
@@ -128,7 +141,7 @@ export default function CasasBoard({
         </div>
       </div>
 
-      <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+      <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
         {TABS.map((t) => (
           <span key={t} className="flex shrink-0 items-center gap-2">
             {GROUP_STARTS.has(t) && (
@@ -155,35 +168,63 @@ export default function CasasBoard({
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <Select
-          value={zone}
-          onChange={(e) => setZone(e.target.value)}
-          className="rounded-lg border px-3 py-1.5 text-sm"
-          style={{ borderColor: "var(--border)", background: "var(--surface)" }}
-        >
-          <option value="todas">Todas las zonas</option>
-          {zones.map((z) => (
-            <option key={z} value={z}>
-              {z}
-            </option>
-          ))}
-        </Select>
-        <Select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as Sort)}
-          className="rounded-lg border px-3 py-1.5 text-sm"
-          style={{ borderColor: "var(--border)", background: "var(--surface)" }}
-        >
-          <option value="recientes">Más recientes</option>
-          <option value="precio-asc">Precio: menor a mayor</option>
-          <option value="precio-desc">Precio: mayor a menor</option>
-        </Select>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-xs">
+          <Search
+            size={15}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+            style={{ color: "var(--ink-faint)" }}
+          />
+          <input
+            type="text"
+            placeholder="Buscar por calle, barrio o inmobiliaria…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-lg border py-1.5 pl-9 pr-8 text-sm outline-none transition-colors"
+            style={{ borderColor: "var(--border)", background: "var(--surface)", color: "var(--ink)" }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5"
+              style={{ color: "var(--ink-faint)" }}
+              aria-label="Limpiar búsqueda"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Select
+            value={zone}
+            onChange={(e) => setZone(e.target.value)}
+            className="rounded-lg border px-3 py-1.5 text-sm"
+            style={{ borderColor: "var(--border)", background: "var(--surface)" }}
+          >
+            <option value="todas">Todas las zonas</option>
+            {zones.map((z) => (
+              <option key={z} value={z}>
+                {z}
+              </option>
+            ))}
+          </Select>
+          <Select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as Sort)}
+            className="rounded-lg border px-3 py-1.5 text-sm"
+            style={{ borderColor: "var(--border)", background: "var(--surface)" }}
+          >
+            <option value="recientes">Más recientes</option>
+            <option value="precio-asc">Precio: menor a mayor</option>
+            <option value="precio-desc">Precio: mayor a menor</option>
+          </Select>
+        </div>
       </div>
 
       {visible.length === 0 ? (
         <p className="py-12 text-center text-sm" style={{ color: "var(--ink-faint)" }}>
-          No hay propiedades en esta vista todavía.
+          {searchQuery ? "No se encontraron propiedades para tu búsqueda." : "No hay propiedades en esta vista todavía."}
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -193,9 +234,24 @@ export default function CasasBoard({
         </div>
       )}
 
+      {/* Floating Action Button en móvil */}
+      <button
+        onClick={() => setShowAdd(true)}
+        aria-label="Agregar propiedad"
+        className="fixed bottom-20 right-4 z-20 flex h-13 w-13 items-center justify-center rounded-full shadow-lg transition-transform active:scale-95 sm:hidden"
+        style={{
+          background: "linear-gradient(135deg, var(--accent), var(--gold))",
+          color: "var(--accent-ink)",
+          boxShadow: "0 8px 24px rgba(0, 0, 0, 0.28)",
+        }}
+      >
+        <Plus size={24} strokeWidth={2.5} />
+      </button>
+
       {showAdd && (
         <AddHouseModal
           people={people}
+          existingUrls={houses.map((h) => h.url)}
           onClose={() => setShowAdd(false)}
           onCreated={() => {
             setShowAdd(false);

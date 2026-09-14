@@ -62,9 +62,52 @@ export default async function PanelLoginPage(props: PageProps<"/panel/login">) {
             Continuar con Google
           </button>
         </form>
+        <p className="mt-4 text-[11px] leading-relaxed" style={{ color: "var(--ink-faint)" }}>
+          Al continuar, aceptás nuestros{" "}
+          <Link href="/terminos" className="underline underline-offset-2" style={{ color: "var(--ink-muted)" }}>
+            Términos de servicio
+          </Link>{" "}
+          y la{" "}
+          <Link href="/privacidad" className="underline underline-offset-2" style={{ color: "var(--ink-muted)" }}>
+            Política de privacidad
+          </Link>.
+        </p>
         <p className="mt-5 text-xs" style={{ color: "var(--ink-faint)" }}>
           ¿Sos cliente de un corredor? <Link href="/login" style={{ color: "var(--accent)" }}>Entrá a tu caso acá →</Link>
         </p>
+
+        {process.env.NODE_ENV !== "production" && (
+          <div
+            className="mt-6 rounded-xl border p-3.5 text-left"
+            style={{
+              borderColor: "var(--accent-soft-border)",
+              background: "var(--accent-soft)",
+            }}
+          >
+            <p className="eyebrow text-[10px]" style={{ color: "var(--accent)" }}>
+              Mock Auth (Solo desarrollo)
+            </p>
+            <p className="mt-1 text-xs" style={{ color: "var(--ink-muted)" }}>
+              Entrá directo sin pasar por Google OAuth:
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              <a
+                href={`/api/dev-login?role=superadmin&next=${encodeURIComponent(next === "/panel" ? "/superadmin" : next)}`}
+                className="btn card-hover flex items-center justify-center rounded-lg py-1.5 text-xs font-semibold"
+                style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+              >
+                Entrar como Super-admin (Lucas)
+              </a>
+              <a
+                href={`/api/dev-login?role=corredor&next=${encodeURIComponent(next)}`}
+                className="btn card-hover flex items-center justify-center rounded-lg border py-1.5 text-xs font-medium"
+                style={{ borderColor: "var(--border-strong)", background: "var(--surface)", color: "var(--ink)" }}
+              >
+                Entrar como Corredor (Carolina)
+              </a>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

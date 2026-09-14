@@ -7,6 +7,7 @@ import AdminBrokerRow from "@/components/AdminBrokerRow";
 import CreateBrokerModal from "@/components/CreateBrokerModal";
 import PanelLogoutButton from "@/components/PanelLogoutButton";
 import { MicasoMark } from "@/components/MicasoMark";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,7 @@ export default async function SuperadminPage() {
             <Link href="/panel" className="text-sm font-medium" style={{ color: "var(--ink-muted)" }}>
               Ir a mi panel
             </Link>
+            <ThemeToggle />
             <PanelLogoutButton />
           </div>
         </div>

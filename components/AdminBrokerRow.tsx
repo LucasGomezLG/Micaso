@@ -41,6 +41,7 @@ export default function AdminBrokerRow({
       toast.error(await apiErrorMessage(res, "No se pudo guardar el cambio."));
       return;
     }
+    toast.success("Cambio guardado");
     router.refresh();
   }
 

@@ -10,6 +10,8 @@ import PanelDashboard, { AttentionItem } from "@/components/PanelDashboard";
 import { MicasoMark } from "@/components/MicasoMark";
 import BrokerNameEditor from "@/components/BrokerNameEditor";
 import BrokerAvatarEditor from "@/components/BrokerAvatarEditor";
+import BrokerOnboarding from "@/components/BrokerOnboarding";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,41 @@ export const dynamic = "force-dynamic";
 // atención" además de en la franja de KPIs — para que no se pase por
 // alto una visita de mañana entre el resto de los casos.
 const SOON_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+function buildAttentionData(
+  activeCases: { id: string; titulo: string }[],
+  summaries: Record<string, Awaited<ReturnType<typeof getCaseSummary>>>
+) {
+  const attentionItems: AttentionItem[] = [];
+  let totalPropiedades = 0;
+  let nextVisita: { caseId: string; caseTitulo: string; fecha: string } | null = null;
+  const now = Date.now();
+
+  for (const kase of activeCases) {
+    const summary = summaries[kase.id];
+    if (!summary) continue;
+    totalPropiedades += summary.totalHouses;
+    if (summary.overdueAccion) {
+      attentionItems.push({
+        caseId: kase.id,
+        caseTitulo: kase.titulo,
+        kind: "overdue",
+        text: summary.overdueAccion.text,
+        fecha: summary.overdueAccion.fecha,
+      });
+    }
+    if (summary.nextVisita) {
+      if (!nextVisita || summary.nextVisita < nextVisita.fecha) {
+        nextVisita = { caseId: kase.id, caseTitulo: kase.titulo, fecha: summary.nextVisita };
+      }
+      if (new Date(summary.nextVisita).getTime() - now <= SOON_WINDOW_MS) {
+        attentionItems.push({ caseId: kase.id, caseTitulo: kase.titulo, kind: "soon", fecha: summary.nextVisita });
+      }
+    }
+  }
+  attentionItems.sort((a, b) => (a.kind === b.kind ? (a.fecha < b.fecha ? -1 : 1) : a.kind === "overdue" ? -1 : 1));
+  return { attentionItems, totalPropiedades, nextVisita };
+}
 
 export default async function PanelPage() {
   const [broker, adminEmail] = await Promise.all([getCurrentBroker(), getCurrentAdminEmail()]);
@@ -32,27 +69,7 @@ export default async function PanelPage() {
   const summaryEntries = await Promise.all(cases.map(async (c) => [c.id, await getCaseSummary(c.id)] as const));
   const summaries = Object.fromEntries(summaryEntries);
 
-  const attentionItems: AttentionItem[] = [];
-  let totalPropiedades = 0;
-  let nextVisita: { caseId: string; caseTitulo: string; fecha: string } | null = null;
-  const now = Date.now();
-
-  for (const kase of activeCases) {
-    const summary = summaries[kase.id];
-    totalPropiedades += summary.totalHouses;
-    if (summary.overdueAccion) {
-      attentionItems.push({ caseId: kase.id, caseTitulo: kase.titulo, kind: "overdue", text: summary.overdueAccion.text, fecha: summary.overdueAccion.fecha });
-    }
-    if (summary.nextVisita) {
-      if (!nextVisita || summary.nextVisita < nextVisita.fecha) {
-        nextVisita = { caseId: kase.id, caseTitulo: kase.titulo, fecha: summary.nextVisita };
-      }
-      if (new Date(summary.nextVisita).getTime() - now <= SOON_WINDOW_MS) {
-        attentionItems.push({ caseId: kase.id, caseTitulo: kase.titulo, kind: "soon", fecha: summary.nextVisita });
-      }
-    }
-  }
-  attentionItems.sort((a, b) => (a.kind === b.kind ? (a.fecha < b.fecha ? -1 : 1) : a.kind === "overdue" ? -1 : 1));
+  const { attentionItems, totalPropiedades, nextVisita } = buildAttentionData(activeCases, summaries);
 
   function alertFor(caseId: string): "overdue" | "soon" | null {
     const hit = attentionItems.find((item) => item.caseId === caseId);
@@ -94,6 +111,7 @@ export default async function PanelPage() {
                 <BrokerNameEditor key={broker.nombreMarca} initialName={broker.nombreMarca} />
               </span>
             )}
+            <ThemeToggle />
             <PanelLogoutButton />
           </div>
         </div>
@@ -120,7 +138,7 @@ export default async function PanelPage() {
               <span style={{ color: "var(--ink-faint)" }}>de {cases.length} en total</span>
             </div>
           </div>
-          <CreateCaseModal />
+          {cases.length > 0 && <CreateCaseModal />}
         </div>
 
         {broker && cases.length > 0 && (
@@ -135,55 +153,9 @@ export default async function PanelPage() {
         )}
 
         {cases.length === 0 ? (
-          <div
-            className="relative mt-10 overflow-hidden rounded-2xl border p-8 sm:p-10"
-            style={{ borderColor: "var(--border)", background: "var(--surface)", boxShadow: "var(--shadow-card)" }}
-          >
-            <div
-              aria-hidden
-              className="absolute inset-x-0 top-0 h-1.5"
-              style={{ background: "linear-gradient(90deg, var(--accent), var(--gold))" }}
-            />
-            <p className="eyebrow mb-2">Bienvenido</p>
-            <h2 className="text-2xl" style={{ fontFamily: "var(--font-display)" }}>
-              ¡Arrancamos{broker ? `, ${broker.nombreMarca}` : ""}!
-            </h2>
-            <p className="mt-2 max-w-lg text-sm" style={{ color: "var(--ink-muted)" }}>
-              Un caso es la búsqueda de un cliente tuyo: le compartís un link
-              con usuario y contraseña, y ahí ve presupuesto, propiedades,
-              visitas y checklist — todo junto, con tu marca, no la de
-              Micaso.
-            </p>
-
-            {broker && (
-              <div
-                className="mt-6 flex flex-col gap-2 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
-                style={{ borderColor: "var(--border)", background: "var(--paper)" }}
-              >
-                <span className="text-sm" style={{ color: "var(--ink-muted)" }}>
-                  Así te va a ver cada familia:
-                </span>
-                <span className="flex items-center gap-2">
-                  <BrokerAvatarEditor
-                    key={broker.imagenUrl}
-                    initialImagenUrl={broker.imagenUrl}
-                    nombreMarca={broker.nombreMarca}
-                    size={32}
-                  />
-                  <BrokerNameEditor
-                    key={broker.nombreMarca}
-                    initialName={broker.nombreMarca}
-                    className="text-sm font-semibold"
-                    style={{ color: "var(--accent)" }}
-                  />
-                </span>
-              </div>
-            )}
-
-            <div className="mt-6">
-              <CreateCaseModal label="Crear tu primer caso" />
-            </div>
-          </div>
+          broker ? (
+            <BrokerOnboarding broker={broker} />
+          ) : null
         ) : (
           <div className="mt-8 flex flex-col gap-3">
             {cases.map((kase) => (
@@ -191,6 +163,23 @@ export default async function PanelPage() {
             ))}
           </div>
         )}
+
+        <footer className="mt-14 border-t pt-6 pb-4" style={{ borderColor: "var(--border)" }}>
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs" style={{ color: "var(--ink-faint)" }}>
+            <span>Micaso · Panel de corredor</span>
+            <div className="flex items-center gap-4">
+              <Link href="/terminos" className="hover:underline" style={{ color: "var(--ink-muted)" }}>
+                Términos de servicio
+              </Link>
+              <Link href="/privacidad" className="hover:underline" style={{ color: "var(--ink-muted)" }}>
+                Privacidad
+              </Link>
+              <Link href="/" className="hover:underline" style={{ color: "var(--ink-muted)" }}>
+                Inicio
+              </Link>
+            </div>
+          </div>
+        </footer>
       </main>
     </div>
   );

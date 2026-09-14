@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { proxiedImage } from "@/lib/format";
@@ -37,10 +37,12 @@ function emptyDraft(people: string[]): Draft {
 
 export default function AddHouseModal({
   people,
+  existingUrls = [],
   onClose,
   onCreated,
 }: {
   people: string[];
+  existingUrls?: string[];
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -50,6 +52,20 @@ export default function AddHouseModal({
   const [scrapeMsg, setScrapeMsg] = useState<string | null>(null);
   const lastFetchedUrl = useRef<string | null>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
+
+  const isDuplicate = useMemo(() => {
+    if (!draft.url || existingUrls.length === 0) return false;
+    const clean = (u: string) => {
+      try {
+        const parsed = new URL(u.trim());
+        return `${parsed.origin}${parsed.pathname}`.replace(/\/+$/, "").toLowerCase();
+      } catch {
+        return u.trim().replace(/\/+$/, "").toLowerCase();
+      }
+    };
+    const target = clean(draft.url);
+    return existingUrls.some((u) => clean(u) === target);
+  }, [draft.url, existingUrls]);
 
   useEffect(() => {
     urlInputRef.current?.focus();
@@ -93,7 +109,6 @@ export default function AddHouseModal({
       fetchPreview(url);
     }, 400);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.url]);
 
   async function save() {
@@ -147,6 +162,14 @@ export default function AddHouseModal({
               value={draft.url}
               onChange={(e) => setDraft({ ...draft, url: e.target.value })}
             />
+            {isDuplicate && (
+              <p
+                className="mt-1 rounded-lg px-2.5 py-1.5 text-xs font-medium"
+                style={{ background: "var(--status-pendiente-bg)", color: "var(--status-pendiente)" }}
+              >
+                ⚠️ Esta propiedad ya fue agregada en este caso.
+              </p>
+            )}
             <div className="flex items-center gap-2 text-xs" style={{ color: "var(--ink-faint)" }}>
               {fetching && <span>Buscando título, foto y precio…</span>}
               {!fetching && scrapeMsg && (

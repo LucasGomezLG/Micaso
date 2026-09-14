@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import Nav from "@/components/Nav";
 import { getCaseId } from "@/lib/session";
 import { getCase } from "@/lib/cases";
@@ -24,6 +25,8 @@ export default async function CasoLayout({ children }: LayoutProps<"/caso">) {
   const viewer = await getCurrentBroker();
   const viewingAsBroker = Boolean(viewer && kase && viewer.id === kase.brokerId);
 
+  const isDemo = caseId === "demo";
+
   return (
     <div className="flex min-h-full flex-col">
       <Nav
@@ -32,15 +35,24 @@ export default async function CasoLayout({ children }: LayoutProps<"/caso">) {
         brokerName={broker?.nombreMarca ?? null}
         brokerImage={broker?.imagenUrl ?? null}
         viewingAsBroker={viewingAsBroker}
+        isDemo={isDemo}
       />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 pb-20 sm:pb-8 sm:px-6">
         {children}
       </main>
       <footer
-        className="border-t px-4 py-6 text-center text-xs sm:px-6"
+        className="mb-16 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-t px-4 py-6 text-center text-xs sm:mb-0 sm:px-6"
         style={{ borderColor: "var(--border)", color: "var(--ink-faint)" }}
       >
-        Micaso{broker ? ` — gestionado por ${broker.nombreMarca}` : ""}
+        <span>Micaso{broker ? ` — gestionado por ${broker.nombreMarca}` : ""}</span>
+        <span aria-hidden>·</span>
+        <Link href="/privacidad" className="hover:underline" style={{ color: "var(--ink-muted)" }}>
+          Privacidad
+        </Link>
+        <span aria-hidden>·</span>
+        <Link href="/terminos" className="hover:underline" style={{ color: "var(--ink-muted)" }}>
+          Términos
+        </Link>
       </footer>
     </div>
   );

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { LogIn, Share2 } from "lucide-react";
+import { Check, Copy, LogIn, Share2 } from "lucide-react";
 import { Case, CaseEstado, TipoCaso } from "@/lib/types";
 import type { CaseSummary } from "@/lib/store";
 import { daysAgoLabel } from "@/lib/format";
@@ -117,7 +117,19 @@ export default function CaseRow({
       toast.error(await apiErrorMessage(res, "No se pudo entrar al caso."));
       return;
     }
+    router.refresh();
     router.push("/caso");
+  }
+
+  const [copiedCreds, setCopiedCreds] = useState(false);
+
+  async function copiarCredenciales() {
+    const loginUrl = `${window.location.origin}/login`;
+    const texto = `Acceso Micaso para "${kase.titulo}":\nLink: ${loginUrl}\nUsuario: ${kase.username}\nContraseña: ${kase.password}`;
+    await navigator.clipboard.writeText(texto);
+    setCopiedCreds(true);
+    toast.success("Credenciales copiadas al portapapeles");
+    setTimeout(() => setCopiedCreds(false), 2000);
   }
 
   function compartirPorWhatsapp() {
@@ -210,15 +222,28 @@ export default function CaseRow({
 
       <div className="flex shrink-0 flex-col items-end gap-2">
         <div
-          className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl border px-4 py-2.5 text-sm"
+          className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border px-3.5 py-2 text-sm"
           style={{ borderColor: "var(--border)", background: "var(--paper)" }}
         >
           <span style={{ color: "var(--ink-muted)" }}>
-            Usuario <span className="mono select-all">{kase.username}</span>
+            Usuario <span className="mono select-all font-medium" style={{ color: "var(--ink)" }}>{kase.username}</span>
           </span>
           <span style={{ color: "var(--ink-muted)" }}>
-            Clave <span className="mono select-all">{kase.password}</span>
+            Clave <span className="mono select-all font-medium" style={{ color: "var(--ink)" }}>{kase.password}</span>
           </span>
+          <button
+            type="button"
+            onClick={copiarCredenciales}
+            title="Copiar usuario, clave y link de acceso"
+            className="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold transition-all hover:opacity-80"
+            style={{
+              background: copiedCreds ? "var(--status-gusto-bg)" : "var(--accent-soft)",
+              color: copiedCreds ? "var(--status-gusto)" : "var(--accent)",
+            }}
+          >
+            {copiedCreds ? <Check size={12} /> : <Copy size={12} />}
+            {copiedCreds ? "¡Copiado!" : "Copiar"}
+          </button>
         </div>
         <div className="flex items-center gap-2">
           <button

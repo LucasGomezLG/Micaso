@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { daysAgoLabel, formatDateTime } from "@/lib/format";
 
 export interface AttentionItem {
@@ -74,19 +75,27 @@ export default function PanelDashboard({
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div
-          className="flex flex-col gap-1 rounded-2xl border p-4"
+        <Link
+          href="/panel/plan"
+          className="card-hover flex flex-col justify-between rounded-2xl border p-4 transition-all"
           style={{ borderColor: "var(--border)", background: "var(--surface)", boxShadow: "var(--shadow-card)" }}
         >
-          <span className="eyebrow">Casos activos</span>
-          <span className="mono text-2xl font-semibold">
-            {activeCount}
-            {planLimit !== null && <span style={{ color: "var(--ink-faint)", fontSize: "0.75em" }}> / {planLimit}</span>}
-          </span>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span className="eyebrow">Casos activos</span>
+              <span className="text-[10px] font-semibold hover:underline" style={{ color: "var(--accent)" }}>
+                Gestionar plan →
+              </span>
+            </div>
+            <span className="mono text-2xl font-semibold">
+              {activeCount}
+              {planLimit !== null && <span style={{ color: "var(--ink-faint)", fontSize: "0.75em" }}> / {planLimit}</span>}
+            </span>
+          </div>
           <span className="text-xs" style={{ color: "var(--ink-faint)" }}>
             Plan {planLabel}
           </span>
-        </div>
+        </Link>
 
         <div
           className="flex flex-col gap-1 rounded-2xl border p-4"

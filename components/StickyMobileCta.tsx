@@ -8,7 +8,12 @@ export default function StickyMobileCta() {
 
   useEffect(() => {
     function onScroll() {
-      setVisible(window.scrollY > 700);
+      const scrollY = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight;
+      const winHeight = window.innerHeight;
+      // Ocultar si está en el hero (scrollY <= 400) o si ya llegó al CTA final del pie de página
+      const nearBottom = scrollY + winHeight > docHeight - 500;
+      setVisible(scrollY > 400 && !nearBottom);
     }
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
