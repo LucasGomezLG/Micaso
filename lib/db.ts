@@ -48,3 +48,49 @@ export async function dbSet<T>(key: string, value: T): Promise<void> {
 export function isUsingRemoteDb(): boolean {
   return redis !== null;
 }
+
+type Counter = { count: number; expiresAt: number };
+
+/** Suma 1 a un contador con vencimiento — lo crea con el TTL dado si no
+ * existe o si ya venció. Usado para rate limiting (ver lib/rateLimit.ts). */
+export async function dbIncrWithTtl(key: string, ttlSeconds: number): Promise<number> {
+  if (redis) {
+    const count = await redis.incr(key);
+    if (count === 1) await redis.expire(key, ttlSeconds);
+    return count;
+  }
+  const store = await readLocalStore();
+  const existing = store[key] as Counter | undefined;
+  const now = Date.now();
+  if (existing && existing.expiresAt > now) {
+    existing.count += 1;
+    store[key] = existing;
+    await writeLocalStore(store);
+    return existing.count;
+  }
+  const fresh: Counter = { count: 1, expiresAt: now + ttlSeconds * 1000 };
+  store[key] = fresh;
+  await writeLocalStore(store);
+  return 1;
+}
+
+/** Lee el contador actual sin incrementarlo (0 si no existe o venció). */
+export async function dbPeekCount(key: string): Promise<number> {
+  if (redis) {
+    return (await redis.get<number>(key)) ?? 0;
+  }
+  const store = await readLocalStore();
+  const existing = store[key] as Counter | undefined;
+  if (!existing || existing.expiresAt <= Date.now()) return 0;
+  return existing.count;
+}
+
+export async function dbDelete(key: string): Promise<void> {
+  if (redis) {
+    await redis.del(key);
+    return;
+  }
+  const store = await readLocalStore();
+  delete store[key];
+  await writeLocalStore(store);
+}
