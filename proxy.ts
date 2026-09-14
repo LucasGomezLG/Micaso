@@ -8,13 +8,17 @@ import { CASE_COOKIE } from "@/lib/session";
 // Next.js (favicon y preview al compartir el link) y tienen que cargar
 // sin sesión, en cualquier página, no solo en la landing. /api/auth es
 // Auth.js (Google OAuth) — sus propias rutas internas (signin,
-// callback, signout, session) tienen que ser públicas.
+// callback, signout, session) tienen que ser públicas. /api/cron lo
+// llama Vercel Cron, sin cookie de caso ni sesión de Google — se
+// protege con CRON_SECRET adentro de la propia ruta (ver
+// app/api/cron/archive-stale-cases/route.ts), no acá.
 const PUBLIC_PATHS = [
   "/",
   "/login",
   "/api/login",
   "/panel/login",
   "/api/auth",
+  "/api/cron",
   "/icon",
   "/opengraph-image",
   "/robots.txt",

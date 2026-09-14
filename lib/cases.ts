@@ -48,6 +48,7 @@ async function getAllCases(): Promise<Record<string, Case>> {
       username: "casa",
       password: "1234",
       people: ["Lucas", "Abril", "Carolina"],
+      soloLecturaDesde: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -72,6 +73,7 @@ export async function createCase(
     username: randomCode(6).toLowerCase(),
     password: randomCode(8),
     people: [],
+    soloLecturaDesde: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -132,9 +134,35 @@ export async function regeneratePassword(caseId: string): Promise<Case | null> {
 /** Cierre manual: pasa a `solo_lectura`, no directo a `archivado` — la
  * familia conserva su historial (puede seguir viéndolo, no seguir
  * cargando), y deja de contar contra el tope de casos activos del plan.
- * Mismo criterio que el impago (que sí espera 90 días de gracia antes
- * de archivar). Ver ARQUITECTURA.md sección 6, "Ciclo de vida de un
- * caso". El bloqueo de escritura en solo_lectura vive en proxy.ts. */
+ * Mismo criterio que el impago (que también pasa por acá, cuando exista
+ * — ambos caminos comparten los 90 días de gracia antes de archivar).
+ * Ver ARQUITECTURA.md sección 6 y 9. El bloqueo de escritura en
+ * solo_lectura vive en proxy.ts; el archivado a los 90 días vive en
+ * archiveStaleReadOnlyCases() (ver abajo), llamado por el cron. */
 export async function closeCase(caseId: string): Promise<Case | null> {
-  return updateCase(caseId, { estado: "solo_lectura" });
+  return updateCase(caseId, { estado: "solo_lectura", soloLecturaDesde: new Date().toISOString() });
+}
+
+const GRACE_PERIOD_DAYS = 90;
+
+/** Archiva los casos que llevan más de 90 días en solo_lectura (cierre
+ * manual o, más adelante, impago) — pensado para correr una vez por día
+ * desde app/api/cron/archive-stale-cases/route.ts (Vercel Cron). Una
+ * sola escritura atómica sobre "cases" para no competir con otra
+ * mutación concurrente. Devuelve los IDs que efectivamente archivó. */
+export async function archiveStaleReadOnlyCases(): Promise<string[]> {
+  const cutoff = Date.now() - GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000;
+  const archived: string[] = [];
+  await dbUpdate<Record<string, Case>>(CASES_KEY, (current) => {
+    const cases = current ?? {};
+    const next = { ...cases };
+    for (const kase of Object.values(cases)) {
+      if (kase.estado !== "solo_lectura" || !kase.soloLecturaDesde) continue;
+      if (new Date(kase.soloLecturaDesde).getTime() > cutoff) continue;
+      archived.push(kase.id);
+      next[kase.id] = { ...kase, estado: "archivado", updatedAt: new Date().toISOString() };
+    }
+    return next;
+  });
+  return archived;
 }

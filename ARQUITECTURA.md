@@ -570,13 +570,16 @@ Mercado Pago.
 
 **El modelo de datos de `cases.estado` — resuelto: pasa a tres valores**
 `estado` pasa de `activo/cerrado` a **`activo` / `solo_lectura` /
-`archivado`**. Impago y cierre manual comparten el mismo camino hasta
-`solo_lectura`, pero divergen ahí: el impago espera los 90 días de
-gracia ya definidos (arriba) antes de archivarse, porque ese plazo existe
-para darle margen a un error de pago real. Un cierre manual, en cambio,
-**archiva de inmediato** — el corredor ya confirmó que el caso terminó,
-no hay nada que "arreglar" esperando. Ambos caminos siguen siendo
-reactivables desde el panel del corredor.
+`archivado`**. Impago y cierre manual comparten el mismo camino:
+**los dos pasan primero por `solo_lectura`**, con los mismos 90 días de
+gracia antes de archivarse — un cierre manual no archiva de inmediato
+(se había escrito así acá en un primer borrador; la implementación real
+y la copia de la landing ya usan el camino único, que es más simple de
+razonar y le da margen al corredor por si cerró un caso por error).
+`Case.soloLecturaDesde` guarda el momento exacto en que empezó el
+plazo, para que el cron de 90 días no dependa de `updatedAt` (que
+cualquier otra edición pisa). Reactivar sigue sin tener UI (no hace
+falta hasta que haya cobro real de Mercado Pago que lo dispare).
 
 **Cuándo se cargan los nombres de la familia de un caso — resuelto**
 Mismo criterio que ya se usa para los Criterios: nadie los pide al crear
