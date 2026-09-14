@@ -18,6 +18,8 @@ const INTRO: Record<TipoCaso, string> = {
 
 const STAT_TILES: { status: HouseStatus; label: string }[] = [
   { status: "pendiente", label: "Pendientes" },
+  { status: "duda_visitar", label: "Duda si visitar" },
+  { status: "a_coordinar", label: "Visita a coordinar" },
   { status: "coordinada", label: "Visita coordinada" },
   { status: "gusto", label: "Gustó" },
   { status: "no_gusto", label: "No gustó" },
@@ -250,7 +252,7 @@ export default async function HomePage() {
 
       <section>
         <h2 className="mb-3 text-lg">Estado de la búsqueda</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
           {STAT_TILES.map((tile) => (
             <Link
               key={tile.status}

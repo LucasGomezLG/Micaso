@@ -2,6 +2,8 @@ import { HouseStatus, STATUS_LABEL } from "@/lib/types";
 
 const DOT_COLOR: Record<HouseStatus, string> = {
   pendiente: "var(--status-pendiente)",
+  duda_visitar: "var(--status-duda-visitar)",
+  a_coordinar: "var(--status-a-coordinar)",
   coordinada: "var(--status-coordinada)",
   gusto: "var(--status-gusto)",
   no_gusto: "var(--status-no-gusto)",
@@ -13,6 +15,8 @@ const DOT_COLOR: Record<HouseStatus, string> = {
 
 const BG_COLOR: Record<HouseStatus, string> = {
   pendiente: "var(--status-pendiente-bg)",
+  duda_visitar: "var(--status-duda-visitar-bg)",
+  a_coordinar: "var(--status-a-coordinar-bg)",
   coordinada: "var(--status-coordinada-bg)",
   gusto: "var(--status-gusto-bg)",
   no_gusto: "var(--status-no-gusto-bg)",

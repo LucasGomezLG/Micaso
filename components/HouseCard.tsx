@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { House, HouseStatus, LoanInfo, PIPELINE_STATUSES, STATUS_LABEL } from "@/lib/types";
+import { AptoCredito, House, HouseStatus, LoanInfo, PIPELINE_STATUSES, STATUS_LABEL } from "@/lib/types";
 import { formatDate, formatDateTime, formatUsd, isOverdue, proxiedImage } from "@/lib/format";
 import { cashNeededRange, pricePerM2 } from "@/lib/mortgage";
 import StatusBadge from "@/components/StatusBadge";
@@ -10,6 +10,30 @@ import EditHouseModal from "@/components/EditHouseModal";
 import VisitReview from "@/components/VisitReview";
 
 const AUTHOR_KEY = "casa-comment-author";
+
+const APTO_CREDITO_NEXT: Record<AptoCredito, AptoCredito> = {
+  no_se: "si",
+  si: "no",
+  no: "no_se",
+};
+
+const APTO_CREDITO_LABEL: Record<AptoCredito, string> = {
+  no_se: "🏦 Apto crédito: no sé",
+  si: "🏦 Apto crédito: sí",
+  no: "🏦 Apto crédito: no",
+};
+
+const APTO_CREDITO_COLOR: Record<AptoCredito, string> = {
+  no_se: "var(--gold)",
+  si: "var(--status-gusto)",
+  no: "var(--status-descartada)",
+};
+
+const APTO_CREDITO_BG: Record<AptoCredito, string> = {
+  no_se: "var(--gold-soft)",
+  si: "var(--status-gusto-bg)",
+  no: "var(--status-descartada-bg)",
+};
 
 export default function HouseCard({
   house,
@@ -224,6 +248,15 @@ export default function HouseCard({
           </p>
           <StatusBadge status={house.status} />
         </div>
+
+        <button
+          onClick={() => onChange(house.id, { aptoCredito: APTO_CREDITO_NEXT[house.aptoCredito] })}
+          title="Tocar para cambiar"
+          className="w-fit rounded-lg px-2 py-1 text-xs font-semibold"
+          style={{ background: APTO_CREDITO_BG[house.aptoCredito], color: APTO_CREDITO_COLOR[house.aptoCredito] }}
+        >
+          {APTO_CREDITO_LABEL[house.aptoCredito]}
+        </button>
 
         <h3 className="line-clamp-2 text-sm font-semibold">{house.title}</h3>
 

@@ -21,6 +21,10 @@
 
   --status-pendiente: #8a7b4e;
   --status-pendiente-bg: #f3eedd;
+  --status-duda-visitar: #4a7c7a;
+  --status-duda-visitar-bg: #e2eeed;
+  --status-a-coordinar: #b8622e;
+  --status-a-coordinar-bg: #f5e6da;
   --status-coordinada: #2e6e8e;
   --status-coordinada-bg: #e4f0f4;
   --status-gusto: #3f7d50;
@@ -60,6 +64,10 @@
 
     --status-pendiente: #d3bd82;
     --status-pendiente-bg: #302c1d;
+    --status-duda-visitar: #7fc4c0;
+    --status-duda-visitar-bg: #1c302f;
+    --status-a-coordinar: #e0985f;
+    --status-a-coordinar-bg: #34281e;
     --status-coordinada: #7fbcda;
     --status-coordinada-bg: #1c2e35;
     --status-gusto: #8fcc9e;
@@ -95,6 +103,10 @@
 
   --status-pendiente: #d3bd82;
   --status-pendiente-bg: #302c1d;
+  --status-duda-visitar: #7fc4c0;
+  --status-duda-visitar-bg: #1c302f;
+  --status-a-coordinar: #e0985f;
+  --status-a-coordinar-bg: #34281e;
   --status-coordinada: #7fbcda;
   --status-coordinada-bg: #1c2e35;
   --status-gusto: #8fcc9e;

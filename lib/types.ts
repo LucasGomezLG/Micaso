@@ -1,5 +1,9 @@
+export type AptoCredito = "no_se" | "si" | "no";
+
 export type HouseStatus =
   | "pendiente"
+  | "duda_visitar"
+  | "a_coordinar"
   | "coordinada"
   | "gusto"
   | "no_gusto"
@@ -44,6 +48,10 @@ export interface House {
   dormitorios: number | null;
   cochera: boolean | null;
   superficieM2: number | null;
+  /** Si la propiedad es apta para el crédito hipotecario BBVA — a diferencia
+   * de `cochera` (dato de la propiedad), esto lo toca la familia/corredor a
+   * mano tras averiguar con la inmobiliaria, así que arranca en "no_se". */
+  aptoCredito: AptoCredito;
   images: string[];
   comments: HouseComment[];
   checklist: HouseChecklistItem[];
@@ -136,12 +144,20 @@ export interface Case {
    * autor/asignado en comentarios y checklist (antes un `PEOPLE` global
    * hardcodeado a Lucas/Abril/Carolina). */
   people: string[];
+  /** Cuándo pasó a `solo_lectura` (cierre manual o, más adelante,
+   * impago) — separado de `updatedAt` porque ese campo se pisa con
+   * cualquier cambio (renombrar, regenerar clave) y el cron de 90 días
+   * necesita el momento real del cierre, no el de la última edición.
+   * `null` mientras el caso está `activo`. Ver ARQUITECTURA.md sección 9. */
+  soloLecturaDesde: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export const STATUS_LABEL: Record<HouseStatus, string> = {
   pendiente: "Pendiente",
+  duda_visitar: "Duda si visitar",
+  a_coordinar: "Visita a coordinar",
   coordinada: "Visita coordinada",
   gusto: "Visitada — gustó",
   no_gusto: "Visitada — no gustó",
@@ -155,6 +171,8 @@ export const STATUS_LABEL: Record<HouseStatus, string> = {
  * (excludes "borrada", which lives in its own recovery tab). */
 export const PIPELINE_STATUSES: HouseStatus[] = [
   "pendiente",
+  "duda_visitar",
+  "a_coordinar",
   "coordinada",
   "gusto",
   "no_gusto",

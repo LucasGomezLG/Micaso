@@ -59,6 +59,7 @@ const NEW_FIELD_DEFAULTS = {
   visitaFecha: null,
   visitReview: null,
   checklist: [] as HouseChecklistItem[],
+  aptoCredito: "no_se" as const,
 } as const;
 
 /** Backfills fields added after a house was first stored, so older
@@ -124,6 +125,7 @@ export async function addHouse(
     dormitorios: input.dormitorios ?? null,
     cochera: input.cochera ?? null,
     superficieM2: input.superficieM2 ?? null,
+    aptoCredito: input.aptoCredito ?? "no_se",
     images: input.images ?? [],
     comments: input.comments ?? [],
     checklist: input.checklist ?? [],

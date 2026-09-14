@@ -79,7 +79,8 @@ type SeedFields =
   | "proximaAccion"
   | "proximaAccionFecha"
   | "visitaFecha"
-  | "visitReview";
+  | "visitReview"
+  | "aptoCredito";
 
 function h(partial: Omit<House, SeedFields> & {
   id: string;
@@ -97,6 +98,7 @@ function h(partial: Omit<House, SeedFields> & {
   proximaAccionFecha?: string | null;
   visitaFecha?: string | null;
   visitReview?: VisitReview | null;
+  aptoCredito?: House["aptoCredito"];
 }): House {
   const { notes, comments, image, images, ...rest } = partial;
   return {
@@ -109,6 +111,7 @@ function h(partial: Omit<House, SeedFields> & {
     proximaAccionFecha: null,
     visitaFecha: null,
     visitReview: null,
+    aptoCredito: "no_se",
     updatedAt: partial.addedAt,
     ...rest,
     images: images ?? (image ? [image] : []),
