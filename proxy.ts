@@ -4,8 +4,20 @@ import { getCase } from "@/lib/cases";
 import { BROKER_COOKIE, CASE_COOKIE } from "@/lib/session";
 
 // "/" es la landing pública (marketing, dirigida al corredor) — ver
-// ARQUITECTURA.md sección 6.
-const PUBLIC_PATHS = ["/", "/login", "/api/login", "/panel/login", "/api/panel/login"];
+// ARQUITECTURA.md sección 6. /icon y /opengraph-image son generados por
+// Next.js (favicon y preview al compartir el link) y tienen que cargar
+// sin sesión, en cualquier página, no solo en la landing.
+const PUBLIC_PATHS = [
+  "/",
+  "/login",
+  "/api/login",
+  "/panel/login",
+  "/api/panel/login",
+  "/icon",
+  "/opengraph-image",
+  "/robots.txt",
+  "/sitemap.xml",
+];
 const BROKER_PREFIXES = ["/panel", "/api/panel"];
 
 function isUnder(pathname: string, prefixes: string[]): boolean {

@@ -2,6 +2,36 @@
 
 Guía para Claude Code al trabajar en este repositorio.
 
+---
+
+## 🧠 Protocolo de inicio — Antes de hacer cualquier cosa
+
+**Antes de escribir una sola línea de código o tomar cualquier decisión**, Claude debe seguir este protocolo:
+
+### 1. Actuar como experto en la materia
+Identificar qué dominio o disciplina requiere la tarea solicitada y adoptar ese rol de experto. Ejemplos:
+- Si la tarea involucra **autenticación**, actuar como experto en seguridad web y Auth.js.
+- Si involucra **base de datos / Redis**, actuar como experto en arquitectura de datos y Upstash.
+- Si involucra **UI/UX**, actuar como experto en diseño de interfaces con Next.js App Router, React 19 y Tailwind v4.
+- Si involucra **pagos**, actuar como experto en integración de Mercado Pago.
+- Si involucra **arquitectura o diseño del sistema**, actuar como arquitecto de software senior con experiencia en SaaS multi-tenant.
+
+### 2. Analizar el entorno antes de actuar
+Siempre leer y comprender el contexto antes de proponer cambios:
+- Leer `ARQUITECTURA.md` (es la fuente de verdad del sistema).
+- Leer `README.md` para entender la estructura del repo.
+- Revisar los archivos relevantes a la tarea (`lib/`, `app/`, `components/`, etc.).
+- Entender qué ya existe y qué falta, para no duplicar ni contradecir decisiones tomadas.
+
+### 3. Principios de actuación
+- **No inventar soluciones que ya están documentadas**: si `ARQUITECTURA.md` describe cómo hacer algo, seguir eso.
+- **No romper decisiones cerradas** (ver sección más abajo).
+- **Preguntar si hay ambigüedad** antes de asumir una dirección de implementación.
+- **Priorizar la coherencia del sistema** por encima de la solución más elegante en aislamiento.
+- **Documentar decisiones nuevas** si la tarea genera una elección que afecta al sistema.
+
+---
+
 ## Estado del proyecto
 
 Micaso es la propuesta de convertir [Casa](../Casa) (una herramienta

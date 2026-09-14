@@ -1,20 +1,43 @@
 import Link from "next/link";
+import ContactModal from "@/components/ContactModal";
+import StickyMobileCta from "@/components/StickyMobileCta";
+
+const BEFORE_AFTER = {
+  before: {
+    title: "Así es hoy",
+    items: [
+      "“¿En qué chat le mandé esa propiedad a los Pérez?”",
+      "Un Excel por cliente, si te acordás de actualizarlo",
+      "El presupuesto y las condiciones del crédito, de memoria",
+      "Visitas coordinadas por WhatsApp, imposibles de encontrar después",
+    ],
+  },
+  after: {
+    title: "Así es con Micaso",
+    items: [
+      "Un link por familia, con todo el historial ahí",
+      "El estado de cada propiedad, sin tener que buscarlo",
+      "Presupuesto y crédito a la vista, en todo momento",
+      "Visitas y próximos pasos, siempre ordenados",
+    ],
+  },
+};
 
 const FEATURES = [
   {
     icon: "🔗",
     title: "Un link privado por familia",
-    body: "Cada cliente entra con su propio usuario y contraseña, a su propio caso — nunca ve a los demás clientes ni vos tenés que armarle una carpeta compartida.",
+    body: "Cada cliente entra con su propio usuario y contraseña, a su propio caso — nunca ve a los demás clientes ni vos tenés que armarle una carpeta compartida. Se ve prolijo desde el primer mensaje que mandás.",
   },
   {
     icon: "🏡",
     title: "Todo en un solo lugar",
-    body: "Presupuesto y crédito, propiedades vistas, visitas coordinadas y checklist de la compra — lo que hoy se pierde entre WhatsApp, Excel y notas sueltas.",
+    body: "Presupuesto y crédito, propiedades vistas, visitas coordinadas y checklist de la compra — lo que hoy se pierde entre WhatsApp, Excel y notas sueltas. Nunca más buscar un dato que ya te habían pasado.",
   },
   {
     icon: "🎨",
     title: "Tu marca, no la nuestra",
-    body: "Tu nombre y tu foto en cada caso que ve tu cliente. Micaso es la herramienta; la relación con la familia sigue siendo tuya.",
+    body: "Tu nombre y tu foto en cada caso que ve tu cliente. Micaso es la herramienta; la relación con la familia sigue siendo tuya, no de una plataforma.",
   },
 ];
 
@@ -36,25 +59,78 @@ const STEPS = [
   },
 ];
 
+const FAQS = [
+  {
+    q: "¿Mis clientes necesitan instalar algo?",
+    a: "No. Les compartís un link con usuario y contraseña generados al crear el caso, y entran directo desde el navegador del celular o la compu — sin descargar ninguna app ni crear una cuenta. Si ya tenés el presupuesto y la zona por haber hablado con ellos, los cargás vos; si no, los completan ellos mismos la primera vez que entran.",
+  },
+  {
+    q: "¿Necesito tarjeta para la prueba gratis?",
+    a: "No. Los 14 días arrancan apenas entrás con tu cuenta, sin pedir ningún método de pago. Si se terminan y todavía no cargaste una tarjeta, tu panel pasa a solo lectura hasta que lo hagas — no perdés el acceso ni lo que ya cargaste de un día para el otro.",
+  },
+  {
+    q: "¿Qué pasa cuando termina la búsqueda de una familia?",
+    a: "Vos cerrás el caso cuando la familia ya compró, alquiló, o dejó de buscar — no expira solo. Al cerrarlo pasa a modo solo lectura: dejás de pagar por ese lugar dentro de tu plan, y la familia conserva su historial por si lo necesita más adelante.",
+  },
+  {
+    q: "¿Otro corredor puede ver mis casos?",
+    a: "No. Cada caso está completamente aislado del resto — ni otro corredor ni otro cliente tuyo puede verlo, aunque prueben adivinar la dirección. Solo vos y esa familia tienen acceso.",
+  },
+];
+
+const PLANS = [
+  {
+    name: "Para arrancar",
+    blurb: "Para probarlo con tus primeros clientes.",
+    limit: "Unos pocos casos activos a la vez",
+    highlight: false,
+  },
+  {
+    name: "Para tu cartera",
+    blurb: "Cuando ya es tu herramienta de todos los días.",
+    limit: "Más casos activos en simultáneo",
+    highlight: true,
+  },
+  {
+    name: "Volumen alto",
+    blurb: "¿Manejás muchos clientes a la vez? Lo ajustamos con vos.",
+    limit: "Casos activos a medida",
+    highlight: false,
+  },
+];
+
 const MOCK_HOUSES: { title: string; zone: string; price: string; status: string; statusVar: string }[] = [
   { title: "Depto 2 amb. — Belgrano", zone: "CABA", price: "USD 118.000", status: "Visita coordinada", statusVar: "coordinada" },
   { title: "PH 3 amb. c/ patio — Villa Urquiza", zone: "CABA", price: "USD 96.500", status: "Gustó", statusVar: "gusto" },
   { title: "Depto 1 amb. — Colegiales", zone: "CABA", price: "USD 78.000", status: "Pendiente", statusVar: "pendiente" },
 ];
 
+const NOISE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`;
+
 export default function LandingPage() {
   return (
-    <div className="flex min-h-full flex-col" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+    <div className="relative flex min-h-full flex-col" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-50"
+        style={{ backgroundImage: NOISE, opacity: 0.025, mixBlendMode: "overlay" }}
+      />
+
       <header
-        className="border-b"
-        style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface) 88%, transparent)" }}
+        className="sticky top-0 z-20 border-b backdrop-blur-md"
+        style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface) 78%, transparent)" }}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <span
-            className="text-xl font-semibold"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            Micaso
+          <span className="flex items-center gap-2">
+            <span
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold"
+              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+            >
+              M
+            </span>
+            <span className="text-xl font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+              Micaso
+            </span>
           </span>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
@@ -66,7 +142,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/panel/login"
-              className="rounded-full px-4 py-2 text-sm font-semibold"
+              className="btn btn-primary rounded-full px-4 py-2 text-sm font-semibold"
               style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
             >
               Empezar prueba gratis
@@ -77,86 +153,167 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* Hero */}
-        <section className="mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 sm:pb-24 sm:pt-20">
-          <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-            <div>
-              <p className="eyebrow mb-4">Para corredores inmobiliarios</p>
-              <h1 className="text-4xl leading-[1.08] sm:text-5xl">
-                Cada familia, su propio link.
-                <br />
-                Cada búsqueda, bajo control.
-              </h1>
-              <p className="mt-5 max-w-lg text-base sm:text-lg" style={{ color: "var(--ink-muted)" }}>
-                Micaso organiza la búsqueda de casa de cada uno de tus
-                clientes en un panel privado: presupuesto, propiedades,
-                visitas y checklist — sin más planillas sueltas ni cadenas
-                de WhatsApp perdidas.
-              </p>
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Link
-                  href="/panel/login"
-                  className="rounded-full px-6 py-3 text-sm font-semibold"
-                  style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-                >
-                  Empezar prueba gratis
-                </Link>
-                <a
-                  href="#como-funciona"
-                  className="rounded-full border px-6 py-3 text-sm font-medium"
-                  style={{ borderColor: "var(--border-strong)", color: "var(--ink)" }}
-                >
-                  Ver cómo funciona
-                </a>
-              </div>
-              <p className="mt-4 text-xs" style={{ color: "var(--ink-faint)" }}>
-                14 días gratis, sin tarjeta.
-              </p>
-            </div>
-
-            {/* Mock preview del panel */}
+        <section className="relative overflow-hidden">
+          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
             <div
-              className="rounded-2xl border p-4 sm:p-5"
-              style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="eyebrow mb-1">Caso</p>
-                  <p className="text-base font-medium" style={{ fontFamily: "var(--font-display)" }}>
-                    Familia Pérez
-                  </p>
-                </div>
+              className="absolute -top-40 -left-32 h-[26rem] w-[26rem] rounded-full blur-3xl"
+              style={{ background: "var(--accent)", opacity: 0.2 }}
+            />
+            <div
+              className="absolute top-20 -right-32 h-96 w-96 rounded-full blur-3xl"
+              style={{ background: "var(--gold)", opacity: 0.18 }}
+            />
+          </div>
+
+          <div className="relative mx-auto max-w-6xl px-4 pb-20 pt-16 sm:px-6 sm:pb-28 sm:pt-24 lg:pb-32 lg:pt-28">
+            <div className="grid gap-14 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+              <div className="animate-fade-up">
                 <span
-                  className="rounded-full px-2.5 py-1 text-xs font-medium"
-                  style={{ background: "var(--gold-soft)", color: "var(--gold)" }}
+                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium"
+                  style={{ borderColor: "var(--accent-soft-border)", background: "var(--accent-soft)", color: "var(--accent)" }}
                 >
-                  Compra
+                  🏠 Para corredores inmobiliarios
                 </span>
-              </div>
-              <div className="mt-4 flex flex-col gap-2">
-                {MOCK_HOUSES.map((h) => (
-                  <div
-                    key={h.title}
-                    className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5"
-                    style={{ borderColor: "var(--border)" }}
+                <h1 className="mt-5 text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl lg:text-[4.25rem]">
+                  Cada familia,
+                  <br />
+                  su propio link.
+                </h1>
+                <p
+                  className="mt-2 text-3xl sm:text-4xl lg:text-[2.75rem]"
+                  style={{ fontFamily: "var(--font-display)", color: "var(--ink-muted)", letterSpacing: "-0.01em" }}
+                >
+                  Cada búsqueda, <span style={{ color: "var(--gold)" }}>bajo control</span>.
+                </p>
+                <p className="mt-6 max-w-lg text-base sm:text-lg" style={{ color: "var(--ink-muted)" }}>
+                  Micaso organiza la búsqueda de casa de cada uno de tus
+                  clientes en un panel privado: presupuesto, propiedades,
+                  visitas y checklist — sin más planillas sueltas ni cadenas
+                  de WhatsApp perdidas.
+                </p>
+                <div className="mt-9 flex flex-wrap items-center gap-3">
+                  <Link
+                    href="/panel/login"
+                    className="btn btn-primary rounded-full px-6 py-3.5 text-sm font-semibold"
+                    style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
                   >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{h.title}</p>
-                      <p className="text-xs" style={{ color: "var(--ink-faint)" }}>{h.zone}</p>
+                    Empezar prueba gratis
+                  </Link>
+                  <a
+                    href="#como-funciona"
+                    className="btn rounded-full border px-6 py-3.5 text-sm font-medium"
+                    style={{ borderColor: "var(--border-strong)", color: "var(--ink)" }}
+                  >
+                    Ver cómo funciona
+                  </a>
+                </div>
+                <p className="mt-4 text-xs" style={{ color: "var(--ink-muted)" }}>
+                  ✓ 14 días gratis · ✓ Sin tarjeta
+                </p>
+              </div>
+
+              {/* Mock preview del panel */}
+              <div className="relative animate-fade-up" style={{ animationDelay: "0.12s" }}>
+                <div
+                  className="z-20 hidden rotate-[-3deg] items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium sm:absolute sm:-left-8 sm:-top-8 sm:flex"
+                  style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
+                >
+                  🔒 Un link, una familia
+                </div>
+                <div
+                  className="z-20 hidden rotate-2 items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium sm:absolute sm:-bottom-8 sm:-right-6 sm:flex"
+                  style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
+                >
+                  ✓ Sin instalar nada
+                </div>
+
+                <div
+                  className="relative z-10 rotate-[1.5deg] rounded-2xl border p-4 sm:p-5"
+                  style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "0 24px 48px -16px rgba(27, 36, 48, 0.22)" }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="eyebrow mb-1">Caso</p>
+                      <p className="text-base font-medium" style={{ fontFamily: "var(--font-display)" }}>
+                        Familia Pérez
+                      </p>
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1">
-                      <span className="mono text-xs">{h.price}</span>
-                      <span
-                        className="rounded-full px-2 py-0.5 text-[11px] font-medium"
-                        style={{
-                          background: `var(--status-${h.statusVar}-bg)`,
-                          color: `var(--status-${h.statusVar})`,
-                        }}
-                      >
-                        {h.status}
-                      </span>
-                    </div>
+                    <span
+                      className="rounded-full px-2.5 py-1 text-xs font-medium"
+                      style={{ background: "var(--gold-soft)", color: "var(--gold)" }}
+                    >
+                      Compra
+                    </span>
                   </div>
-                ))}
+                  <div className="mt-4 flex flex-col gap-2">
+                    {MOCK_HOUSES.map((h) => (
+                      <div
+                        key={h.title}
+                        className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5"
+                        style={{ borderColor: "var(--border)" }}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{h.title}</p>
+                          <p className="text-xs" style={{ color: "var(--ink-faint)" }}>{h.zone}</p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          <span className="mono text-xs">{h.price}</span>
+                          <span
+                            className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                            style={{
+                              background: `var(--status-${h.statusVar}-bg)`,
+                              color: `var(--status-${h.statusVar})`,
+                            }}
+                          >
+                            {h.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Antes / después */}
+        <section className="border-t" style={{ borderColor: "var(--border)" }}>
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+            <p className="eyebrow mb-2">La diferencia</p>
+            <h2 className="text-2xl sm:text-3xl">Lo que hoy se pierde, acá queda a la vista</h2>
+            <div className="mt-10 grid gap-5 sm:grid-cols-2">
+              <div
+                className="rounded-2xl border p-6"
+                style={{ background: "var(--paper)", borderColor: "var(--border)" }}
+              >
+                <h3 className="text-base font-medium" style={{ color: "var(--ink-muted)" }}>
+                  {BEFORE_AFTER.before.title}
+                </h3>
+                <ul className="mt-4 flex flex-col gap-3 text-sm">
+                  {BEFORE_AFTER.before.items.map((item) => (
+                    <li key={item} className="flex items-start gap-2.5" style={{ color: "var(--ink-muted)" }}>
+                      <span className="mt-0.5 shrink-0" style={{ color: "var(--status-descartada)" }}>✕</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div
+                className="rounded-2xl border-2 p-6"
+                style={{ background: "var(--surface)", borderColor: "var(--accent)", boxShadow: "var(--shadow-card)" }}
+              >
+                <h3 className="text-base font-medium" style={{ color: "var(--accent)" }}>
+                  {BEFORE_AFTER.after.title}
+                </h3>
+                <ul className="mt-4 flex flex-col gap-3 text-sm">
+                  {BEFORE_AFTER.after.items.map((item) => (
+                    <li key={item} className="flex items-start gap-2.5">
+                      <span className="mt-0.5 shrink-0" style={{ color: "var(--status-gusto)" }}>✓</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </div>
@@ -164,12 +321,21 @@ export default function LandingPage() {
 
         {/* Features */}
         <section className="border-t" style={{ borderColor: "var(--border)" }}>
-          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-            <div className="grid gap-8 sm:grid-cols-3">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+            <div className="grid gap-5 sm:grid-cols-3">
               {FEATURES.map((f) => (
-                <div key={f.title}>
-                  <span className="text-2xl">{f.icon}</span>
-                  <h3 className="mt-3 text-lg">{f.title}</h3>
+                <div
+                  key={f.title}
+                  className="card-hover rounded-2xl border p-6"
+                  style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
+                >
+                  <span
+                    className="flex h-11 w-11 items-center justify-center rounded-xl text-xl"
+                    style={{ background: "var(--accent-soft)" }}
+                  >
+                    {f.icon}
+                  </span>
+                  <h3 className="mt-4 text-lg">{f.title}</h3>
                   <p className="mt-2 text-sm" style={{ color: "var(--ink-muted)" }}>
                     {f.body}
                   </p>
@@ -181,14 +347,27 @@ export default function LandingPage() {
 
         {/* Cómo funciona */}
         <section id="como-funciona" className="border-t" style={{ borderColor: "var(--border)" }}>
-          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
             <p className="eyebrow mb-2">Cómo funciona</p>
             <h2 className="text-2xl sm:text-3xl">Tres pasos, nada de onboarding largo</h2>
-            <div className="mt-10 grid gap-8 sm:grid-cols-3">
-              {STEPS.map((s) => (
-                <div key={s.n}>
-                  <span className="mono text-2xl" style={{ color: "var(--accent)" }}>{s.n}</span>
-                  <h3 className="mt-2 text-lg">{s.title}</h3>
+            <div className="mt-12 grid gap-10 sm:grid-cols-3">
+              {STEPS.map((s, i) => (
+                <div key={s.n} className="relative">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="mono flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 text-sm font-semibold"
+                      style={{ borderColor: "var(--accent-soft-border)", background: "var(--accent-soft)", color: "var(--accent)" }}
+                    >
+                      {s.n}
+                    </span>
+                    {i < STEPS.length - 1 && (
+                      <span
+                        className="hidden h-px flex-1 sm:block"
+                        style={{ background: "var(--border-strong)" }}
+                      />
+                    )}
+                  </div>
+                  <h3 className="mt-4 text-lg">{s.title}</h3>
                   <p className="mt-2 text-sm" style={{ color: "var(--ink-muted)" }}>
                     {s.body}
                   </p>
@@ -198,14 +377,129 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Planes */}
+        <section className="border-t" style={{ borderColor: "var(--border)" }}>
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+            <p className="eyebrow mb-2">Planes</p>
+            <h2 className="text-2xl sm:text-3xl">Un plan para cada tamaño de cartera</h2>
+            <p className="mt-2 max-w-xl text-sm" style={{ color: "var(--ink-muted)" }}>
+              Todos los planes incluyen la herramienta completa — criterios,
+              propiedades, visitas, checklist y tu marca en cada caso. La
+              diferencia es cuántos casos podés tener activos al mismo
+              tiempo; si te quedás corto, pasás a uno mayor cuando lo
+              necesites.
+            </p>
+            <div className="mt-10 grid gap-5 sm:grid-cols-3">
+              {PLANS.map((p) => (
+                <div
+                  key={p.name}
+                  className="card-hover flex flex-col rounded-2xl border p-6"
+                  style={{
+                    background: "var(--surface)",
+                    borderColor: p.highlight ? "var(--accent)" : "var(--border)",
+                    borderWidth: p.highlight ? 2 : 1,
+                    boxShadow: "var(--shadow-card)",
+                  }}
+                >
+                  <h3 className="text-lg">{p.name}</h3>
+                  <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+                    {p.blurb}
+                  </p>
+                  <p className="mt-6 text-3xl" style={{ fontFamily: "var(--font-display)" }}>
+                    A confirmar
+                  </p>
+                  <p className="mt-1 text-xs" style={{ color: "var(--ink-faint)" }}>
+                    precio mensual
+                  </p>
+                  <p
+                    className="mt-5 flex items-center gap-2 border-t pt-5 text-sm"
+                    style={{ borderColor: "var(--border)", color: "var(--ink)" }}
+                  >
+                    <span style={{ color: "var(--status-gusto)" }}>✓</span>
+                    {p.limit}
+                  </p>
+                  <Link
+                    href="/panel/login"
+                    className="btn mt-6 rounded-full px-5 py-2.5 text-center text-sm font-semibold"
+                    style={
+                      p.highlight
+                        ? { background: "var(--accent)", color: "var(--accent-ink)" }
+                        : { border: "1px solid var(--border-strong)", color: "var(--ink)" }
+                    }
+                  >
+                    Empezar prueba gratis
+                  </Link>
+                </div>
+              ))}
+            </div>
+            <p className="mt-6 text-xs" style={{ color: "var(--ink-muted)" }}>
+              Vas a conocer el precio final antes de que se cobre nada — la
+              prueba de 14 días no pide tarjeta.
+            </p>
+          </div>
+        </section>
+
+        {/* Por qué existe Micaso */}
+        <section className="border-t" style={{ borderColor: "var(--border)" }}>
+          <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 sm:py-24">
+            <p className="eyebrow mb-4">Por qué existe Micaso</p>
+            <p
+              className="text-2xl leading-snug sm:text-3xl"
+              style={{ fontFamily: "var(--font-display)", fontStyle: "italic" }}
+            >
+              “Empezó como una herramienta para mi propia búsqueda de casa:
+              con mi pareja y la corredora que nos ayudaba, tratando de no
+              perder pistas entre WhatsApp y un Excel que nadie actualizaba a
+              tiempo. Cuando vi que a ella le servía tanto como a nosotros,
+              decidí armar una versión que cualquier corredor pudiera usar
+              con cada uno de sus clientes.”
+            </p>
+            <p className="mt-5 text-sm font-medium" style={{ color: "var(--ink-muted)" }}>
+              — Lucas, creador de Micaso
+            </p>
+          </div>
+        </section>
+
+        {/* Preguntas frecuentes */}
+        <section className="border-t" style={{ borderColor: "var(--border)" }}>
+          <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24">
+            <p className="eyebrow mb-2">Preguntas frecuentes</p>
+            <h2 className="text-2xl sm:text-3xl">Antes de que preguntes</h2>
+            <div className="mt-8 flex flex-col">
+              {FAQS.map((item) => (
+                <details key={item.q} className="group border-b py-5" style={{ borderColor: "var(--border)" }}>
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-medium [&::-webkit-details-marker]:hidden">
+                    {item.q}
+                    <span
+                      className="shrink-0 text-xl leading-none transition-transform duration-200 group-open:rotate-45"
+                      style={{ color: "var(--ink-faint)" }}
+                    >
+                      +
+                    </span>
+                  </summary>
+                  <p className="mt-3 text-sm" style={{ color: "var(--ink-muted)" }}>
+                    {item.a}
+                  </p>
+                </details>
+              ))}
+            </div>
+            <p className="mt-6 text-sm" style={{ color: "var(--ink-muted)" }}>
+              ¿Tenés otra pregunta? <ContactModal label="Escribinos" /> y te contestamos directo.
+            </p>
+          </div>
+        </section>
+
         {/* CTA final */}
         <section className="border-t" style={{ borderColor: "var(--border)" }}>
-          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
             <div
-              className="flex flex-col items-start gap-6 rounded-3xl border p-8 sm:flex-row sm:items-center sm:justify-between sm:p-12"
+              className="relative flex flex-col items-start gap-6 overflow-hidden rounded-3xl border p-8 sm:flex-row sm:items-center sm:justify-between sm:p-12"
               style={{ background: "#12181f", borderColor: "rgba(255, 255, 255, 0.08)" }}
             >
-              <div>
+              <div aria-hidden className="pointer-events-none absolute inset-0">
+                <div className="absolute -bottom-24 -right-16 h-72 w-72 rounded-full blur-3xl" style={{ background: "#d9ab5c", opacity: 0.2 }} />
+              </div>
+              <div className="relative">
                 <h2 className="text-2xl sm:text-3xl" style={{ color: "#f4f5f3" }}>
                   Probalo gratis 14 días
                 </h2>
@@ -216,7 +510,7 @@ export default function LandingPage() {
               </div>
               <Link
                 href="/panel/login"
-                className="shrink-0 rounded-full px-6 py-3 text-sm font-semibold"
+                className="btn relative shrink-0 rounded-full px-6 py-3.5 text-sm font-semibold"
                 style={{ background: "#d9ab5c", color: "#12181f" }}
               >
                 Empezar prueba gratis
@@ -227,13 +521,18 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t px-4 py-8 sm:px-6" style={{ borderColor: "var(--border)" }}>
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-xs sm:flex-row" style={{ color: "var(--ink-faint)" }}>
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-xs sm:flex-row" style={{ color: "var(--ink-muted)" }}>
           <span>Micaso — organizá la búsqueda de casa de cada cliente.</span>
-          <Link href="/login" style={{ color: "var(--ink-faint)" }}>
-            ¿Ya sos cliente de un corredor? Ingresá a tu caso →
-          </Link>
+          <div className="flex items-center gap-4">
+            <ContactModal label="Contacto" />
+            <Link href="/login" style={{ color: "var(--ink-muted)" }}>
+              ¿Ya sos cliente de un corredor? Ingresá a tu caso →
+            </Link>
+          </div>
         </div>
       </footer>
+
+      <StickyMobileCta />
     </div>
   );
 }
