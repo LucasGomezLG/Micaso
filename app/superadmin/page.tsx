@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listAllBrokers } from "@/lib/brokers";
 import { listCasesForBroker } from "@/lib/cases";
+import { isUsingRemoteDb } from "@/lib/db";
 import AdminBrokerRow from "@/components/AdminBrokerRow";
 import CreateBrokerModal from "@/components/CreateBrokerModal";
 import PanelLogoutButton from "@/components/PanelLogoutButton";
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function SuperadminPage() {
   const brokers = await listAllBrokers();
   const casesByBroker = await Promise.all(brokers.map((b) => listCasesForBroker(b.id)));
+  const remoteDb = isUsingRemoteDb();
 
   return (
     <div className="min-h-full" style={{ background: "var(--paper)", color: "var(--ink)" }}>
@@ -32,6 +34,17 @@ export default async function SuperadminPage() {
             <span className="eyebrow ml-1">Super-admin</span>
           </Link>
           <div className="flex items-center gap-3">
+            <span
+              title={remoteDb ? "Leyendo y escribiendo en Redis (Upstash)" : "Sin credenciales de Redis — usando el archivo local .data/store.json"}
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+              style={{
+                background: remoteDb ? "var(--status-gusto-bg)" : "var(--status-pendiente-bg)",
+                color: remoteDb ? "var(--status-gusto)" : "var(--status-pendiente)",
+              }}
+            >
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />
+              {remoteDb ? "Redis" : "Almacenamiento local"}
+            </span>
             <Link href="/panel" className="text-sm font-medium" style={{ color: "var(--ink-muted)" }}>
               Ir a mi panel
             </Link>

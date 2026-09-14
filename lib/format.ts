@@ -81,6 +81,17 @@ export function daysUntil(isoDate: string): number {
   return Math.round((target - today) / (1000 * 60 * 60 * 24));
 }
 
+/** "hoy" / "ayer" / "hace N días" a partir de una fecha o datetime ISO
+ * — usa solo la parte de fecha (ver daysUntil) para no romper con
+ * milisegundos u hora. Para mostrar cuánto hace de algo en vez de la
+ * fecha cruda (última actividad de un caso, próxima acción vencida). */
+export function daysAgoLabel(iso: string): string {
+  const daysAgo = -daysUntil(iso.slice(0, 10));
+  if (daysAgo <= 0) return "hoy";
+  if (daysAgo === 1) return "ayer";
+  return `hace ${daysAgo} días`;
+}
+
 export function formatPercent(value: number): string {
   return new Intl.NumberFormat("es-AR", {
     style: "percent",

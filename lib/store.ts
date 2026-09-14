@@ -2,6 +2,7 @@ import { dbGet, dbSet, dbUpdate } from "./db";
 import { DEMO_CASE_ID, SEED_CHECKLIST, SEED_CRITERIA, SEED_HOUSES } from "./seed";
 import { buildChecklistTemplate } from "./checklistTemplates";
 import { getCase } from "./cases";
+import { isOverdue } from "./format";
 import { ChecklistItem, Criteria, House, HouseChecklistItem, HouseComment, HouseStatus, LoanInfo, PIPELINE_STATUSES, SearchBrief } from "./types";
 
 const housesKey = (caseId: string) => `case:${caseId}:houses`;
@@ -14,6 +15,8 @@ const criteriaKey = (caseId: string) => `case:${caseId}:criteria`;
  * los datos reales de Lucas y Abril (SEED_CRITERIA). */
 const EMPTY_CRITERIA: Criteria = {
   loan: {
+    hasCredit: true,
+    bankName: "",
     bankMaxUsd: 0,
     ownFundsMinUsd: 0,
     ownFundsMaxUsd: 0,
@@ -267,6 +270,52 @@ export function countByStatus(houses: House[]): Record<HouseStatus, number> {
     counts[status] = houses.filter((h) => h.status === status).length;
   }
   return counts;
+}
+
+export interface CaseSummary {
+  pendientes: number;
+  destacadas: number;
+  totalHouses: number;
+  /** ISO — la más reciente entre las casas del caso, o null sin casas. */
+  lastActivity: string | null;
+  /** La próxima acción vencida más antigua (la que lleva más tiempo
+   * esperando), o null si no hay ninguna vencida. */
+  overdueAccion: { text: string; fecha: string } | null;
+  /** ISO datetime de la visita coordinada futura más próxima, o null. */
+  nextVisita: string | null;
+}
+
+/** Resumen de un caso para el panel del corredor (lista de casos y
+ * dashboard, ver app/panel/page.tsx) — pensado para leerse una vez por
+ * carga de página, no para reaccionar en vivo a cambios de otro caso. */
+export async function getCaseSummary(caseId: string): Promise<CaseSummary> {
+  const houses = (await getHouses(caseId)).filter((h) => h.status !== "borrada");
+  const pendientes = houses.filter((h) => h.status === "pendiente").length;
+  const destacadas = houses.filter((h) => h.highlighted).length;
+  const lastActivity = houses.reduce<string | null>(
+    (max, h) => (max === null || h.updatedAt > max ? h.updatedAt : max),
+    null
+  );
+
+  const overdue = houses
+    .filter((h): h is House & { proximaAccion: string; proximaAccionFecha: string } =>
+      Boolean(h.proximaAccion && h.proximaAccionFecha && isOverdue(h.proximaAccionFecha))
+    )
+    .sort((a, b) => (a.proximaAccionFecha < b.proximaAccionFecha ? -1 : 1))[0];
+
+  const nowIso = new Date().toISOString();
+  const upcoming = houses
+    .filter((h): h is House & { visitaFecha: string } => Boolean(h.visitaFecha && h.visitaFecha > nowIso))
+    .sort((a, b) => (a.visitaFecha < b.visitaFecha ? -1 : 1))[0];
+
+  return {
+    pendientes,
+    destacadas,
+    totalHouses: houses.length,
+    lastActivity,
+    overdueAccion: overdue ? { text: overdue.proximaAccion, fecha: overdue.proximaAccionFecha } : null,
+    nextVisita: upcoming ? upcoming.visitaFecha : null,
+  };
 }
 
 export async function getChecklist(caseId: string): Promise<ChecklistItem[]> {
