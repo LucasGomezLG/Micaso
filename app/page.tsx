@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Check, Home, Link2, Lock, Palette, X } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import ContactModal from "@/components/ContactModal";
 import StickyMobileCta from "@/components/StickyMobileCta";
 import { MicasoMark } from "@/components/MicasoMark";
@@ -24,19 +26,19 @@ const BEFORE_AFTER = {
   },
 };
 
-const FEATURES = [
+const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
   {
-    icon: "🔗",
+    icon: Link2,
     title: "Un link privado por familia",
     body: "Cada cliente entra con su propio usuario y contraseña, a su propio caso — nunca ve a los demás clientes ni vos tenés que armarle una carpeta compartida. Se ve prolijo desde el primer mensaje que mandás.",
   },
   {
-    icon: "🏡",
+    icon: Home,
     title: "Todo en un solo lugar",
     body: "Presupuesto y crédito, propiedades vistas, visitas coordinadas y checklist de la compra — lo que hoy se pierde entre WhatsApp, Excel y notas sueltas. Nunca más buscar un dato que ya te habían pasado.",
   },
   {
-    icon: "🎨",
+    icon: Palette,
     title: "Tu marca, no la nuestra",
     body: "Tu nombre y tu foto en cada caso que ve tu cliente. Micaso es la herramienta; la relación con la familia sigue siendo tuya, no de una plataforma.",
   },
@@ -184,7 +186,7 @@ export default function LandingPage() {
                   className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium"
                   style={{ borderColor: "var(--accent-soft-border)", background: "var(--accent-soft)", color: "var(--accent)" }}
                 >
-                  🏠 Para corredores inmobiliarios
+                  <Home size={13} /> Para corredores inmobiliarios
                 </span>
                 <h1 className="mt-5 text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl lg:text-[4.25rem]">
                   Cada familia,
@@ -219,24 +221,29 @@ export default function LandingPage() {
                     Ver cómo funciona
                   </a>
                 </div>
-                <p className="mt-4 text-xs" style={{ color: "var(--ink-muted)" }}>
-                  ✓ 14 días gratis · ✓ Sin tarjeta
+                <p className="mt-4 inline-flex items-center gap-3 text-xs" style={{ color: "var(--ink-muted)" }}>
+                  <span className="inline-flex items-center gap-1">
+                    <Check size={13} /> 14 días gratis
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Check size={13} /> Sin tarjeta
+                  </span>
                 </p>
               </div>
 
               {/* Mock preview del panel */}
               <div className="relative animate-fade-up" style={{ animationDelay: "0.12s" }}>
                 <div
-                  className="z-20 hidden rotate-[-3deg] items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium sm:absolute sm:-left-8 sm:-top-8 sm:flex"
+                  className="z-20 hidden rotate-[-3deg] items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium sm:absolute sm:-left-8 sm:-top-8 sm:flex"
                   style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
                 >
-                  🔒 Un link, una familia
+                  <Lock size={13} /> Un link, una familia
                 </div>
                 <div
-                  className="z-20 hidden rotate-2 items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium sm:absolute sm:-bottom-8 sm:-right-6 sm:flex"
+                  className="z-20 hidden rotate-2 items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium sm:absolute sm:-bottom-8 sm:-right-6 sm:flex"
                   style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
                 >
-                  ✓ Sin instalar nada
+                  <Check size={13} /> Sin instalar nada
                 </div>
 
                 <div
@@ -310,7 +317,7 @@ export default function LandingPage() {
                 <ul className="mt-4 flex flex-col gap-3 text-sm">
                   {BEFORE_AFTER.before.items.map((item) => (
                     <li key={item} className="flex items-start gap-2.5" style={{ color: "var(--ink-muted)" }}>
-                      <span className="mt-0.5 shrink-0" style={{ color: "var(--status-descartada)" }}>✕</span>
+                      <X size={16} className="mt-0.5 shrink-0" style={{ color: "var(--status-descartada)" }} />
                       {item}
                     </li>
                   ))}
@@ -330,7 +337,7 @@ export default function LandingPage() {
                 <ul className="mt-4 flex flex-col gap-3 text-sm">
                   {BEFORE_AFTER.after.items.map((item) => (
                     <li key={item} className="flex items-start gap-2.5">
-                      <span className="mt-0.5 shrink-0" style={{ color: "var(--status-gusto)" }}>✓</span>
+                      <Check size={16} className="mt-0.5 shrink-0" style={{ color: "var(--status-gusto)" }} />
                       {item}
                     </li>
                   ))}
@@ -351,10 +358,10 @@ export default function LandingPage() {
                   style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
                 >
                   <span
-                    className="flex h-11 w-11 items-center justify-center rounded-xl text-xl shadow-sm"
-                    style={{ background: "linear-gradient(135deg, var(--accent-soft), var(--gold-soft))" }}
+                    className="flex h-11 w-11 items-center justify-center rounded-xl shadow-sm"
+                    style={{ background: "linear-gradient(135deg, var(--accent-soft), var(--gold-soft))", color: "var(--accent)" }}
                   >
-                    {f.icon}
+                    <f.icon size={20} />
                   </span>
                   <h3 className="mt-4 text-lg">{f.title}</h3>
                   <p className="mt-2 text-sm" style={{ color: "var(--ink-muted)" }}>
@@ -448,7 +455,7 @@ export default function LandingPage() {
                     className="mt-5 flex items-center gap-2 border-t pt-5 text-sm"
                     style={{ borderColor: "var(--border)", color: "var(--ink)" }}
                   >
-                    <span style={{ color: "var(--status-gusto)" }}>✓</span>
+                    <Check size={15} style={{ color: "var(--status-gusto)" }} />
                     {p.limit}
                   </p>
                   {p.custom ? (

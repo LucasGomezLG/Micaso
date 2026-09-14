@@ -2,6 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  Calendar,
+  Car,
+  ChevronLeft,
+  ChevronRight,
+  Landmark,
+  ListChecks,
+  MapPin,
+  MessageCircle,
+  Pencil,
+  Phone,
+  Pin,
+  RefreshCw,
+  RotateCcw,
+  Star,
+  Wallet,
+  X,
+} from "lucide-react";
 import { AptoCredito, House, HouseStatus, LoanInfo, PIPELINE_STATUSES, STATUS_LABEL } from "@/lib/types";
 import { formatDate, formatDateTime, formatUsd, isOverdue, proxiedImage } from "@/lib/format";
 import { cashNeededRange, pricePerM2 } from "@/lib/mortgage";
@@ -18,9 +36,9 @@ const APTO_CREDITO_NEXT: Record<AptoCredito, AptoCredito> = {
 };
 
 const APTO_CREDITO_LABEL: Record<AptoCredito, string> = {
-  no_se: "🏦 Apto crédito: no sé",
-  si: "🏦 Apto crédito: sí",
-  no: "🏦 Apto crédito: no",
+  no_se: "Apto crédito: no sé",
+  si: "Apto crédito: sí",
+  no: "Apto crédito: no",
 };
 
 const APTO_CREDITO_COLOR: Record<AptoCredito, string> = {
@@ -181,10 +199,10 @@ export default function HouseCard({
                     setImgFailed(false);
                     setPhotoIndex((i) => (i - 1 + house.images.length) % house.images.length);
                   }}
-                  className="absolute left-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-sm"
+                  className="absolute left-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full"
                   style={{ background: "rgba(0,0,0,0.45)", color: "#fff" }}
                 >
-                  ‹
+                  <ChevronLeft size={16} />
                 </button>
                 <button
                   title="Foto siguiente"
@@ -193,10 +211,10 @@ export default function HouseCard({
                     setImgFailed(false);
                     setPhotoIndex((i) => (i + 1) % house.images.length);
                   }}
-                  className="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-sm"
+                  className="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full"
                   style={{ background: "rgba(0,0,0,0.45)", color: "#fff" }}
                 >
-                  ›
+                  <ChevronRight size={16} />
                 </button>
                 <div className="absolute bottom-1.5 left-1/2 flex -translate-x-1/2 gap-1">
                   {house.images.map((_, i) => (
@@ -228,10 +246,10 @@ export default function HouseCard({
         )}
         {house.highlighted && (
           <span
-            className="absolute right-2 top-2 rounded-full px-2 py-1 text-xs font-semibold"
+            className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold"
             style={{ background: "var(--gold-soft)", color: "var(--gold)" }}
           >
-            ★ destacada
+            <Star size={12} fill="currentColor" /> destacada
           </span>
         )}
       </a>
@@ -252,32 +270,32 @@ export default function HouseCard({
         <button
           onClick={() => onChange(house.id, { aptoCredito: APTO_CREDITO_NEXT[house.aptoCredito] })}
           title="Tocar para cambiar"
-          className="w-fit rounded-lg px-2 py-1 text-xs font-semibold"
+          className="inline-flex w-fit items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold"
           style={{ background: APTO_CREDITO_BG[house.aptoCredito], color: APTO_CREDITO_COLOR[house.aptoCredito] }}
         >
-          {APTO_CREDITO_LABEL[house.aptoCredito]}
+          <Landmark size={13} /> {APTO_CREDITO_LABEL[house.aptoCredito]}
         </button>
 
         <h3 className="line-clamp-2 text-sm font-semibold">{house.title}</h3>
 
         {house.visitaFecha && (
           <div
-            className="w-fit rounded-lg px-2 py-1 text-xs font-medium"
+            className="inline-flex w-fit items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium"
             style={{ background: "var(--status-coordinada-bg)", color: "var(--status-coordinada)" }}
           >
-            🗓 Visita: {formatDateTime(house.visitaFecha)}
+            <Calendar size={13} /> Visita: {formatDateTime(house.visitaFecha)}
           </div>
         )}
 
         {house.proximaAccion && (
           <div
-            className="w-fit rounded-lg px-2 py-1 text-xs font-medium"
+            className="inline-flex w-fit items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium"
             style={{
               background: accionVencida ? "var(--status-descartada-bg)" : "var(--status-pendiente-bg)",
               color: accionVencida ? "var(--status-descartada)" : "var(--status-pendiente)",
             }}
           >
-            📌 {house.proximaAccion}
+            <Pin size={13} /> {house.proximaAccion}
             {house.proximaAccionFecha && (
               <> · {accionVencida ? "venció" : "vence"} {formatDate(house.proximaAccionFecha)}</>
             )}
@@ -285,15 +303,24 @@ export default function HouseCard({
         )}
 
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs" style={{ color: "var(--ink-muted)" }}>
-          {house.zone && <span>📍 {house.zone}</span>}
+          {house.zone && (
+            <span className="inline-flex items-center gap-1">
+              <MapPin size={13} /> {house.zone}
+            </span>
+          )}
           {house.ambientes && <span>{house.ambientes} amb.</span>}
           {house.superficieM2 && <span>{house.superficieM2} m²</span>}
-          {house.cochera && <span>🚗 cochera</span>}
+          {house.cochera && (
+            <span className="inline-flex items-center gap-1">
+              <Car size={13} /> cochera
+            </span>
+          )}
         </div>
 
         {(house.contactoNombre || house.contactoTelefono) && (
-          <div className="text-xs" style={{ color: "var(--ink-muted)" }}>
-            ☎️ {house.contactoNombre}
+          <div className="inline-flex items-center gap-1.5 text-xs" style={{ color: "var(--ink-muted)" }}>
+            <Phone size={13} />
+            {house.contactoNombre}
             {house.contactoNombre && house.contactoTelefono && " · "}
             {house.contactoTelefono}
           </div>
@@ -301,10 +328,10 @@ export default function HouseCard({
 
         {cash && cashFit && (
           <div
-            className="mono w-fit rounded-lg px-2 py-1 text-xs font-medium"
+            className="mono inline-flex w-fit items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium"
             style={{ background: `var(--status-${cashFit}-bg)`, color: `var(--status-${cashFit})` }}
           >
-            💰 {formatUsd(cash.low)}–{formatUsd(cash.high)} de bolsillo
+            <Wallet size={13} /> {formatUsd(cash.low)}–{formatUsd(cash.high)} de bolsillo
           </div>
         )}
 
@@ -315,10 +342,10 @@ export default function HouseCard({
         <div className="flex flex-col gap-2">
           <button
             onClick={() => setCommentsOpen((v) => !v)}
-            className="text-left text-xs font-medium"
+            className="inline-flex items-center gap-1.5 text-left text-xs font-medium"
             style={{ color: "var(--ink-faint)" }}
           >
-            💬{" "}
+            <MessageCircle size={13} />
             {house.comments.length > 0
               ? `${house.comments.length} comentario${house.comments.length > 1 ? "s" : ""}`
               : "Agregar comentario"}
@@ -386,10 +413,10 @@ export default function HouseCard({
         <div className="flex flex-col gap-2">
           <button
             onClick={() => setChecklistOpen((v) => !v)}
-            className="text-left text-xs font-medium"
+            className="inline-flex items-center gap-1.5 text-left text-xs font-medium"
             style={{ color: "var(--ink-faint)" }}
           >
-            ✅{" "}
+            <ListChecks size={13} />
             {house.checklist.length > 0
               ? `${house.checklist.filter((i) => i.done).length}/${house.checklist.length} checklist`
               : "Agregar checklist"}
@@ -422,7 +449,7 @@ export default function HouseCard({
                         className="shrink-0"
                         style={{ color: "var(--ink-faint)" }}
                       >
-                        ✕
+                        <X size={13} />
                       </button>
                     </div>
                   ))}
@@ -460,10 +487,10 @@ export default function HouseCard({
           <div className="flex items-center gap-2 border-t pt-3" style={{ borderColor: "var(--border)" }}>
             <button
               onClick={() => onChange(house.id, { status: "pendiente" })}
-              className="flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium"
+              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium"
               style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
             >
-              ↺ Restaurar
+              <RotateCcw size={13} /> Restaurar
             </button>
             <button
               title="Eliminar definitivamente (no se puede deshacer)"
@@ -496,34 +523,34 @@ export default function HouseCard({
               title="Actualizar imagen/precio desde el aviso"
               onClick={refreshFromSource}
               disabled={refreshing}
-              className="rounded-lg border px-2 py-1.5 text-xs"
+              className="flex items-center justify-center rounded-lg border px-2 py-1.5"
               style={{ borderColor: "var(--border)" }}
             >
-              {refreshing ? "…" : "↻"}
+              <RefreshCw size={14} className={refreshing ? "animate-spin" : undefined} />
             </button>
             <button
               title="Editar título, precio, zona, ambientes, cochera o imagen"
               onClick={() => setEditOpen(true)}
-              className="rounded-lg border px-2 py-1.5 text-xs"
+              className="flex items-center justify-center rounded-lg border px-2 py-1.5"
               style={{ borderColor: "var(--border)" }}
             >
-              ✏️
+              <Pencil size={14} />
             </button>
             <button
               title={house.highlighted ? "Quitar destacada" : "Destacar"}
               onClick={() => onChange(house.id, { highlighted: !house.highlighted })}
-              className="rounded-lg border px-2 py-1.5 text-xs"
-              style={{ borderColor: "var(--border)" }}
+              className="flex items-center justify-center rounded-lg border px-2 py-1.5"
+              style={{ borderColor: "var(--border)", color: house.highlighted ? "var(--gold)" : undefined }}
             >
-              {house.highlighted ? "★" : "☆"}
+              <Star size={14} fill={house.highlighted ? "currentColor" : "none"} />
             </button>
             <button
               title="Archivar (se puede restaurar desde la pestaña Borradas)"
               onClick={() => onChange(house.id, { status: "borrada" })}
-              className="rounded-lg border px-2 py-1.5 text-xs"
+              className="flex items-center justify-center rounded-lg border px-2 py-1.5"
               style={{ borderColor: "var(--border)", color: "var(--status-descartada)" }}
             >
-              ✕
+              <X size={14} />
             </button>
           </div>
         )}

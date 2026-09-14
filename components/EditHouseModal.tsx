@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { X } from "lucide-react";
 import { House } from "@/lib/types";
 import { proxiedImage } from "@/lib/format";
 
@@ -55,11 +56,11 @@ export default function EditHouseModal({
 
   return (
     <div
-      className="fixed inset-0 z-20 flex items-end justify-center bg-black/30 p-4 sm:items-center"
+      className="animate-overlay fixed inset-0 z-20 flex items-end justify-center bg-black/30 p-4 sm:items-center"
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border p-5"
+        className="animate-modal-pop max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border p-5"
         style={{ background: "var(--surface)", borderColor: "var(--border)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -146,10 +147,10 @@ export default function EditHouseModal({
                     <button
                       type="button"
                       onClick={() => setImages(images.filter((_, j) => j !== i))}
-                      className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full text-xs"
+                      className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full"
                       style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}
                     >
-                      ✕
+                      <X size={12} />
                     </button>
                   </div>
                 ))}

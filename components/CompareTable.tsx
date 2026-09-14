@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { Calendar, Check, Pin, X } from "lucide-react";
 import { House, LoanInfo, STATUS_LABEL } from "@/lib/types";
 import { formatDate, formatDateTime, formatUsd, proxiedImage } from "@/lib/format";
 import { cashNeededRange, pricePerM2 } from "@/lib/mortgage";
@@ -55,7 +56,18 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
     { label: "Ambientes", render: (h) => h.ambientes ?? "—" },
     {
       label: "Cochera",
-      render: (h) => (h.cochera === true ? "✓ Sí" : h.cochera === false ? "✕ No" : "Sin dato"),
+      render: (h) =>
+        h.cochera === true ? (
+          <span className="inline-flex items-center gap-1" style={{ color: "var(--status-gusto)" }}>
+            <Check size={14} /> Sí
+          </span>
+        ) : h.cochera === false ? (
+          <span className="inline-flex items-center gap-1" style={{ color: "var(--status-descartada)" }}>
+            <X size={14} /> No
+          </span>
+        ) : (
+          "Sin dato"
+        ),
     },
     {
       label: "Plata necesaria",
@@ -79,10 +91,14 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
       label: "Visita / próxima acción",
       render: (h) => (
         <div className="flex flex-col gap-1 text-xs" style={{ color: "var(--ink-muted)" }}>
-          {h.visitaFecha && <span>🗓 {formatDateTime(h.visitaFecha)}</span>}
+          {h.visitaFecha && (
+            <span className="inline-flex items-center gap-1">
+              <Calendar size={12} /> {formatDateTime(h.visitaFecha)}
+            </span>
+          )}
           {h.proximaAccion && (
-            <span>
-              📌 {h.proximaAccion}
+            <span className="inline-flex items-center gap-1">
+              <Pin size={12} /> {h.proximaAccion}
               {h.proximaAccionFecha && ` · ${formatDate(h.proximaAccionFecha)}`}
             </span>
           )}

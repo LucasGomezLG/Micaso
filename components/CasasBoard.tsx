@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Map, Plus, Star, Trash2 } from "lucide-react";
 import { House, HouseStatus, LoanInfo, PIPELINE_STATUSES, STATUS_LABEL } from "@/lib/types";
 import HouseCard from "@/components/HouseCard";
 import AddHouseModal from "@/components/AddHouseModal";
@@ -89,26 +90,26 @@ export default function CasasBoard({
         <div className="flex items-center gap-2">
           <Link
             href="/caso/casas/mapa"
-            className="rounded-full border px-4 py-2 text-sm font-medium"
+            className="inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium"
             style={{ borderColor: "var(--border)", color: "var(--ink-muted)" }}
           >
-            🗺️ Mapa
+            <Map size={15} /> Mapa
           </Link>
           {destacadasCount > 0 && (
             <Link
               href="/caso/casas/comparar"
-              className="rounded-full border px-4 py-2 text-sm font-medium"
+              className="inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium"
               style={{ borderColor: "var(--border)", color: "var(--ink-muted)" }}
             >
-              ⭐ Comparar destacadas ({destacadasCount})
+              <Star size={15} /> Comparar destacadas ({destacadasCount})
             </Link>
           )}
           <button
             onClick={() => setShowAdd(true)}
-            className="rounded-full px-4 py-2 text-sm font-semibold"
+            className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
-            + Agregar casa
+            <Plus size={15} /> Agregar casa
           </button>
         </div>
       </div>
@@ -121,7 +122,7 @@ export default function CasasBoard({
             )}
             <button
               onClick={() => setTab(t)}
-              className="shrink-0 rounded-full px-3 py-1.5 text-sm font-medium"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium"
               style={{
                 background: tab === t ? "var(--accent)" : "var(--surface)",
                 color:
@@ -133,7 +134,8 @@ export default function CasasBoard({
                 border: `1px solid ${tab === t ? "var(--accent)" : "var(--border)"}`,
               }}
             >
-              {t === "borrada" ? "🗑" : ""} {TAB_LABEL[t]} · {counts[t]}
+              {t === "borrada" && <Trash2 size={13} />}
+              {TAB_LABEL[t]} · {counts[t]}
             </button>
           </span>
         ))}

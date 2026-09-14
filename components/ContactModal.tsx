@@ -42,12 +42,12 @@ export default function ContactModal({
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="animate-overlay fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(18, 24, 31, 0.55)" }}
           onClick={() => setOpen(false)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl border p-6"
+            className="animate-modal-pop w-full max-w-sm rounded-2xl border p-6"
             style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
             onClick={(e) => e.stopPropagation()}
           >

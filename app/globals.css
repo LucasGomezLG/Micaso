@@ -245,3 +245,31 @@ a {
   background-image: radial-gradient(color-mix(in srgb, var(--border-strong) 70%, transparent) 1.5px, transparent 1.5px);
   background-size: 24px 24px;
 }
+
+/* Modales (AddHouseModal, EditHouseModal, ContactModal, CreateCaseModal):
+ * fade del fondo + entrada del panel, para que no aparezcan de golpe. */
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-overlay {
+  animation: overlay-fade-in 0.18s ease-out both;
+}
+
+@keyframes modal-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-modal-pop {
+  animation: modal-pop-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}

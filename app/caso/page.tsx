@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Calendar, Check, Pin } from "lucide-react";
 import { getCriteria, getHouses, countByStatus } from "@/lib/store";
 import { getCaseId } from "@/lib/session";
 import { getCase } from "@/lib/cases";
@@ -93,21 +94,21 @@ export default async function HomePage() {
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
                     {house.visitaFecha && (
                       <span
-                        className="rounded-lg px-2 py-1 text-xs font-medium"
+                        className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium"
                         style={{ background: "var(--status-coordinada-bg)", color: "var(--status-coordinada)" }}
                       >
-                        🗓 {formatDateTime(house.visitaFecha)}
+                        <Calendar size={13} /> {formatDateTime(house.visitaFecha)}
                       </span>
                     )}
                     {house.proximaAccion && (
                       <span
-                        className="rounded-lg px-2 py-1 text-xs font-medium"
+                        className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium"
                         style={{
                           background: vencida ? "var(--status-descartada-bg)" : "var(--status-pendiente-bg)",
                           color: vencida ? "var(--status-descartada)" : "var(--status-pendiente)",
                         }}
                       >
-                        📌 {house.proximaAccion}
+                        <Pin size={13} /> {house.proximaAccion}
                         {house.proximaAccionFecha && (
                           <> · {vencida ? "venció" : "vence"} {formatDate(house.proximaAccionFecha)}</>
                         )}
@@ -154,7 +155,7 @@ export default async function HomePage() {
                 <ul className="flex flex-col gap-1">
                   {brief.mustHave.map((item) => (
                     <li key={item} className="flex items-start gap-2">
-                      <span style={{ color: "var(--status-gusto)" }}>✓</span>
+                      <Check size={15} className="mt-0.5 shrink-0" style={{ color: "var(--status-gusto)" }} />
                       <span style={{ color: "var(--ink-muted)" }}>{item}</span>
                     </li>
                   ))}

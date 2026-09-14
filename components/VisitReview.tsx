@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ClipboardCheck, ClipboardList } from "lucide-react";
 import { House } from "@/lib/types";
 
 export default function VisitReview({
@@ -31,10 +32,18 @@ export default function VisitReview({
     <div className="flex flex-col gap-2">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="text-left text-xs font-medium"
+        className="inline-flex items-center gap-1.5 text-left text-xs font-medium"
         style={{ color: filled ? "var(--status-gusto)" : "var(--ink-faint)" }}
       >
-        {filled ? "✅ Revisión de la visita" : "📋 Completar revisión de la visita"}
+        {filled ? (
+          <>
+            <ClipboardCheck size={13} /> Revisión de la visita
+          </>
+        ) : (
+          <>
+            <ClipboardList size={13} /> Completar revisión de la visita
+          </>
+        )}
       </button>
 
       {open && (

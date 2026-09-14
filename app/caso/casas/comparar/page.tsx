@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Star } from "lucide-react";
 import { getCriteria, getHouses } from "@/lib/store";
 import { getCaseId } from "@/lib/session";
 import CompareTable from "@/components/CompareTable";
@@ -15,8 +16,8 @@ export default async function CompararPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl">Comparar destacadas</h1>
-          <p className="text-sm" style={{ color: "var(--ink-muted)" }}>
-            Las casas marcadas con ⭐, lado a lado.
+          <p className="inline-flex items-center gap-1 text-sm" style={{ color: "var(--ink-muted)" }}>
+            Las casas marcadas con <Star size={14} fill="var(--gold)" color="var(--gold)" />, lado a lado.
           </p>
         </div>
         <Link href="/caso/casas" className="text-sm font-medium" style={{ color: "var(--accent)" }}>
@@ -25,8 +26,8 @@ export default async function CompararPage() {
       </div>
 
       {destacadas.length === 0 ? (
-        <p className="py-16 text-center text-sm" style={{ color: "var(--ink-faint)" }}>
-          Todavía no hay ninguna casa destacada. Marcá con ⭐ las que quieras
+        <p className="inline-flex flex-wrap items-center justify-center gap-1 py-16 text-center text-sm" style={{ color: "var(--ink-faint)" }}>
+          Todavía no hay ninguna casa destacada. Marcá con <Star size={14} fill="var(--gold)" color="var(--gold)" /> las que quieras
           comparar desde la lista de Casas.
         </p>
       ) : (
