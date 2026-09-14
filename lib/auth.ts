@@ -1,11 +1,11 @@
-// Login del panel de corredor (/panel) — placeholder simple hasta que se
-// conecte Auth.js (Google OAuth), ver ARQUITECTURA.md sección 8.
-// Hardcodeado a propósito por ahora: un solo corredor de prueba.
-export const BROKER_USERNAME = "corredor";
-export const BROKER_PASSWORD = "micaso";
+// Login del panel de corredor: Auth.js (Google OAuth), ver auth.ts.
+// FOUNDER_EMAIL mapea la cuenta de Google de Lucas al mismo
+// dev-broker de siempre, para no migrar el caso demo de Lucas y Abril
+// a mano — ver lib/brokers.ts.
+export const FOUNDER_EMAIL = "luccaass96@gmail.com";
 export const DEV_BROKER_ID = "dev-broker";
 
-// El login de un caso (familia) ya NO es una credencial global: cada
-// caso tiene su propio usuario/contraseña generados al crearlo, ver
-// lib/cases.ts. Se valida contra lo guardado en la base, no contra una
-// constante acá.
+// El login de un caso (familia) sigue sin ser una credencial global:
+// cada caso tiene su propio usuario/contraseña generados al crearlo,
+// ver lib/cases.ts. Se valida contra lo guardado en la base, no contra
+// una constante acá.

@@ -116,10 +116,12 @@ export async function regeneratePassword(caseId: string): Promise<Case | null> {
   return updateCase(caseId, { password: randomCode(8) });
 }
 
-/** Cierre manual: archiva de inmediato, sin pasar por `solo_lectura` —
- * el corredor ya confirmó que el caso terminó, no hay nada que esperar
- * (a diferencia del impago, que sí espera 90 días de gracia). Ver
- * ARQUITECTURA.md sección 9. */
+/** Cierre manual: pasa a `solo_lectura`, no directo a `archivado` — la
+ * familia conserva su historial (puede seguir viéndolo, no seguir
+ * cargando), y deja de contar contra el tope de casos activos del plan.
+ * Mismo criterio que el impago (que sí espera 90 días de gracia antes
+ * de archivar). Ver ARQUITECTURA.md sección 6, "Ciclo de vida de un
+ * caso". El bloqueo de escritura en solo_lectura vive en proxy.ts. */
 export async function closeCase(caseId: string): Promise<Case | null> {
-  return updateCase(caseId, { estado: "archivado" });
+  return updateCase(caseId, { estado: "solo_lectura" });
 }

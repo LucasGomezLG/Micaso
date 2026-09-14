@@ -48,3 +48,7 @@ next-env.d.ts
 
 # local dev data store (fallback when no Redis is configured)
 /.data/
+
+# credenciales bajadas a mano (Google OAuth client secret, etc.) —
+# nunca al repo, van como variables de entorno en Vercel
+/credentials/

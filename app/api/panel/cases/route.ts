@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { DEV_BROKER_ID } from "@/lib/auth";
+import { getCurrentBroker } from "@/lib/brokers";
 import { createCase } from "@/lib/cases";
 import { TipoCaso } from "@/lib/types";
 
 const VALID_TIPOS: TipoCaso[] = ["compra", "alquiler", "otro"];
 
 export async function POST(request: NextRequest) {
+  const broker = await getCurrentBroker();
+  if (!broker) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   let body: { titulo?: string; tipoCaso?: string };
   try {
     body = await request.json();
@@ -19,6 +24,6 @@ export async function POST(request: NextRequest) {
   }
   const tipoCaso = VALID_TIPOS.includes(body.tipoCaso as TipoCaso) ? (body.tipoCaso as TipoCaso) : "compra";
 
-  const kase = await createCase(DEV_BROKER_ID, titulo, tipoCaso);
+  const kase = await createCase(broker.id, titulo, tipoCaso);
   return NextResponse.json({ case: kase }, { status: 201 });
 }

@@ -2,7 +2,8 @@ import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
 
 export const CASE_COOKIE = "case_id";
-export const BROKER_COOKIE = "broker_auth";
+// La sesión del corredor la maneja Auth.js (ver auth.ts) — no hay
+// cookie propia acá.
 
 // proxy.ts ya bloqueó cualquier request sin un caso válido antes de que
 // llegue a un Server Component o Route Handler — si esto tira, es un bug

@@ -1,33 +1,16 @@
 import Link from "next/link";
-import { DEV_BROKER_ID } from "@/lib/auth";
+import { getCurrentBroker } from "@/lib/brokers";
 import { listCasesForBroker } from "@/lib/cases";
-import { CaseEstado, TipoCaso } from "@/lib/types";
 import CreateCaseModal from "@/components/CreateCaseModal";
 import PanelLogoutButton from "@/components/PanelLogoutButton";
+import CaseRow from "@/components/CaseRow";
 
 export const dynamic = "force-dynamic";
 
-const TIPO_LABEL: Record<TipoCaso, string> = {
-  compra: "Compra",
-  alquiler: "Alquiler",
-  otro: "Otro",
-};
-
-const ESTADO_LABEL: Record<CaseEstado, string> = {
-  activo: "Activo",
-  solo_lectura: "Solo lectura",
-  archivado: "Archivado",
-};
-
-const ESTADO_COLOR: Record<CaseEstado, { bg: string; fg: string }> = {
-  activo: { bg: "var(--status-gusto-bg)", fg: "var(--status-gusto)" },
-  solo_lectura: { bg: "var(--status-pendiente-bg)", fg: "var(--status-pendiente)" },
-  archivado: { bg: "var(--status-borrada-bg)", fg: "var(--status-borrada)" },
-};
-
 export default async function PanelPage() {
-  const cases = await listCasesForBroker(DEV_BROKER_ID);
-  const activos = cases.filter((c) => c.estado !== "archivado").length;
+  const broker = await getCurrentBroker();
+  const cases = broker ? await listCasesForBroker(broker.id) : [];
+  const activos = cases.filter((c) => c.estado === "activo").length;
 
   return (
     <div className="min-h-full" style={{ background: "var(--paper)", color: "var(--ink)" }}>
@@ -44,7 +27,18 @@ export default async function PanelPage() {
               Micaso
             </span>
           </Link>
-          <PanelLogoutButton />
+          <div className="flex items-center gap-3">
+            {broker && (
+              <span className="flex items-center gap-2 text-sm" style={{ color: "var(--ink-muted)" }}>
+                {broker.imagenUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={broker.imagenUrl} alt="" className="h-6 w-6 rounded-full" referrerPolicy="no-referrer" />
+                )}
+                {broker.nombreMarca}
+              </span>
+            )}
+            <PanelLogoutButton />
+          </div>
         </div>
       </header>
 
@@ -71,51 +65,9 @@ export default async function PanelPage() {
           </div>
         ) : (
           <div className="mt-8 flex flex-col gap-3">
-            {cases.map((kase) => {
-              const estadoColor = ESTADO_COLOR[kase.estado];
-              return (
-                <div
-                  key={kase.id}
-                  className="flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between"
-                  style={{ borderColor: "var(--border)", background: "var(--surface)", boxShadow: "var(--shadow-card)" }}
-                >
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-base font-medium" style={{ fontFamily: "var(--font-display)" }}>
-                        {kase.titulo}
-                      </h2>
-                      <span
-                        className="rounded-full px-2 py-0.5 text-xs font-medium"
-                        style={{ background: "var(--gold-soft)", color: "var(--gold)" }}
-                      >
-                        {TIPO_LABEL[kase.tipoCaso]}
-                      </span>
-                      <span
-                        className="rounded-full px-2 py-0.5 text-xs font-medium"
-                        style={{ background: estadoColor.bg, color: estadoColor.fg }}
-                      >
-                        {ESTADO_LABEL[kase.estado]}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs" style={{ color: "var(--ink-faint)" }}>
-                      Creado el {new Date(kase.createdAt).toLocaleDateString("es-AR")}
-                    </p>
-                  </div>
-
-                  <div
-                    className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl border px-4 py-2.5 text-sm"
-                    style={{ borderColor: "var(--border)", background: "var(--paper)" }}
-                  >
-                    <span style={{ color: "var(--ink-muted)" }}>
-                      Usuario <span className="mono select-all">{kase.username}</span>
-                    </span>
-                    <span style={{ color: "var(--ink-muted)" }}>
-                      Clave <span className="mono select-all">{kase.password}</span>
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+            {cases.map((kase) => (
+              <CaseRow key={kase.id} initialCase={kase} />
+            ))}
           </div>
         )}
       </main>

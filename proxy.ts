@@ -1,18 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
-import { BROKER_PASSWORD } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { getCase } from "@/lib/cases";
-import { BROKER_COOKIE, CASE_COOKIE } from "@/lib/session";
+import { CASE_COOKIE } from "@/lib/session";
 
 // "/" es la landing pública (marketing, dirigida al corredor) — ver
 // ARQUITECTURA.md sección 6. /icon y /opengraph-image son generados por
 // Next.js (favicon y preview al compartir el link) y tienen que cargar
-// sin sesión, en cualquier página, no solo en la landing.
+// sin sesión, en cualquier página, no solo en la landing. /api/auth es
+// Auth.js (Google OAuth) — sus propias rutas internas (signin,
+// callback, signout, session) tienen que ser públicas.
 const PUBLIC_PATHS = [
   "/",
   "/login",
   "/api/login",
   "/panel/login",
-  "/api/panel/login",
+  "/api/auth",
   "/icon",
   "/opengraph-image",
   "/robots.txt",
@@ -24,17 +26,17 @@ function isUnder(pathname: string, prefixes: string[]): boolean {
   return prefixes.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
-export async function proxy(request: NextRequest) {
+export const proxy = auth((request) => {
   const { pathname } = request.nextUrl;
 
   if (isUnder(pathname, PUBLIC_PATHS)) {
     return NextResponse.next();
   }
 
-  // Panel del corredor: login placeholder simple hasta que se conecte
-  // Auth.js (Google OAuth) — ver ARQUITECTURA.md sección 8 y lib/auth.ts.
+  // Panel del corredor: sesión de Google vía Auth.js — ver auth.ts y
+  // ARQUITECTURA.md sección 8.
   if (isUnder(pathname, BROKER_PREFIXES)) {
-    if (request.cookies.get(BROKER_COOKIE)?.value === BROKER_PASSWORD) {
+    if (request.auth?.user?.email) {
       return NextResponse.next();
     }
     if (pathname.startsWith("/api/")) {
@@ -47,11 +49,26 @@ export async function proxy(request: NextRequest) {
 
   // Todo lo demás (el dashboard del caso en /caso/* y las API que usa)
   // requiere cookie con el id de caso, validado contra lo guardado en la
-  // base (no una contraseña compartida) — un caso archivado (cerrado o
-  // de baja hace más de 90 días) pierde el acceso.
+  // base (no una contraseña compartida) — un caso archivado (cerrado hace
+  // más de 90 días en solo-lectura, o de baja) pierde el acceso del todo.
+  return checkCaseAccess(request, pathname);
+});
+
+async function checkCaseAccess(
+  request: Parameters<Parameters<typeof auth>[0]>[0],
+  pathname: string
+) {
   const caseId = request.cookies.get(CASE_COOKIE)?.value;
   const kase = caseId ? await getCase(caseId) : null;
   if (kase && kase.estado !== "archivado") {
+    // Solo lectura (cerrado a mano, o impago en el período de gracia):
+    // la familia sigue viendo su historial, pero no puede seguir
+    // cargando casas, comentarios ni criterios nuevos. Ver
+    // ARQUITECTURA.md sección 6.
+    const isMutating = ["POST", "PUT", "PATCH", "DELETE"].includes(request.method);
+    if (kase.estado === "solo_lectura" && isMutating && pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Este caso está en modo solo lectura" }, { status: 403 });
+    }
     return NextResponse.next();
   }
 

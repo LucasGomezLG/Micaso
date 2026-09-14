@@ -107,6 +107,20 @@ export type TipoCaso = "compra" | "alquiler" | "otro";
  * impago — el link deja de funcionar. Ver ARQUITECTURA.md sección 9. */
 export type CaseEstado = "activo" | "solo_lectura" | "archivado";
 
+/** Un corredor — dueño de uno o más casos. `id` es el email de su
+ * cuenta de Google (única y estable, no hace falta generar un UUID
+ * aparte) salvo el alias histórico `dev-broker` (ver lib/brokers.ts).
+ * `nombreMarca`/`imagenUrl` vienen del perfil de Google la primera vez
+ * que entra — editables después desde el panel (todavía sin UI para
+ * eso). Ver ARQUITECTURA.md sección 8. */
+export interface Broker {
+  id: string;
+  email: string;
+  nombreMarca: string;
+  imagenUrl: string | null;
+  createdAt: string;
+}
+
 /** Un caso: el acceso privado de una familia, dentro del panel de un
  * corredor. Namespacing de datos (houses/checklist/criteria) se hace
  * por `id` — ver lib/store.ts. */
