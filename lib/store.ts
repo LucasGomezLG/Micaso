@@ -1,5 +1,7 @@
 import { dbGet, dbSet } from "./db";
 import { DEMO_CASE_ID, SEED_CHECKLIST, SEED_CRITERIA, SEED_HOUSES } from "./seed";
+import { buildChecklistTemplate } from "./checklistTemplates";
+import { getCase } from "./cases";
 import { ChecklistItem, Criteria, House, HouseChecklistItem, HouseComment, HouseStatus, PIPELINE_STATUSES } from "./types";
 
 const housesKey = (caseId: string) => `case:${caseId}:houses`;
@@ -266,7 +268,13 @@ export function countByStatus(houses: House[]): Record<HouseStatus, number> {
 export async function getChecklist(caseId: string): Promise<ChecklistItem[]> {
   const items = await dbGet<ChecklistItem[]>(checklistKey(caseId));
   if (items === null) {
-    const initial = caseId === DEMO_CASE_ID ? SEED_CHECKLIST : [];
+    let initial: ChecklistItem[];
+    if (caseId === DEMO_CASE_ID) {
+      initial = SEED_CHECKLIST;
+    } else {
+      const kase = await getCase(caseId);
+      initial = buildChecklistTemplate(kase?.tipoCaso ?? "compra");
+    }
     await dbSet(checklistKey(caseId), initial);
     return initial;
   }

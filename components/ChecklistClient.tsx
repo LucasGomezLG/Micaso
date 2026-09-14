@@ -2,9 +2,23 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChecklistItem } from "@/lib/types";
+import { ChecklistItem, TipoCaso } from "@/lib/types";
 
-export default function ChecklistClient({ items, people }: { items: ChecklistItem[]; people: string[] }) {
+const SUBTITLE: Record<TipoCaso, string> = {
+  compra: "Todo lo que falta para llegar de un pre-aprobado a la escritura.",
+  alquiler: "Todo lo que falta para llegar de la búsqueda a las llaves en mano.",
+  otro: "Todo lo que falta para cerrar la operación.",
+};
+
+export default function ChecklistClient({
+  items,
+  people,
+  tipoCaso,
+}: {
+  items: ChecklistItem[];
+  people: string[];
+  tipoCaso: TipoCaso;
+}) {
   const router = useRouter();
   const [pending, setPending] = useState<Set<string>>(new Set());
 
@@ -40,7 +54,7 @@ export default function ChecklistClient({ items, people }: { items: ChecklistIte
       <div>
         <h1 className="text-2xl">Checklist</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
-          Todo lo que falta para llegar de un pre-aprobado a la escritura.
+          {SUBTITLE[tipoCaso]}
         </p>
       </div>
 
