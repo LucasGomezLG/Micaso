@@ -128,6 +128,13 @@ tienen nada que ver con seguro de caución y recibos de sueldo). Lo único
 comentarios, contacto, comparación y mapa no dependen de si el caso es
 compra, alquiler u otra cosa.
 
+> **Implementado (14 sept 2026): compra se divide en con crédito / al
+> contado.** `LoanInfo` suma `hasCredit: boolean` y `bankName: string` —
+> con `hasCredit: false` el caso muestra solo el capital disponible ("Al
+> contado, con USD X–Y disponibles"), sin banco, cuota ni condiciones; el
+> corredor lo tildea desde el mismo editor de crédito. La calculadora de
+> cuota francesa sigue aplicando solo cuando `hasCredit` es `true`.
+
 ## 4. Arquitectura objetivo
 
 Tres niveles, no uno. Hoy existe un solo login compartido para todo el
@@ -395,6 +402,27 @@ Lo mínimo que necesita el panel para ser útil desde el primer día:
 > 5): sin necesidad real de cruzar datos entre casos, Redis con el
 > namespacing actual sigue alcanzando.
 
+> **Implementado (14 sept 2026): dashboard del panel, entrar/compartir
+> caso, foto de perfil.** `/panel` ya no es solo la lista de casos:
+> arriba muestra tres KPI (casos activos contra el tope del plan,
+> propiedades en seguimiento, próxima visita coordinada) y, si hay algo
+> que atender, un bloque "Necesita tu atención" con acciones vencidas y
+> visitas dentro de las próximas 48 horas, cada una con link directo a su
+> caso (`getCaseSummary` en `lib/store.ts` calcula esto por caso, una vez
+> por carga de página). Cada fila de caso suma un resumen corto
+> (pendientes, destacadas, última actividad) y un borde de color que
+> avisa si algo vence. "Entrar como este caso" pasa a **"Entrar al
+> caso"**, con un botón **Compartir** al lado que arma el mensaje de
+> WhatsApp (usuario, contraseña y una explicación corta) para que el
+> corredor se lo mande a su cliente sin escribirlo de cero. La foto de
+> perfil (sección 6, "Marca propia") ya se puede subir: se comprime en el
+> navegador a una miniatura de 256px y se guarda como parte del registro
+> del corredor (`brokers.imagenUrl` pasa a poder ser una data URL, no
+> solo la foto de Google) — evita depender del storage de imágenes
+> externo (sección 5) mientras no esté configurado; si más adelante hace
+> falta subir imágenes pesadas (fotos de propiedades, por ejemplo), ahí sí
+> hace falta Vercel Blob u otro de verdad.
+
 ## 7. Tu panel de super-admin
 
 Una capa más arriba de todo: vos administrando la plataforma completa, no
@@ -435,6 +463,14 @@ demasiados corredores para tocarlos a mano de a uno.
 > solos a `para_arrancar`/`activa` la primera vez que se leen (ver el
 > backfill en `lib/brokers.ts`, mismo patrón que `normalizeHouse`).
 
+> **Implementado (14 sept 2026): backup completo descargable.** Un botón
+> en `/superadmin` (`/api/superadmin/backup`, protegido igual que el
+> resto de la sección) descarga un único JSON con todos los corredores y,
+> por cada caso, sus casas, checklist y criterios (`lib/backup.ts`). Es
+> manual, no automático — pensado como red de contención mientras no
+> exista un backup programado de verdad, después del incidente de
+> pérdida de datos documentado en la sección 9.
+
 ## 8. Qué cambia respecto al código de Casa
 
 Es una extensión del código existente de `D:\Casa`, no una reescritura.
@@ -453,7 +489,7 @@ serviría de base para este proyecto):
 | `lib/types.ts` | dos cambios: `PEOPLE` (hoy una constante fija Lucas/Abril/Carolina) pasa a ser una lista definida al crear cada caso; y `Criteria`/`LoanInfo` (hoy asumen compra con crédito) pasan a variar según un nuevo campo `tipoCaso` (compra/alquiler/otro), cada uno con su propio perfil financiero |
 | `lib/mortgage.ts` | `frenchInstallment()` y `cashNeededRange()` aplican solo a `tipoCaso` "compra" — alquiler necesita su propio cálculo (depósito + comisión + primer mes + seguro de caución o garantía) en vez de cuota francesa |
 | `components/Nav.tsx` | hoy tiene `"Casa"` hardcodeado como marca — pasa a leer nombre e imagen del corredor dueño del caso, más el título de ese caso puntual; `brokers` necesita campos `nombreMarca` / `imagenUrl` |
-| nuevo: `app/api/upload/route.ts` | recibe la imagen de perfil que sube el corredor, la guarda en el storage elegido (ver sección 5) y devuelve la URL para `brokers.imagenUrl` — hoy la app nunca recibe un archivo subido, solo URLs externas |
+| ~~nuevo: `app/api/upload/route.ts`~~ | **implementado distinto (14 sept 2026):** no hay ruta de upload aparte ni storage externo — `PATCH /api/panel/profile` acepta `imagenUrl` como data URL, ya comprimida a miniatura en el navegador (ver addendum de la sección 6) |
 | `app/page.tsx` | hoy es el Inicio (dashboard) del caso único y vive en la raíz `/`; con landing pública, la raíz pasa a ser la landing de marketing y el dashboard de un caso se corre a otra ruta |
 | nuevo: rutas del corredor | alta (login con Google vía Auth.js) y `app/panel/*` (lista de casos, crear caso, configurar marca, y una pantalla mínima de cambiar de plan/cancelar ya que Mercado Pago no trae un portal alojado como el de Stripe) — hoy no existen, todo el código actual asume un solo caso ya autenticado |
 | nuevo: `app/superadmin/*` | panel de super-admin — lista de corredores, métricas, edición manual de suscripciones; protegido por el mismo login de Google + `ADMIN_EMAILS` |
@@ -466,6 +502,14 @@ serviría de base para este proyecto):
 > corredora), en vez de quedar aparte. Vale la pena planear esa migración
 > puntual cuando llegue el momento, para no perder el historial ya
 > construido.
+
+> **Sumado sin estar planeado (14 sept 2026): notificaciones toast.**
+> `sonner` reemplaza los fallos silenciosos de `fetch()` — antes, si un
+> guardado fallaba, la única señal era la consola del navegador, algo que
+> nadie del otro lado del celular ve. `lib/http.ts` (`apiErrorMessage`)
+> lee el `{ error }` de una respuesta fallida; `GlobalErrorToasts.tsx`
+> (montado una vez en `app/layout.tsx`) atrapa además las caídas de red
+> reales (offline, DNS, timeout) que ni siquiera llegan a una respuesta.
 
 ## 9. Riesgos y agujeros que encontré
 
