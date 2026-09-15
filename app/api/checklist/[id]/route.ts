@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateChecklistItem } from "@/lib/store";
+import { deleteChecklistItem, updateChecklistItem } from "@/lib/store";
 import { getCaseIdFromRequest } from "@/lib/session";
 
 export async function PATCH(
@@ -19,4 +19,17 @@ export async function PATCH(
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
   return NextResponse.json({ item });
+}
+
+export async function DELETE(
+  request: NextRequest,
+  ctx: RouteContext<"/api/checklist/[id]">
+) {
+  const caseId = getCaseIdFromRequest(request);
+  const { id } = await ctx.params;
+  const deleted = await deleteChecklistItem(caseId, id);
+  if (!deleted) {
+    return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  }
+  return NextResponse.json({ ok: true });
 }

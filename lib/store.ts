@@ -318,16 +318,21 @@ export async function getCaseSummary(caseId: string): Promise<CaseSummary> {
   };
 }
 
+/** Plantilla por default si el checklist de un caso nunca se inicializó
+ * — pasa por acá tanto getChecklist como el fallback de updateChecklistItem
+ * (dbUpdate no puede resolver criteria/case adentro de su callback, ver
+ * el comentario de dbUpdate en lib/db.ts, así que ambos la resuelven
+ * antes de entrar). */
+async function defaultChecklist(caseId: string): Promise<ChecklistItem[]> {
+  if (caseId === DEMO_CASE_ID) return SEED_CHECKLIST;
+  const [kase, criteria] = await Promise.all([getCase(caseId), getCriteria(caseId)]);
+  return buildChecklistTemplate(kase?.tipoCaso ?? "compra", criteria.loan.hasCredit);
+}
+
 export async function getChecklist(caseId: string): Promise<ChecklistItem[]> {
   const items = await dbGet<ChecklistItem[]>(checklistKey(caseId));
   if (items === null) {
-    let initial: ChecklistItem[];
-    if (caseId === DEMO_CASE_ID) {
-      initial = SEED_CHECKLIST;
-    } else {
-      const kase = await getCase(caseId);
-      initial = buildChecklistTemplate(kase?.tipoCaso ?? "compra");
-    }
+    const initial = await defaultChecklist(caseId);
     await dbSet(checklistKey(caseId), initial);
     return initial;
   }
@@ -339,13 +344,10 @@ export async function updateChecklistItem(
   id: string,
   patch: Partial<ChecklistItem>
 ): Promise<ChecklistItem | null> {
-  // El tipoCaso se resuelve antes del dbUpdate (no adentro) para no
-  // reentrar el lock del store local desde otra clave — ver el
-  // comentario de dbUpdate en lib/db.ts.
-  const kase = caseId === DEMO_CASE_ID ? null : await getCase(caseId);
+  const fallback = await defaultChecklist(caseId);
   let updated: ChecklistItem | null = null;
   await dbUpdate<ChecklistItem[]>(checklistKey(caseId), (current) => {
-    const items = current ?? (caseId === DEMO_CASE_ID ? SEED_CHECKLIST : buildChecklistTemplate(kase?.tipoCaso ?? "compra"));
+    const items = current ?? fallback;
     return items.map((item) => {
       if (item.id !== id) return item;
       updated = { ...item, ...patch, id: item.id };
@@ -353,6 +355,29 @@ export async function updateChecklistItem(
     });
   });
   return updated;
+}
+
+export async function addChecklistItem(
+  caseId: string,
+  group: string,
+  label: string
+): Promise<ChecklistItem> {
+  const fallback = await defaultChecklist(caseId);
+  const newItem: ChecklistItem = { id: crypto.randomUUID(), group, label, done: false, assignedTo: null, notes: "" };
+  await dbUpdate<ChecklistItem[]>(checklistKey(caseId), (current) => [...(current ?? fallback), newItem]);
+  return newItem;
+}
+
+export async function deleteChecklistItem(caseId: string, id: string): Promise<boolean> {
+  const fallback = await defaultChecklist(caseId);
+  let deleted = false;
+  await dbUpdate<ChecklistItem[]>(checklistKey(caseId), (current) => {
+    const items = current ?? fallback;
+    const next = items.filter((item) => item.id !== id);
+    deleted = next.length !== items.length;
+    return next;
+  });
+  return deleted;
 }
 
 export async function getCriteria(caseId: string): Promise<Criteria> {

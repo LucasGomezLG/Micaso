@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Pencil, X } from "lucide-react";
 import { ChecklistItem, TipoCaso } from "@/lib/types";
 import { apiErrorMessage } from "@/lib/http";
 import Select from "@/components/Select";
@@ -24,6 +25,13 @@ export default function ChecklistClient({
 }) {
   const router = useRouter();
   const [pending, setPending] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingLabel, setEditingLabel] = useState("");
+  const [newItemText, setNewItemText] = useState<Record<string, string>>({});
+  const [addingGroup, setAddingGroup] = useState<string | null>(null);
+  const [newCategory, setNewCategory] = useState("");
+  const [newCategoryLabel, setNewCategoryLabel] = useState("");
+  const [addingCategory, setAddingCategory] = useState(false);
 
   const groups = useMemo(() => {
     const map = new Map<string, ChecklistItem[]>();
@@ -62,6 +70,71 @@ export default function ChecklistClient({
       toast.error(await apiErrorMessage(res, "No se pudo actualizar el ítem."));
       return;
     }
+    router.refresh();
+  }
+
+  function startEditing(item: ChecklistItem) {
+    setEditingId(item.id);
+    setEditingLabel(item.label);
+  }
+
+  async function saveLabel(item: ChecklistItem) {
+    const next = editingLabel.trim();
+    setEditingId(null);
+    if (!next || next === item.label) return;
+    await patch(item.id, { label: next });
+  }
+
+  async function deleteItem(id: string) {
+    setPending((s) => new Set(s).add(id));
+    const res = await fetch(`/api/checklist/${id}`, { method: "DELETE" });
+    setPending((s) => {
+      const next = new Set(s);
+      next.delete(id);
+      return next;
+    });
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo eliminar el ítem."));
+      return;
+    }
+    router.refresh();
+  }
+
+  async function addItem(group: string, label: string) {
+    const text = label.trim();
+    if (!text) return;
+    setAddingGroup(group);
+    const res = await fetch("/api/checklist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ group, label: text }),
+    });
+    setAddingGroup(null);
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo agregar la tarea."));
+      return;
+    }
+    setNewItemText((s) => ({ ...s, [group]: "" }));
+    router.refresh();
+  }
+
+  async function addCategory() {
+    const group = newCategory.trim();
+    const label = newCategoryLabel.trim();
+    if (!group || !label) return;
+    setAddingCategory(true);
+    const res = await fetch("/api/checklist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ group, label }),
+    });
+    setAddingCategory(false);
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo crear la categoría."));
+      return;
+    }
+    setNewCategory("");
+    setNewCategoryLabel("");
     router.refresh();
   }
 
@@ -104,15 +177,34 @@ export default function ChecklistClient({
                     onChange={(e) => patch(item.id, { done: e.target.checked })}
                     className="h-4 w-4"
                   />
-                  <span
-                    className="flex-1 text-sm"
-                    style={{
-                      textDecoration: item.done ? "line-through" : "none",
-                      color: item.done ? "var(--ink-faint)" : "var(--ink)",
-                    }}
-                  >
-                    {item.label}
-                  </span>
+                  {editingId === item.id ? (
+                    <input
+                      autoFocus
+                      value={editingLabel}
+                      onChange={(e) => setEditingLabel(e.target.value)}
+                      onBlur={() => saveLabel(item)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                        if (e.key === "Escape") setEditingId(null);
+                      }}
+                      className="min-w-0 flex-1 rounded-lg border px-2 py-1 text-sm"
+                      style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => startEditing(item)}
+                      title="Editar tarea"
+                      className="inline-flex flex-1 items-center gap-1.5 text-left text-sm"
+                      style={{
+                        textDecoration: item.done ? "line-through" : "none",
+                        color: item.done ? "var(--ink-faint)" : "var(--ink)",
+                      }}
+                    >
+                      {item.label}
+                      <Pencil size={12} className="shrink-0" style={{ color: "var(--ink-faint)" }} />
+                    </button>
+                  )}
                   <Select
                     value={item.assignedTo ?? ""}
                     onChange={(e) => patch(item.id, { assignedTo: e.target.value || null })}
@@ -127,11 +219,79 @@ export default function ChecklistClient({
                       </option>
                     ))}
                   </Select>
+                  <button
+                    type="button"
+                    onClick={() => deleteItem(item.id)}
+                    title="Eliminar tarea"
+                    className="shrink-0"
+                    style={{ color: "var(--ink-faint)" }}
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
               ))}
             </div>
+
+            <div className="mt-3 flex gap-1.5 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+              <input
+                value={newItemText[group] ?? ""}
+                onChange={(e) => setNewItemText((s) => ({ ...s, [group]: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") addItem(group, newItemText[group] ?? "");
+                }}
+                placeholder="Agregar tarea…"
+                className="min-w-0 flex-1 rounded-lg border px-2 py-1.5 text-xs"
+                style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
+              />
+              <button
+                type="button"
+                onClick={() => addItem(group, newItemText[group] ?? "")}
+                disabled={addingGroup === group || !(newItemText[group] ?? "").trim()}
+                className="shrink-0 rounded-lg px-2.5 text-xs font-semibold"
+                style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+              >
+                {addingGroup === group ? "…" : "Agregar"}
+              </button>
+            </div>
           </div>
         ))}
+
+        <div
+          className="flex flex-col gap-2 rounded-2xl border border-dashed p-5"
+          style={{ borderColor: "var(--border-strong)" }}
+        >
+          <h2 className="text-sm font-semibold" style={{ color: "var(--ink-muted)" }}>
+            Nueva categoría
+          </h2>
+          <div className="flex flex-wrap gap-1.5">
+            <input
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              placeholder="Ej. Mudanza"
+              className="min-w-0 flex-1 rounded-lg border px-2 py-1.5 text-xs"
+              style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
+            />
+            <input
+              value={newCategoryLabel}
+              onChange={(e) => setNewCategoryLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addCategory();
+              }}
+              placeholder="Primera tarea de la categoría…"
+              className="min-w-0 flex-[2] rounded-lg border px-2 py-1.5 text-xs"
+              style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
+            />
+            <button
+              type="button"
+              onClick={addCategory}
+              disabled={addingCategory || !newCategory.trim() || !newCategoryLabel.trim()}
+              className="shrink-0 rounded-lg px-2.5 text-xs font-semibold"
+              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+            >
+              {addingCategory ? "…" : "Crear"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
