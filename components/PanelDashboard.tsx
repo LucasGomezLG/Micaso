@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { daysAgoLabel, formatDateTime } from "@/lib/format";
+import { daysAgoLabel, formatDate, formatDateTime } from "@/lib/format";
+import { SubscriptionStatus } from "@/lib/types";
 
 export interface AttentionItem {
   caseId: string;
@@ -15,6 +16,9 @@ export default function PanelDashboard({
   activeCount,
   planLimit,
   planLabel,
+  subscriptionStatus,
+  trialStartedAt,
+  trialEndsAt,
   totalPropiedades,
   nextVisita,
 }: {
@@ -22,10 +26,17 @@ export default function PanelDashboard({
   activeCount: number;
   planLimit: number | null;
   planLabel: string;
+  subscriptionStatus: SubscriptionStatus;
+  /** Cuándo arrancó la prueba de 14 días — hoy es siempre `broker.createdAt`
+   * (no hay pago que reinicie el conteo todavía), pasado aparte para no
+   * acoplar este componente de presentación al tipo Broker completo. */
+  trialStartedAt: string;
+  trialEndsAt: string;
   totalPropiedades: number;
   nextVisita: { caseId: string; caseTitulo: string; fecha: string } | null;
 }) {
   if (activeCount === 0) return null;
+  const isTrial = subscriptionStatus === "prueba";
 
   return (
     <div className="mt-6 flex flex-col gap-4">
@@ -77,24 +88,25 @@ export default function PanelDashboard({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Link
           href="/panel/plan"
-          className="card-hover flex flex-col justify-between rounded-2xl border p-4 transition-all"
+          className="card-hover flex flex-col justify-between gap-2 rounded-2xl border p-4 transition-all"
           style={{ borderColor: "var(--border)", background: "var(--surface)", boxShadow: "var(--shadow-card)" }}
         >
           <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <span className="eyebrow">Casos activos</span>
-              <span className="text-[10px] font-semibold hover:underline" style={{ color: "var(--accent)" }}>
-                Gestionar plan →
-              </span>
-            </div>
+            <span className="eyebrow">Casos activos</span>
             <span className="mono text-2xl font-semibold">
               {activeCount}
               {planLimit !== null && <span style={{ color: "var(--ink-faint)", fontSize: "0.75em" }}> / {planLimit}</span>}
             </span>
           </div>
-          <span className="text-xs" style={{ color: "var(--ink-faint)" }}>
-            Plan {planLabel}
-          </span>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs" style={{ color: "var(--ink-faint)" }}>
+              Plan {planLabel}
+              {isTrial && ` · prueba del ${formatDate(trialStartedAt)} al ${formatDate(trialEndsAt)}`}
+            </span>
+            <span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: "var(--accent)" }}>
+              Gestionar plan →
+            </span>
+          </div>
         </Link>
 
         <div

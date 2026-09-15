@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Check, ArrowLeft, MessageSquare, Shield, Clock } from "lucide-react";
 import { getCurrentBroker } from "@/lib/brokers";
 import { listCasesForBroker } from "@/lib/cases";
+import { formatDate } from "@/lib/format";
 import {
   Plan,
   PLAN_CASE_LIMIT,
@@ -218,7 +219,7 @@ export default async function PanelPlanPage() {
               </div>
               <span className="text-xs" style={{ color: "var(--ink-muted)" }}>
                 {isTrial
-                  ? `Período de prueba de 14 días (${daysLeft} días restantes)`
+                  ? `Prueba del ${formatDate(broker.createdAt)} al ${formatDate(broker.trialEndsAt)} (${daysLeft} días restantes)`
                   : "Suscripción mensual activa"}
               </span>
             </div>
@@ -258,7 +259,7 @@ export default async function PanelPlanPage() {
                 </span>
                 <div>
                   <p className="text-xs sm:text-sm font-semibold" style={{ color: "var(--accent)" }}>
-                    Te quedan {daysLeft} días de prueba gratuita sin tarjeta
+                    Te quedan {daysLeft} días de prueba gratuita sin tarjeta — vence el {formatDate(broker.trialEndsAt)}
                   </p>
                   <p className="text-[11px]" style={{ color: "var(--ink)" }}>
                     Podés probar todas las funciones libremente. Cuando termine, tu panel pasa a modo solo lectura hasta que decidas continuar.

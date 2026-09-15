@@ -170,6 +170,18 @@ export async function closeCase(caseId: string): Promise<Case | null> {
   return updateCase(caseId, { estado: "solo_lectura", soloLecturaDesde: new Date().toISOString() });
 }
 
+/** Vuelve un caso de `solo_lectura` a `activo` — no aplica a `archivado`
+ * (ese estado depende del cobro, ver comentario de CaseEstado en
+ * lib/types.ts, no de un botón en el panel). Un caso reabierto vuelve a
+ * contar contra el tope de casos activos del plan, por eso repite el
+ * mismo chequeo que createCase(). */
+export async function reopenCase(caseId: string): Promise<Case | null> {
+  const kase = await getCase(caseId);
+  if (!kase) return null;
+  await assertUnderCaseLimit(kase.brokerId);
+  return updateCase(caseId, { estado: "activo", soloLecturaDesde: null });
+}
+
 const GRACE_PERIOD_DAYS = 90;
 
 /** Archiva los casos que llevan más de 90 días en solo_lectura (cierre

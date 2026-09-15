@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, Copy, LogIn, Share2 } from "lucide-react";
+import { Check, Copy, LogIn, Pencil, Share2 } from "lucide-react";
 import { Case, CaseEstado, TipoCaso } from "@/lib/types";
 import type { CaseSummary } from "@/lib/store";
 import { daysAgoLabel } from "@/lib/format";
@@ -47,7 +47,7 @@ export default function CaseRow({
   const [kase, setKase] = useState(initialCase);
   const [editing, setEditing] = useState(false);
   const [titulo, setTitulo] = useState(kase.titulo);
-  const [loading, setLoading] = useState<"rename" | "password" | "close" | "enter" | null>(null);
+  const [loading, setLoading] = useState<"rename" | "password" | "close" | "reopen" | "enter" | null>(null);
 
   async function saveTitulo() {
     const next = titulo.trim();
@@ -130,6 +130,32 @@ export default function CaseRow({
     });
   }
 
+  function reabrirCaso() {
+    toast("¿Reabrir este caso?", {
+      description: "Vuelve a estar activo: la familia va a poder agregar propiedades y comentarios de nuevo.",
+      duration: 12000,
+      action: {
+        label: "Sí, reabrir",
+        onClick: async () => {
+          setLoading("reopen");
+          const res = await fetch(`/api/panel/cases/${kase.id}/reopen`, { method: "POST" });
+          setLoading(null);
+          if (!res.ok) {
+            toast.error(await apiErrorMessage(res, "No se pudo reabrir el caso."));
+            return;
+          }
+          setKase((await res.json()).case);
+          toast.success("Caso reabierto — vuelve a estar activo.");
+          router.refresh();
+        },
+      },
+      cancel: {
+        label: "Cancelar",
+        onClick: () => {},
+      },
+    });
+  }
+
   async function entrarComoCaso() {
     setLoading("enter");
     const res = await fetch(`/api/panel/cases/${kase.id}/impersonate`, { method: "POST" });
@@ -199,11 +225,12 @@ export default function CaseRow({
               type="button"
               onClick={() => !isArchivado && setEditing(true)}
               disabled={isArchivado}
-              className="text-base font-medium"
-              style={{ fontFamily: "var(--font-display)", textDecoration: isArchivado ? "none" : "underline", textDecorationStyle: "dotted", textUnderlineOffset: "3px" }}
+              className="inline-flex items-center gap-1.5 text-base font-medium"
+              style={{ fontFamily: "var(--font-display)" }}
               title={isArchivado ? undefined : "Cambiar título"}
             >
               {kase.titulo}
+              {!isArchivado && <Pencil size={12} style={{ color: "var(--ink-faint)" }} />}
             </button>
           )}
           <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: "var(--gold-soft)", color: "var(--gold)" }}>
@@ -234,9 +261,15 @@ export default function CaseRow({
             <button type="button" onClick={regenerarClave} disabled={loading !== null} style={{ color: "var(--accent)" }}>
               {loading === "password" ? "Regenerando…" : "Regenerar clave"}
             </button>
-            <button type="button" onClick={cerrarCaso} disabled={loading !== null} style={{ color: "var(--status-descartada)" }}>
-              {loading === "close" ? "Cerrando…" : "Cerrar caso"}
-            </button>
+            {kase.estado === "activo" ? (
+              <button type="button" onClick={cerrarCaso} disabled={loading !== null} style={{ color: "var(--status-descartada)" }}>
+                {loading === "close" ? "Cerrando…" : "Cerrar caso"}
+              </button>
+            ) : (
+              <button type="button" onClick={reabrirCaso} disabled={loading !== null} style={{ color: "var(--status-gusto)" }}>
+                {loading === "reopen" ? "Reabriendo…" : "Reabrir caso"}
+              </button>
+            )}
           </div>
         )}
       </div>

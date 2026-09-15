@@ -59,6 +59,7 @@ export default async function PanelPage() {
   const [broker, adminEmail] = await Promise.all([getCurrentBroker(), getCurrentAdminEmail()]);
   const cases = broker ? await listCasesForBroker(broker.id) : [];
   const activeCases = cases.filter((c) => c.estado === "activo");
+  const inactiveCases = cases.filter((c) => c.estado !== "activo");
   const activos = activeCases.length;
 
   // Resumen de propiedades por caso (pendientes/destacadas/última
@@ -147,6 +148,9 @@ export default async function PanelPage() {
             activeCount={activos}
             planLimit={PLAN_CASE_LIMIT[broker.plan]}
             planLabel={PLAN_LABEL[broker.plan]}
+            subscriptionStatus={broker.subscriptionStatus}
+            trialStartedAt={broker.createdAt}
+            trialEndsAt={broker.trialEndsAt}
             totalPropiedades={totalPropiedades}
             nextVisita={nextVisita}
           />
@@ -157,11 +161,25 @@ export default async function PanelPage() {
             <BrokerOnboarding broker={broker} />
           ) : null
         ) : (
-          <div className="mt-8 flex flex-col gap-3">
-            {cases.map((kase) => (
-              <CaseRow key={kase.id} initialCase={kase} summary={summaries[kase.id]} alert={alertFor(kase.id)} />
-            ))}
-          </div>
+          <>
+            {activeCases.length > 0 && (
+              <div className="mt-8 flex flex-col gap-3">
+                {activeCases.map((kase) => (
+                  <CaseRow key={kase.id} initialCase={kase} summary={summaries[kase.id]} alert={alertFor(kase.id)} />
+                ))}
+              </div>
+            )}
+            {inactiveCases.length > 0 && (
+              <div className={activeCases.length > 0 ? "mt-10" : "mt-8"}>
+                <p className="eyebrow mb-3">Casos cerrados ({inactiveCases.length})</p>
+                <div className="flex flex-col gap-3">
+                  {inactiveCases.map((kase) => (
+                    <CaseRow key={kase.id} initialCase={kase} summary={summaries[kase.id]} alert={alertFor(kase.id)} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         <footer className="mt-14 border-t pt-6 pb-4" style={{ borderColor: "var(--border)" }}>
