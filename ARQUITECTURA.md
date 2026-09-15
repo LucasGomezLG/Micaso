@@ -456,6 +456,35 @@ Lo mínimo que necesita el panel para ser útil desde el primer día:
 > falta subir imágenes pesadas (fotos de propiedades, por ejemplo), ahí sí
 > hace falta Vercel Blob u otro de verdad.
 
+> **Implementado (15 sept 2026): compartir una propiedad, carga manual,
+> PWA básica.**
+> - **Compartir por WhatsApp desde la tarjeta de la casa** (no ya solo
+>   las credenciales del caso, más arriba) — un botón en `HouseCard`
+>   arma "Mirá esta casa que guardé en Micaso: título — precio, link"
+>   para que la familia se la reenvíe a su pareja o al corredor sin
+>   escribirlo a mano.
+> - **Carga manual de una propiedad** en `AddHouseModal` — un toggle
+>   "¿No tenés un link? Cargar los datos a mano" para propiedades de
+>   dueño directo o una ficha privada que no tiene página de portal.
+>   `House.url` pasa a ser `string | null` (antes obligatorio) para
+>   representar esto de verdad, no un URL inventado. La UI que dependía
+>   de un aviso original (botón "actualizar desde el aviso", el link de
+>   la foto de tapa) se esconde para estas casas en vez de apuntar a un
+>   link roto.
+> - **PWA básica**: `app/manifest.ts` + íconos generados con `next/og`
+>   en 192/512px (`app/icons/*`) y el ícono de iOS
+>   (`app/apple-icon.tsx`) — familia y corredor pueden "Agregar a
+>   pantalla de inicio" y abrir Micaso en pantalla completa. Encontrado
+>   en la prueba real (no algo obvio de antemano): `proxy.ts` bloqueaba
+>   `/manifest.webmanifest` y los íconos detrás del login — el
+>   navegador los pide sin sesión, incluso parado en `/login`, así que
+>   quedaron sumados a `PUBLIC_PATHS`.
+>
+> Probando la carga manual con clicks reales en el navegador (no solo
+> por API) apareció un bug de verdad, sin relación directa con estas
+> tres features — ver "La reescritura de 14 sept no fue completa" un
+> poco más abajo en esta misma sección 9.
+
 ## 7. Tu panel de super-admin
 
 Una capa más arriba de todo: vos administrando la plataforma completa, no
@@ -914,6 +943,29 @@ vez se vuelve un problema real observado, la solución es mover el
 índice de casos por corredor y la lista de casos a estructuras
 atómicas nativas de Redis (`SADD`/listas) en vez de un objeto JSON
 grande por clave.
+
+> **La reescritura de "14 sept" no fue completa — encontrado y
+> arreglado de verdad probando la carga manual (15 sept 2026).**
+> `getHouses`, `getChecklist` y `getCriteria` en `lib/store.ts` seguían
+> teniendo exactamente el patrón "leer, después guardar" por separado,
+> pero solo en la rama de inicializar una clave nueva (`dbGet` ve
+> `null` → `dbSet` con el valor por defecto) — quedó afuera de aquel
+> barrido porque no es el mutador obvio de cada dato (agregar/editar
+> una casa sí pasa por `dbUpdate`), es la primera lectura de un caso
+> recién creado. Se reprodujo de verdad probando la feature de carga
+> manual: se creó un caso, se agregó una casa por API, y al abrirlo en
+> el navegador un instante después la casa había desaparecido — no una
+> vez, sino de forma reproducible corriendo `getHouses`/`addHouse` en
+> paralelo directo desde código (ver `test/concurrency.test.mts`, que
+> falla de forma determinística contra el código viejo). **Arreglado**
+> reemplazando el `dbSet` ciego por un `dbUpdate` que vuelve a chequear
+> `current` adentro del mismo lock, mismo criterio que ya usaban
+> `updateChecklistItem`/`addChecklistItem`/`updateCriteria`. El caso
+> demo no lo sufría (su clave ya existe desde que corrió `lib/seed.ts`
+> la primera vez), por eso nunca apareció antes: hace falta un caso
+> *nuevo* y una lectura+escritura casi simultáneas sobre él — exactamente
+> lo que un corredor cargando la primera casa justo cuando la familia
+> abre el link por primera vez puede disparar.
 
 ## 10. Fuera de alcance (v1)
 
