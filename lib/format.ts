@@ -1,8 +1,11 @@
 /** Route an external listing photo through our own server — several
  * sites (ArgenProp, etc.) hotlink-protect their CDN and 403 an <img>
- * loaded straight from another domain. */
+ * loaded straight from another domain. Fotos que subimos nosotros a
+ * Vercel Blob no tienen ese problema (es nuestro propio storage
+ * público) — proxearlas solo duplicaría el ancho de banda sin motivo. */
 export function proxiedImage(url: string | null): string | null {
   if (!url) return null;
+  if (/^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\//i.test(url)) return url;
   return `/api/image?u=${encodeURIComponent(url)}`;
 }
 
