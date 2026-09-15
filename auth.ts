@@ -6,5 +6,6 @@ import Google from "next-auth/providers/google";
 // — agregar el de producción ahí cuando haya dominio (ver
 // ARQUITECTURA.md sección 11).
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   providers: [Google],
 });
