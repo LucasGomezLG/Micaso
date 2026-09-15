@@ -36,15 +36,63 @@ async function writeLocalStore(data: Record<string, unknown>): Promise<void> {
  * por completo lo que la primera acababa de guardar — pasó de verdad
  * una vez (perdió `brokers` y los datos del caso demo). En Redis
  * (producción) esto no existe: SET/INCR ya son atómicos del lado del
- * servidor, este lock solo aplica al fallback de archivo local. */
-let localStoreQueue: Promise<unknown> = Promise.resolve();
-function withLocalStoreLock<T>(fn: () => Promise<T>): Promise<T> {
-  const result = localStoreQueue.then(fn, fn);
-  localStoreQueue = result.then(
-    () => undefined,
-    () => undefined
-  );
-  return result;
+ * servidor, este lock solo aplica al fallback de archivo local.
+ *
+ * Tiene que ser un lock de ARCHIVO, no una promesa en memoria (15 sept
+ * 2026): en `next dev` con Turbopack cada route handler (y el
+ * middleware, aparte) se compila bajo demanda como su propio módulo, así
+ * que este archivo se carga como una instancia separada por cada uno,
+ * cada una con su propia variable de módulo — una promesa en memoria acá
+ * solo serializa llamadas dentro de la MISMA instancia, no entre rutas
+ * distintas. Se encontró probando la carga a mano de una casa con el
+ * navegador real: el caso recién creado desaparecía porque el load de
+ * /caso/casas dispara varios fetches en paralelo (houses, checklist,
+ * criteria, ...) que la primera vez cada uno compila su propio módulo, y
+ * dos de esos módulos pisaban el archivo entero sin verse entre sí. Un
+ * archivo de lock en disco sí es compartido por todas las instancias del
+ * mismo proceso (y protegería igual si hubiera más de un proceso). */
+const LOCK_PATH = LOCAL_DB_PATH + ".lock";
+const LOCK_STALE_MS = 10_000;
+const LOCK_RETRY_MS = 20;
+
+async function acquireFileLock(): Promise<void> {
+  for (;;) {
+    try {
+      const handle = await fs.open(LOCK_PATH, "wx");
+      await handle.close();
+      return;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
+      try {
+        const stat = await fs.stat(LOCK_PATH);
+        if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
+          // Nadie debería tardar 10s en un read-modify-write de un
+          // archivo JSON local - si el lock lleva más que eso, es de un
+          // proceso que murió sin liberarlo (ctrl-C a mitad de camino),
+          // no una operación legítima en curso.
+          await fs.unlink(LOCK_PATH).catch(() => {});
+          continue;
+        }
+      } catch {
+        // El lock desapareció entre el open fallido y este stat (otro
+        // proceso ya lo liberó) - reintentar ya mismo.
+      }
+      await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_MS));
+    }
+  }
+}
+
+async function releaseFileLock(): Promise<void> {
+  await fs.unlink(LOCK_PATH).catch(() => {});
+}
+
+async function withLocalStoreLock<T>(fn: () => Promise<T>): Promise<T> {
+  await acquireFileLock();
+  try {
+    return await fn();
+  } finally {
+    await releaseFileLock();
+  }
 }
 
 export async function dbGet<T>(key: string): Promise<T | null> {

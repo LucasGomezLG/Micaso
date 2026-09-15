@@ -481,9 +481,14 @@ Lo mínimo que necesita el panel para ser útil desde el primer día:
 >   quedaron sumados a `PUBLIC_PATHS`.
 >
 > Probando la carga manual con clicks reales en el navegador (no solo
-> por API) apareció un bug de verdad, sin relación directa con estas
-> tres features — ver "La reescritura de 14 sept no fue completa" un
-> poco más abajo en esta misma sección 9.
+> por API) aparecieron dos bugs de verdad, sin relación directa con
+> estas tres features — ver "La reescritura de 14 sept no fue completa"
+> y "Segundo hallazgo, más de raíz" un poco más abajo en esta misma
+> sección 9. Las tres features se volvieron a probar de punta a punta
+> con el navegador real después del segundo arreglo (lock de archivo) y
+> siguen funcionando: WhatsApp arma el mensaje con título/precio/link,
+> la carga manual persiste sin perderse, y el manifest/íconos cargan sin
+> sesión.
 
 ## 7. Tu panel de super-admin
 
@@ -966,6 +971,46 @@ grande por clave.
 > *nuevo* y una lectura+escritura casi simultáneas sobre él — exactamente
 > lo que un corredor cargando la primera casa justo cuando la familia
 > abre el link por primera vez puede disparar.
+
+> **Segundo hallazgo, más de raíz — probando las 3 features de "Nivel
+> 2" con el navegador real (15 sept 2026).** El arreglo de arriba no
+> alcanzaba: un caso recién creado seguía desapareciendo del todo
+> (no una casa suelta — el objeto `cases` entero volvía a tener solo
+> el caso demo) al abrirlo en el navegador, incluso ya con el `dbUpdate`
+> corregido en todos lados. Causa real: `withLocalStoreLock` en
+> `lib/db.ts` era una promesa encadenada en una variable de módulo — un
+> lock en memoria, no en disco. En `next dev` con Turbopack, cada route
+> handler (y el middleware, `proxy.ts`, aparte) se compila bajo demanda
+> como su propio módulo la primera vez que se lo pide — cada uno carga
+> su propia instancia de `lib/db.ts`, con su propia variable
+> `localStoreQueue`. Un load de `/caso/casas` dispara varios fetches en
+> paralelo (casas, checklist, criterios, gente, y el propio chequeo de
+> sesión del middleware) — la primera vez que corre cada uno compila su
+> propio módulo, y dos de esos módulos leyendo y escribiendo el mismo
+> `store.json` entero no se ven entre sí: la segunda escritura pisa a la
+> primera sin que ningún lock lo evite, porque cada una tenía el suyo
+> propio. Confirmado instrumentando `lib/db.ts` con un ID de instancia
+> aleatorio al cargar el módulo: en una sola carga de página aparecían
+> 3 IDs distintos. **Arreglado** reemplazando el lock en memoria por un
+> lock de archivo real (`store.json.lock`, creado con `wx` — falla si ya
+> existe — y con expiración de 10s por si un proceso murió sin
+> liberarlo): un archivo en disco sí es compartido por cualquier
+> cantidad de instancias del módulo, a diferencia de una variable en
+> memoria. Test de regresión en `test/db-file-lock.test.mts`: importa
+> `lib/db.ts` dos veces con un query string distinto para forzar que
+> Node lo evalúe como dos módulos separados (simulando exactamente el
+> caso de Turbopack) y confirma que 30 escrituras concurrentes repartidas
+> entre las dos "instancias" no pierden ninguna — contra el lock viejo,
+> se perdían 12 de 30 de forma reproducible. **Alcance: solo el fallback
+> local de desarrollo** (`.data/store.json`, sin credenciales de
+> Upstash) — en producción (Redis) este código nunca se ejecuta, así que
+> este hallazgo no cambia el riesgo ya documentado arriba para Redis.
+> Explica, en retrospectiva, varias "casas perdidas" que se habían visto
+> antes en esta misma sesión de trabajo al probar a mano con el
+> navegador y que en su momento se habían atribuido (parcialmente sin
+> confirmar del todo) a una edición manual del store hecha por fuera del
+> server — es probable que este bug ya estuviera contribuyendo desde
+> antes.
 
 ## 10. Fuera de alcance (v1)
 
