@@ -595,6 +595,85 @@ confirmen que las claves de `case:{caseId}:...` nunca se cruzan entre
 casos distintos, antes de tener un segundo corredor real con datos ajenos
 en juego.
 
+**Auditoría manual de aislamiento entre casos y corredores (14 sept
+2026) — sin hallazgos, no reemplaza los tests pendientes arriba**
+Con la app ya recibiendo escritura real de un segundo tipo de usuario
+(el panel de corredor, además del caso), se revisaron a mano las tres
+superficies donde un bug de aislamiento sería más grave: rutas
+`/api/checklist`, `/api/houses`, `/api/criteria`, `/api/case/people` y
+login de caso (¿puede un caso tocar datos de otro caso?); rutas
+`/api/panel/cases/*` y `/api/panel/profile` (¿puede un corredor tocar
+un caso o perfil de otro corredor?); y `proxy.ts` + `/api/superadmin/*`
++ `dev-login` (¿hay algún bypass del gate de admin, o el login de
+desarrollo se cuela a producción?). Resultado: nada explotable en
+ninguna de las tres. La razón estructural en el primer caso es que
+cada operación pasa por una clave de Redis ya namespaced por `caseId`
+(`case:{caseId}:...`) antes de buscar el recurso por su propio id,
+nunca al revés; en el segundo, las seis rutas de mutación de casos
+verifican `kase.brokerId === broker.id` de forma consistente; en el
+tercero, las rutas de super-admin no confían solo en `proxy.ts` — vuelven
+a chequear `ADMIN_EMAILS` contra la sesión real de Google adentro de
+cada handler. Una mejora de hardening (no un bug de hoy): ese chequeo
+de `brokerId` vive repetido en cada ruta del panel en vez de adentro de
+`lib/cases.ts` — si el día de mañana se agrega una ruta nueva que llame
+`closeCase`/`renameCase`/etc. sin repetirlo, ahí sí se abriría un IDOR.
+Vale la pena mover el chequeo adentro de esas funciones el día que se
+toque ese archivo por otro motivo. Esto no reemplaza los tests
+automáticos de aislamiento que ya se pedían arriba — es una foto de un
+momento, no una garantía permanente contra una regresión futura.
+
+**Credenciales de caso en texto plano — identificado, riesgo aceptado
+por ahora**
+La contraseña de cada caso (`lib/cases.ts`, `randomCode(8)`) se guarda
+sin hashear, y el login la compara con `===` directo contra texto
+plano — a diferencia de una contraseña de usuario típica, es
+intencional: el corredor necesita poder *ver* la clave para compartirla
+por WhatsApp (botón "Compartir" en el panel), así que hashearla
+rompería esa función. La consecuencia es que cualquier exposición de la
+base (Redis/Upstash comprometido, o el JSON completo de
+`/api/superadmin/backup`) entrega las credenciales de acceso de
+**todas** las familias, de todos los corredores, en texto plano y
+listas para usar — quien lo tenga puede loguearse como cualquier
+familia y ver DNI, ingresos y el resto de la documentación cargada. El
+acceso a ese backup ya está bien controlado (solo `ADMIN_EMAILS`,
+verificado server-side, no solo en `proxy.ts`), así que hoy el radio de
+exposición depende de un solo admin (vos) y un solo caso real
+(Carolina) — bajo. Importa más el día que haya varios corredores
+pagando con clientes reales: en ese momento conviene tratar ese JSON de
+backup como el activo más sensible del sistema (no guardarlo suelto,
+borrar copias viejas) y considerar subir la entropía de `randomCode(8)`.
+No se resuelve ahora — queda anotado para revisar más adelante.
+
+**Barrido de "quedó pensado para un solo caso" (14 sept 2026) — dos
+bugs reales encontrados y resueltos**
+Además de la auditoría de aislamiento de arriba (¿puede un caso/corredor
+tocar datos de otro?), se buscó la otra cara del mismo problema: código
+que asume que solo existe un caso a la vez, sin ningún cruce de datos
+entre corredores de por medio. Se revisó todo lo que quedó con nombres
+del caso real de Lucas y Abril (`Lucas`, `Abril`, `Carolina`, `BBVA`) —
+la enorme mayoría es contenido intencional (testimonio y muestra real en
+la landing, datos semilla del caso demo, atajos de login solo en
+desarrollo) salvo un comentario desactualizado en `lib/types.ts`
+(mencionaba "crédito BBVA" en un campo que ya era genérico,
+`aptoCredito` — corregido, no afectaba el comportamiento). Los dos bugs
+de verdad estaban en `localStorage`, del lado del navegador, con nombres
+de clave heredados de cuando esto era una sola app de un solo caso:
+- `components/CalculadoraClient.tsx` guardaba los números de la
+  calculadora bajo la clave global `"casa-norte-calculadora"` — un
+  corredor que entra a dos casos distintos desde el mismo navegador (el
+  botón "Entrar al caso" del panel) veía los números del caso anterior
+  filtrarse al siguiente. **Resuelto:** la clave ahora incluye el
+  `caseId` (`micaso-calculadora:{caseId}`), pasado como prop desde
+  `app/caso/calculadora/page.tsx`. Verificado a mano: cargar un valor en
+  el caso A y entrar al caso B en el mismo navegador ya no arrastra nada.
+- `components/HouseCard.tsx` recordaba el último autor de comentario
+  (`"casa-comment-author"`) igual de global — podía precargar un nombre
+  que ni siquiera pertenece a la familia del caso actual. **Resuelto:**
+  se valida contra la lista `people` del caso actual antes de usarlo, en
+  vez de confiar ciegamente en lo guardado (más robusto que solo
+  namespacear por `caseId`, porque también cubre el caso de que a alguien
+  se le cambie el nombre o se lo borre de `people`).
+
 **Riesgo competitivo: los jugadores grandes podrían copiar el enfoque**
 El panorama competitivo (sección 2) muestra que ningún competidor local
 hace hoy lo que hace Micaso, pero Tokko Broker y KiteProp ya tienen la
