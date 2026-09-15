@@ -527,9 +527,18 @@ export default function HouseCard({
             <button
               title="Eliminar definitivamente (no se puede deshacer)"
               onClick={() => {
-                if (confirm("Esto borra la propiedad para siempre, no se puede deshacer. ¿Seguir?")) {
-                  onDelete(house.id);
-                }
+                toast("¿Eliminar propiedad definitivamente?", {
+                  description: "Esta acción no se puede deshacer. Se borrará la ficha, fotos y comentarios para siempre.",
+                  duration: 10000,
+                  action: {
+                    label: "Sí, eliminar",
+                    onClick: () => onDelete(house.id),
+                  },
+                  cancel: {
+                    label: "Cancelar",
+                    onClick: () => {},
+                  },
+                });
               }}
               className="rounded-lg border px-2 py-1.5 text-xs"
               style={{ borderColor: "var(--border)", color: "var(--status-descartada)" }}

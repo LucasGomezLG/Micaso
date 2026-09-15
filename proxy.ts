@@ -99,8 +99,20 @@ async function checkCaseAccess(
     // cargando casas, comentarios ni criterios nuevos. Ver
     // ARQUITECTURA.md sección 6.
     const isMutating = ["POST", "PUT", "PATCH", "DELETE"].includes(request.method);
-    if (kase.estado === "solo_lectura" && isMutating && pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Este caso está en modo solo lectura" }, { status: 403 });
+    if (isMutating && pathname.startsWith("/api/")) {
+      if (kase.estado === "solo_lectura") {
+        return NextResponse.json({ error: "Este caso está en modo solo lectura" }, { status: 403 });
+      }
+      if (kase.id === "demo") {
+        const session = await auth();
+        const isOwner = session?.user?.email && ADMIN_EMAILS.has(session.user.email);
+        if (!isOwner) {
+          return NextResponse.json(
+            { error: "El caso demo es de demostración pública protegida. ¡Creá tu propia cuenta gratis en Micaso para cargar y gestionar tus propios casos!" },
+            { status: 403 }
+          );
+        }
+      }
     }
     return NextResponse.next();
   }

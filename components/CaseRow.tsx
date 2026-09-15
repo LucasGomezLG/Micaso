@@ -71,42 +71,63 @@ export default function CaseRow({
     setKase((await res.json()).case);
   }
 
-  async function regenerarClave() {
-    if (!confirm("¿Regenerar la contraseña de este caso? La anterior deja de funcionar.")) return;
-    setLoading("password");
-    const res = await fetch(`/api/panel/cases/${kase.id}/regenerate-password`, { method: "POST" });
-    setLoading(null);
-    if (!res.ok) {
-      toast.error(await apiErrorMessage(res, "No se pudo regenerar la contraseña."));
-      return;
-    }
-    const updated = (await res.json()).case;
-    setKase(updated);
-    toast.success(`Nueva contraseña: ${updated.password}`, {
+  function regenerarClave() {
+    toast("¿Regenerar la contraseña de este caso?", {
+      description: "La clave actual dejará de funcionar y deberás compartir la nueva con la familia.",
+      duration: 12000,
       action: {
-        label: "Copiar",
-        onClick: () => {
-          navigator.clipboard.writeText(updated.password).catch(() => {});
+        label: "Sí, regenerar",
+        onClick: async () => {
+          setLoading("password");
+          const res = await fetch(`/api/panel/cases/${kase.id}/regenerate-password`, { method: "POST" });
+          setLoading(null);
+          if (!res.ok) {
+            toast.error(await apiErrorMessage(res, "No se pudo regenerar la contraseña."));
+            return;
+          }
+          const updated = (await res.json()).case;
+          setKase(updated);
+          toast.success(`Nueva contraseña generada: ${updated.password}`, {
+            action: {
+              label: "Copiar",
+              onClick: () => {
+                navigator.clipboard.writeText(updated.password).catch(() => {});
+              },
+            },
+          });
         },
+      },
+      cancel: {
+        label: "Cancelar",
+        onClick: () => {},
       },
     });
   }
 
-  async function cerrarCaso() {
-    if (!confirm("¿Cerrar este caso? Pasa a modo solo lectura: la familia conserva su historial, pero no puede seguir cargando nada nuevo.")) return;
-    setLoading("close");
-    const res = await fetch(`/api/panel/cases/${kase.id}/close`, { method: "POST" });
-    setLoading(null);
-    if (!res.ok) {
-      toast.error(await apiErrorMessage(res, "No se pudo cerrar el caso."));
-      return;
-    }
-    setKase((await res.json()).case);
-    toast.success("Caso cerrado — pasó a modo solo lectura.");
-    // Cerrar un caso lo saca de los KPIs y de "Necesita tu atención" de
-    // arriba — esos se calculan en el server, así que hace falta un
-    // refresh para que dejen de contarlo (setKase solo actualiza esta fila).
-    router.refresh();
+  function cerrarCaso() {
+    toast("¿Cerrar este caso?", {
+      description: "Pasará a modo solo lectura: la familia conservará su historial pero no podrá agregar nuevas propiedades ni comentarios.",
+      duration: 12000,
+      action: {
+        label: "Sí, cerrar caso",
+        onClick: async () => {
+          setLoading("close");
+          const res = await fetch(`/api/panel/cases/${kase.id}/close`, { method: "POST" });
+          setLoading(null);
+          if (!res.ok) {
+            toast.error(await apiErrorMessage(res, "No se pudo cerrar el caso."));
+            return;
+          }
+          setKase((await res.json()).case);
+          toast.success("Caso cerrado — pasó a modo solo lectura.");
+          router.refresh();
+        },
+      },
+      cancel: {
+        label: "Cancelar",
+        onClick: () => {},
+      },
+    });
   }
 
   async function entrarComoCaso() {
