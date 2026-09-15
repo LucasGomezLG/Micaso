@@ -5,14 +5,17 @@ import { getCase } from "@/lib/cases";
 import { CASE_COOKIE } from "@/lib/session";
 
 // "/" es la landing pública (marketing, dirigida al corredor) — ver
-// ARQUITECTURA.md sección 6. /icon y /opengraph-image son generados por
-// Next.js (favicon y preview al compartir el link) y tienen que cargar
-// sin sesión, en cualquier página, no solo en la landing. /api/auth es
-// Auth.js (Google OAuth) — sus propias rutas internas (signin,
-// callback, signout, session) tienen que ser públicas. /api/cron lo
-// llama Vercel Cron, sin cookie de caso ni sesión de Google — se
-// protege con CRON_SECRET adentro de la propia ruta (ver
-// app/api/cron/archive-stale-cases/route.ts), no acá.
+// ARQUITECTURA.md sección 6. /icon, /apple-icon, /icons/* y
+// /opengraph-image son generados por Next.js (favicon, ícono de iOS,
+// íconos del manifest, preview al compartir el link) y tienen que
+// cargar sin sesión, en cualquier página, no solo en la landing —
+// /manifest.webmanifest por el mismo motivo (el navegador lo pide para
+// ofrecer "agregar a pantalla de inicio" incluso en /login, antes de
+// cualquier sesión). /api/auth es Auth.js (Google OAuth) — sus propias
+// rutas internas (signin, callback, signout, session) tienen que ser
+// públicas. /api/cron lo llama Vercel Cron, sin cookie de caso ni
+// sesión de Google — se protege con CRON_SECRET adentro de la propia
+// ruta (ver app/api/cron/archive-stale-cases/route.ts), no acá.
 const PUBLIC_PATHS = [
   "/",
   "/login",
@@ -25,6 +28,9 @@ const PUBLIC_PATHS = [
   "/api/auth",
   "/api/cron",
   "/icon",
+  "/apple-icon",
+  "/icons",
+  "/manifest.webmanifest",
   "/opengraph-image",
   "/robots.txt",
   "/sitemap.xml",

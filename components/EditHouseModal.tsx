@@ -5,35 +5,8 @@ import { toast } from "sonner";
 import { X } from "lucide-react";
 import { House } from "@/lib/types";
 import { proxiedImage } from "@/lib/format";
-import { apiErrorMessage } from "@/lib/http";
+import { uploadHousePhoto } from "@/lib/photoUpload";
 import Select from "@/components/Select";
-
-const MAX_DIMENSION = 1600;
-const JPEG_QUALITY = 0.85;
-
-/** Reduce la foto antes de subirla — ni tan chica como la miniatura de
- * perfil (BrokerAvatarEditor, 256px, porque ahí solo se ve como avatar)
- * ni el tamaño original de la cámara del celular, que puede pesar varios
- * MB y tarda en subir sin necesidad. */
-async function compressImage(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
-  const width = Math.round(bitmap.width * scale);
-  const height = Math.round(bitmap.height * scale);
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("No se pudo procesar la imagen.");
-  ctx.drawImage(bitmap, 0, 0, width, height);
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error("No se pudo procesar la imagen."))),
-      "image/jpeg",
-      JPEG_QUALITY
-    );
-  });
-}
 
 export default function EditHouseModal({
   house,
@@ -69,24 +42,12 @@ export default function EditHouseModal({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Elegí un archivo de imagen.");
-      return;
-    }
     setUploading(true);
     try {
-      const compressed = await compressImage(file);
-      const formData = new FormData();
-      formData.append("file", compressed, "foto.jpg");
-      const res = await fetch("/api/houses/photo", { method: "POST", body: formData });
-      if (!res.ok) {
-        toast.error(await apiErrorMessage(res, "No se pudo subir la foto."));
-        return;
-      }
-      const { url } = await res.json();
+      const url = await uploadHousePhoto(file);
       setImages((prev) => [...prev, url]);
-    } catch {
-      toast.error("No se pudo procesar esa imagen.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo subir la foto.");
     } finally {
       setUploading(false);
     }
@@ -95,7 +56,7 @@ export default function EditHouseModal({
   async function save() {
     setSaving(true);
     const patch: Partial<House> = {
-      title: title.trim() || house.url,
+      title: title.trim() || house.url || "Propiedad sin título",
       priceUsd: priceUsd ? Number(priceUsd) : null,
       zone: zone.trim() || null,
       ambientes: ambientes ? Number(ambientes) : null,

@@ -17,6 +17,7 @@ import {
   Pin,
   RefreshCw,
   RotateCcw,
+  Share2,
   Star,
   Wallet,
   X,
@@ -201,6 +202,13 @@ export default function HouseCard({
     }
   }
 
+  function compartirPorWhatsapp() {
+    const precio = house.priceUsd !== null ? ` — ${formatUsd(house.priceUsd)}` : "";
+    const link = house.url ? `\n${house.url}` : "";
+    const mensaje = `Mirá esta casa que guardé en Micaso: ${house.title}${precio}${link}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(mensaje)}`, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <div
       className="flex flex-col overflow-hidden rounded-2xl border transition-opacity"
@@ -212,8 +220,8 @@ export default function HouseCard({
       }}
     >
       <a
-        href={house.url}
-        target="_blank"
+        href={house.url ?? undefined}
+        target={house.url ? "_blank" : undefined}
         rel="noreferrer"
         className="relative block aspect-[4/3] w-full"
         style={{ background: "var(--accent-soft)" }}
@@ -268,17 +276,19 @@ export default function HouseCard({
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-2">
             <HouseIcon />
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                refreshFromSource();
-              }}
-              disabled={refreshing}
-              className="rounded-full px-2.5 py-1 text-xs font-medium"
-              style={{ background: "var(--surface)", color: "var(--accent)" }}
-            >
-              {refreshing ? "buscando…" : "buscar imagen"}
-            </button>
+            {house.url && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  refreshFromSource();
+                }}
+                disabled={refreshing}
+                className="rounded-full px-2.5 py-1 text-xs font-medium"
+                style={{ background: "var(--surface)", color: "var(--accent)" }}
+              >
+                {refreshing ? "buscando…" : "buscar imagen"}
+              </button>
+            )}
           </div>
         )}
         {house.highlighted && (
@@ -567,14 +577,24 @@ export default function HouseCard({
                 </option>
               ))}
             </Select>
+            {house.url && (
+              <button
+                title="Actualizar imagen/precio desde el aviso"
+                onClick={refreshFromSource}
+                disabled={refreshing}
+                className="flex items-center justify-center rounded-lg border px-2 py-1.5"
+                style={{ borderColor: "var(--border)" }}
+              >
+                <RefreshCw size={14} className={refreshing ? "animate-spin" : undefined} />
+              </button>
+            )}
             <button
-              title="Actualizar imagen/precio desde el aviso"
-              onClick={refreshFromSource}
-              disabled={refreshing}
+              title="Compartir por WhatsApp"
+              onClick={compartirPorWhatsapp}
               className="flex items-center justify-center rounded-lg border px-2 py-1.5"
               style={{ borderColor: "var(--border)" }}
             >
-              <RefreshCw size={14} className={refreshing ? "animate-spin" : undefined} />
+              <Share2 size={14} />
             </button>
             <button
               title="Editar título, precio, zona, ambientes, cochera o imagen"

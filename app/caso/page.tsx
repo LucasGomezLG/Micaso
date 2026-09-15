@@ -313,8 +313,8 @@ export default async function HomePage() {
           {recent.map((house) => (
             <a
               key={house.id}
-              href={house.url}
-              target="_blank"
+              href={house.url ?? "/caso/casas"}
+              target={house.url ? "_blank" : undefined}
               rel="noreferrer"
               className="flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors hover:border-[var(--border-strong)]"
               style={{ background: "var(--surface)", borderColor: "var(--border)" }}

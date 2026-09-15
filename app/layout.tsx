@@ -16,6 +16,12 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: TITLE,
   description: DESCRIPTION,
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Micaso",
+    statusBarStyle: "black-translucent",
+  },
   openGraph: {
     title: TITLE,
     description: DESCRIPTION,

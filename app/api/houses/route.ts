@@ -18,13 +18,16 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
   }
-  if (!body?.url || !body?.addedBy?.trim()) {
+  if (!body?.addedBy?.trim()) {
+    return NextResponse.json({ error: "Falta el campo obligatorio: addedBy" }, { status: 400 });
+  }
+  if (!body?.url && !body?.title?.trim()) {
     return NextResponse.json(
-      { error: "Faltan campos obligatorios: url, addedBy" },
+      { error: "Falta el link del aviso o, para carga manual, el título" },
       { status: 400 }
     );
   }
-  const house = await addHouse(caseId, body as Pick<House, "url" | "addedBy"> & Partial<House>);
+  const house = await addHouse(caseId, body as Pick<House, "addedBy"> & Partial<House>);
 
   // Si el nombre de quien agregó la casa no figura todavía en la lista
   // de personas del caso, sumarlo automáticamente para que quede

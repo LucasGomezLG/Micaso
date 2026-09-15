@@ -48,17 +48,19 @@ export default function HousesMap({ houses }: { houses: House[] }) {
         }).addTo(map!);
 
         const items = group.houses
-          .map(
-            (h) => `
+          .map((h) => {
+            const title = h.title.replace(/</g, "&lt;");
+            const titleHtml = h.url
+              ? `<a href="${h.url}" target="_blank" rel="noreferrer" style="font-weight:600;color:var(--accent);text-decoration:none;">${title}</a>`
+              : `<span style="font-weight:600;">${title}</span>`;
+            return `
               <div style="padding:6px 0;border-top:1px solid var(--border);">
-                <a href="${h.url}" target="_blank" rel="noreferrer" style="font-weight:600;color:var(--accent);text-decoration:none;">
-                  ${h.title.replace(/</g, "&lt;")}
-                </a>
+                ${titleHtml}
                 <div style="font-size:12px;color:var(--ink-muted);">
                   ${formatUsd(h.priceUsd)} · ${STATUS_LABEL[h.status]}
                 </div>
-              </div>`
-          )
+              </div>`;
+          })
           .join("");
 
         marker.bindPopup(

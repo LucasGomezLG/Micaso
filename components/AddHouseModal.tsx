@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { proxiedImage } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/http";
+import { uploadHousePhoto } from "@/lib/photoUpload";
 import Select from "@/components/Select";
 
 const URL_PATTERN = /^https?:\/\/.+\..+/i;
 
 type Draft = {
+  manual: boolean;
   url: string;
   title: string;
   images: string[];
@@ -23,6 +25,7 @@ type Draft = {
 
 function emptyDraft(people: string[]): Draft {
   return {
+    manual: false,
     url: "",
     title: "",
     images: [],
@@ -49,9 +52,11 @@ export default function AddHouseModal({
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(people));
   const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [scrapeMsg, setScrapeMsg] = useState<string | null>(null);
   const lastFetchedUrl = useRef<string | null>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isDuplicate = useMemo(() => {
     if (!draft.url || existingUrls.length === 0) return false;
@@ -111,14 +116,29 @@ export default function AddHouseModal({
     return () => clearTimeout(timer);
   }, [draft.url]);
 
+  async function onFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadHousePhoto(file);
+      setDraft((d) => ({ ...d, images: [...d.images, url] }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo subir la foto.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function save() {
-    if (!draft.url) return;
+    if (draft.manual ? !draft.title.trim() : !draft.url) return;
     setSaving(true);
     const res = await fetch("/api/houses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        url: draft.url,
+        url: draft.manual ? null : draft.url,
         title: draft.title || undefined,
         images: draft.images,
         priceUsd: draft.priceUsd ? Number(draft.priceUsd) : null,
@@ -153,39 +173,64 @@ export default function AddHouseModal({
         <h3 className="mb-4 text-base font-semibold">Agregar casa</h3>
 
         <div className="flex flex-col gap-3 text-sm">
-          <label className="flex flex-col gap-1">
-            <span className="eyebrow">Link del aviso</span>
-            <input
-              ref={urlInputRef}
-              className="field"
-              placeholder="Pegá el link (MercadoLibre, ZonaProp, ArgenProp...)"
-              value={draft.url}
-              onChange={(e) => setDraft({ ...draft, url: e.target.value })}
-            />
-            {isDuplicate && (
-              <p
-                className="mt-1 rounded-lg px-2.5 py-1.5 text-xs font-medium"
-                style={{ background: "var(--status-pendiente-bg)", color: "var(--status-pendiente)" }}
-              >
-                ⚠️ Esta propiedad ya fue agregada en este caso.
-              </p>
-            )}
-            <div className="flex items-center gap-2 text-xs" style={{ color: "var(--ink-faint)" }}>
-              {fetching && <span>Buscando título, foto y precio…</span>}
-              {!fetching && scrapeMsg && (
-                <>
-                  <span>{scrapeMsg}</span>
-                  <button
-                    onClick={() => draft.url.trim() && fetchPreview(draft.url.trim())}
-                    className="font-medium underline"
-                    style={{ color: "var(--accent)" }}
-                  >
-                    Reintentar
-                  </button>
-                </>
+          {!draft.manual ? (
+            <label className="flex flex-col gap-1">
+              <span className="eyebrow">Link del aviso</span>
+              <input
+                ref={urlInputRef}
+                className="field"
+                placeholder="Pegá el link (MercadoLibre, ZonaProp, ArgenProp...)"
+                value={draft.url}
+                onChange={(e) => setDraft({ ...draft, url: e.target.value })}
+              />
+              {isDuplicate && (
+                <p
+                  className="mt-1 rounded-lg px-2.5 py-1.5 text-xs font-medium"
+                  style={{ background: "var(--status-pendiente-bg)", color: "var(--status-pendiente)" }}
+                >
+                  ⚠️ Esta propiedad ya fue agregada en este caso.
+                </p>
               )}
+              <div className="flex items-center gap-2 text-xs" style={{ color: "var(--ink-faint)" }}>
+                {fetching && <span>Buscando título, foto y precio…</span>}
+                {!fetching && scrapeMsg && (
+                  <>
+                    <span>{scrapeMsg}</span>
+                    <button
+                      onClick={() => draft.url.trim() && fetchPreview(draft.url.trim())}
+                      className="font-medium underline"
+                      style={{ color: "var(--accent)" }}
+                    >
+                      Reintentar
+                    </button>
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setDraft((d) => ({ ...d, manual: true, url: "" }))}
+                className="mt-1 self-start text-xs underline underline-offset-2"
+                style={{ color: "var(--ink-muted)" }}
+              >
+                ¿No tenés un link? Cargar los datos a mano
+              </button>
+            </label>
+          ) : (
+            <div
+              className="flex items-center justify-between rounded-lg border px-3 py-2 text-xs"
+              style={{ borderColor: "var(--border)", color: "var(--ink-muted)" }}
+            >
+              <span>Carga manual — sin link de portal (dueño directo, ficha privada, etc.)</span>
+              <button
+                type="button"
+                onClick={() => setDraft((d) => ({ ...d, manual: false }))}
+                className="shrink-0 font-medium underline underline-offset-2"
+                style={{ color: "var(--accent)" }}
+              >
+                Volver a pegar un link
+              </button>
             </div>
-          </label>
+          )}
 
           {draft.images.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
@@ -210,10 +255,30 @@ export default function AddHouseModal({
             </div>
           )}
 
+          <div className="flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="self-start rounded-lg border px-3 py-1.5 text-xs font-medium"
+              style={{ borderColor: "var(--border)", color: "var(--ink-muted)" }}
+            >
+              {uploading ? "Subiendo…" : "Subir una foto desde el dispositivo"}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={onFileChange}
+              className="hidden"
+            />
+          </div>
+
           <label className="flex flex-col gap-1">
-            <span className="eyebrow">Título</span>
+            <span className="eyebrow">Título{draft.manual ? " (obligatorio)" : ""}</span>
             <input
               className="field"
+              placeholder={draft.manual ? "Ej: Casa 3 ambientes en Villa Ballester" : undefined}
               value={draft.title}
               onChange={(e) => setDraft({ ...draft, title: e.target.value })}
             />
@@ -303,7 +368,7 @@ export default function AddHouseModal({
           </button>
           <button
             onClick={save}
-            disabled={saving || !draft.url}
+            disabled={saving || (draft.manual ? !draft.title.trim() : !draft.url)}
             className="rounded-full px-4 py-2 text-sm font-semibold"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >

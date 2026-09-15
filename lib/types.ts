@@ -72,7 +72,9 @@ export interface VisitReview {
 
 export interface House {
   id: string;
-  url: string;
+  /** null para una casa cargada a mano (dueño directo, ficha privada de
+   * un colega) - no hay un aviso de portal al que apuntar. */
+  url: string | null;
   title: string;
   source: string;
   priceUsd: number | null;

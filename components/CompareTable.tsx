@@ -33,7 +33,7 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
     {
       label: "",
       render: (h) => (
-        <a href={h.url} target="_blank" rel="noreferrer" className="block h-24 w-36 overflow-hidden rounded-lg" style={{ background: "var(--accent-soft)" }}>
+        <a href={h.url ?? "/caso/casas"} target={h.url ? "_blank" : undefined} rel="noreferrer" className="block h-24 w-36 overflow-hidden rounded-lg" style={{ background: "var(--accent-soft)" }}>
           {h.images[0] && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={proxiedImage(h.images[0])!} alt={h.title} className="h-full w-full object-cover" />
@@ -44,7 +44,7 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
     {
       label: "Título",
       render: (h) => (
-        <a href={h.url} target="_blank" rel="noreferrer" className="font-semibold" style={{ color: "var(--accent)" }}>
+        <a href={h.url ?? "/caso/casas"} target={h.url ? "_blank" : undefined} rel="noreferrer" className="font-semibold" style={{ color: "var(--accent)" }}>
           {h.title}
         </a>
       ),

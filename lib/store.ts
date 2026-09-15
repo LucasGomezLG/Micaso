@@ -1,4 +1,4 @@
-import { dbGet, dbSet, dbUpdate } from "./db";
+import { dbGet, dbUpdate } from "./db";
 import { DEMO_CASE_ID, SEED_CHECKLIST, SEED_CRITERIA, SEED_HOUSES } from "./seed";
 import { buildChecklistTemplate } from "./checklistTemplates";
 import { getCase } from "./cases";
@@ -91,12 +91,15 @@ function normalizeHouse(house: House & { notes?: string; image?: string | null }
 
 export async function getHouses(caseId: string): Promise<House[]> {
   const houses = await dbGet<House[]>(housesKey(caseId));
-  if (houses === null) {
-    const initial = caseId === DEMO_CASE_ID ? SEED_HOUSES : [];
-    await dbSet(housesKey(caseId), initial);
-    return initial;
-  }
-  return houses.map(normalizeHouse);
+  if (houses !== null) return houses.map(normalizeHouse);
+  // Caso nuevo: nadie inicializó esta clave todavía. Un dbGet+dbSet
+  // separado acá tenía una carrera real - si entre el dbGet y el dbSet
+  // otra request ya agregó la primera casa (vía dbUpdate, atómico), este
+  // dbSet la pisaba con un array vacío. dbUpdate vuelve a chequear
+  // `current` adentro del mismo lock, así que si ya hay algo, se respeta.
+  const initial = caseId === DEMO_CASE_ID ? SEED_HOUSES : [];
+  const result = await dbUpdate<House[]>(housesKey(caseId), (current) => current ?? initial);
+  return result.map(normalizeHouse);
 }
 
 /** Todas las mutaciones (agregar, editar, comentar, borrar) pasan por
@@ -114,14 +117,14 @@ async function mutateHouses(caseId: string, mutate: (houses: House[]) => House[]
 
 export async function addHouse(
   caseId: string,
-  input: Pick<House, "url" | "addedBy"> & Partial<House>
+  input: Pick<House, "addedBy"> & Partial<House>
 ): Promise<House> {
   const now = new Date().toISOString();
   const house: House = {
     id: crypto.randomUUID(),
-    url: input.url,
-    title: input.title || input.url,
-    source: input.source || guessSource(input.url),
+    url: input.url ?? null,
+    title: input.title || input.url || "Propiedad sin título",
+    source: input.source || (input.url ? guessSource(input.url) : "Manual"),
     priceUsd: input.priceUsd ?? null,
     zone: input.zone ?? null,
     ambientes: input.ambientes ?? null,
@@ -331,12 +334,12 @@ async function defaultChecklist(caseId: string): Promise<ChecklistItem[]> {
 
 export async function getChecklist(caseId: string): Promise<ChecklistItem[]> {
   const items = await dbGet<ChecklistItem[]>(checklistKey(caseId));
-  if (items === null) {
-    const initial = await defaultChecklist(caseId);
-    await dbSet(checklistKey(caseId), initial);
-    return initial;
-  }
-  return items;
+  if (items !== null) return items;
+  // Mismo riesgo de carrera que getHouses (ver ese comentario) - se
+  // resuelve con dbUpdate, que vuelve a chequear `current` adentro del
+  // lock en vez de un dbSet ciego.
+  const fallback = await defaultChecklist(caseId);
+  return dbUpdate<ChecklistItem[]>(checklistKey(caseId), (current) => current ?? fallback);
 }
 
 export async function updateChecklistItem(
@@ -382,12 +385,10 @@ export async function deleteChecklistItem(caseId: string, id: string): Promise<b
 
 export async function getCriteria(caseId: string): Promise<Criteria> {
   const criteria = await dbGet<Criteria>(criteriaKey(caseId));
-  if (criteria === null) {
-    const initial = caseId === DEMO_CASE_ID ? SEED_CRITERIA : EMPTY_CRITERIA;
-    await dbSet(criteriaKey(caseId), initial);
-    return initial;
-  }
-  return criteria;
+  if (criteria !== null) return criteria;
+  // Mismo riesgo de carrera que getHouses (ver ese comentario).
+  const fallback = caseId === DEMO_CASE_ID ? SEED_CRITERIA : EMPTY_CRITERIA;
+  return dbUpdate<Criteria>(criteriaKey(caseId), (current) => current ?? fallback);
 }
 
 export async function updateCriteria(
