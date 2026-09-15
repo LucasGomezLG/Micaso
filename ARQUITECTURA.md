@@ -239,6 +239,34 @@ Lo mínimo nuevo para no reinventar lo que ya resuelven bien otros.
   primera imagen que alguien sube de verdad en vez de pegar un link, así
   que hace falta un lugar donde guardarla.
 
+  > **Implementado (15 sept 2026): Vercel Blob para fotos de casa, no
+  > para la de perfil.** La foto de perfil del corredor sigue sin usar
+  > esto — es una miniatura de 256px que se guarda como data URL adentro
+  > del mismo registro (ver sección 6, ya estaba así desde el 14 sept).
+  > Lo que sí necesitaba storage real eran las fotos que se suben a mano
+  > en `EditHouseModal` (antes solo se podía pegar una URL): una casa
+  > puede tener varias, y embeberlas como texto en el mismo objeto Redis
+  > que ya comparten título/checklist/comentarios de todas las casas del
+  > caso agrandaría esa clave en cada mutación — justo lo que la sección
+  > 9 ya marca como el punto débil de `dbUpdate` en Redis. `npm install
+  > @vercel/blob`, ruta nueva `app/api/houses/photo`, comprimida a 1600px
+  > lado mayor / calidad 0.85 antes de subir.
+  >
+  > **Probado de punta a punta (15 sept 2026) y funcionando.** Primer
+  > intento contra el store `micaso-blob`: falló porque se había creado
+  > en modo Privado ("Cannot use public access on a private store"), y
+  > las fotos de casa necesitan acceso público (se muestran con un
+  > `<img>` común a cualquiera con el link del caso, sin login). No tenía
+  > forma de pasarlo a público después de creado, así que se borró y se
+  > creó de nuevo en modo público. Con ese store, probado el camino
+  > completo contra un caso real (no el demo, que tiene su propio
+  > bloqueo de escritura): subir un archivo → URL pública de
+  > `*.public.blob.vercel-storage.com` devuelta y confirmada accesible
+  > → guardada en `images` de una casa vía el mismo PATCH que ya usa
+  > `EditHouseModal`. Falta probarlo a mano en el navegador (esto se
+  > probó por API), pero el mecanismo nuevo — auth, subida a Blob,
+  > servido público, persistencia — ya está verificado real.
+
 ### Deliberadamente no se suma nada
 
 - **Servicio de email transaccional** (Resend, SendGrid, etc.) — Mercado
@@ -530,6 +558,86 @@ producto comercial. Antes de vender esto, conviene una revisión real de
 los términos de uso de esos sitios, no asumir que lo razonable para 3
 personas lo sigue siendo a escala.
 
+> **Revisión real hecha (15 sept 2026)** — se leyó el `robots.txt` de
+> los cinco sitios y, insistiendo con un User-Agent de navegador normal
+> donde el primer intento dio 401/403, sus términos de uso. Contra eso se
+> compararon las URLs que hoy ya están cargadas en `lib/seed.ts` y el
+> comportamiento real de `app/api/scrape/route.ts`.
+>
+> - **RE/MAX — violaba su `robots.txt`, ahora resuelto.**
+>   `remax.com.ar/robots.txt` tiene `User-agent: *` → `Disallow:
+>   *?associate` (aplica a cualquier bot, no solo a IA). Los cuatro
+>   avisos de RE/MAX ya cargados en `lib/seed.ts` tienen todos
+>   `?associate=...` en la URL — es el parámetro que identifica al
+>   agente que comparte el link, así que prácticamente **todo** link de
+>   RE/MAX que un corredor argentino comparta lo va a tener; no es un
+>   caso borde. **Arreglado:** `stripDisallowedQuery()` en
+>   `app/api/scrape/route.ts` saca el parámetro `associate` antes de
+>   pedir la página — el contenido del aviso no cambia sin él, así que
+>   el autocompletado sigue funcionando igual, ya sin pisar esa regla.
+> - **Mudafy — mismo problema con `/ficha/`, ahora resuelto (con
+>   pérdida parcial de automatismo).** `mudafy.com.ar/robots.txt` tiene
+>   `Disallow: /ficha/` para `User-agent: *`, sin excepción por
+>   parámetro — a diferencia de RE/MAX, acá no hay nada que sacar de la
+>   URL. Uno de los dos avisos de Mudafy en `lib/seed.ts` usa esa ruta
+>   (`mudafy.com.ar/ficha/propiedad/...`); el otro usa `/casas/...`, que
+>   no está vedada (el sitio parece haber migrado de estructura de URL
+>   en algún momento). **Arreglado:** `isBlockedForAutoFill()` corta el
+>   autocompletado para cualquier link `/ficha/*` antes de pedir la
+>   página — para esos, la familia/corredor carga título, foto y precio
+>   a mano; el resto de Mudafy sigue automático.
+> - **ArgenProp — el `robots.txt` no bloquea la ruta usada, pero los
+>   términos de uso sí lo prohíben por escrito.** El artículo 26.3 de
+>   `argenprop.com/TerminosCondiciones` dice textual: *"El usuario
+>   acepta no utilizar el sitio web ni los materiales incluidos o
+>   extraídos del sitio web de manera ilegal, lo que incluye, sin
+>   carácter restrictivo, extraer (scraping) contenido del sitio o la
+>   base de datos para obtener listas de inventario u otra información
+>   privada."* Nombra "scraping" explícitamente, aunque acotado a
+>   "listas de inventario u otra información privada" — no
+>   inequívocamente una ficha pública individual. **Decidido y
+>   arreglado (15 sept 2026):** a diferencia de RE/MAX y Mudafy, achicar
+>   esto no era un cambio de URL — `isBlockedForAutoFill()` corta el
+>   autocompletado para todo `argenprop.com`. El link se sigue pegando y
+>   guardando; título, foto y precio quedan a cargo de quien lo agrega.
+> - **ZonaProp**: su `robots.txt` no bloquea el patrón de URL que
+>   `lib/seed.ts` usa hoy (`/propiedades/clasificado/...`). Su página de
+>   términos de uso es una SPA (React) que no entrega el texto legal sin
+>   ejecutar JS — no se pudo confirmar el contenido de primera mano ni
+>   con curl ni con WebFetch. Sigue sin confirmar.
+> - **MercadoLibre — el más grave de los cinco, confirmado con el texto
+>   real (no una fuente secundaria).** Leído directo de
+>   `mercadolibre.com.ar/ayuda/terminos-y-condiciones-de-uso_991`
+>   (sección 12, "Uso Automatizado del Sitio y Acceso a la
+>   Información"): *"Queda prohibido el uso de sistemas automatizados
+>   (incluyendo, sin limitarse a, bots, spiders, scrapers o crawlers)
+>   para acceder, indexar, extraer, copiar, almacenar, reutilizar,
+>   reproducir, transmitir o distribuir, directa o indirectamente,
+>   cualquier contenido del sitio de Mercado Libre sin la correspondiente
+>   autorización expresa de Mercado Libre"* — sin condicionarlo al
+>   User-Agent ni a qué tan "bien" se porte el bot; y agrega que el
+>   incumplimiento *"podrá constituir una infracción contractual, una
+>   violación a los derechos de propiedad intelectual... habilitando a
+>   Mercado Libre a ejercer las acciones legales y técnicas
+>   correspondientes"*. Su `robots.txt` es consistente con esto:
+>   bloquea por nombre a ClaudeBot, GPTBot, PerplexityBot, Amazonbot con
+>   `Disallow: /`, y solo deja pasar bots de vista previa de links
+>   (Facebook, Twitter, LinkedIn) con `Allow: /`. El scraper
+>   (`app/api/scrape/route.ts`) hoy se identifica justamente con el
+>   User-Agent de `facebookexternalhit` — no porque sea ese bot, sino
+>   para que el sitio lo trate como si lo fuera. Con la cláusula 12 de
+>   por medio, cambiar el User-Agent por uno honesto **no alcanza**: el
+>   texto prohíbe cualquier extracción automatizada, la haga quien la
+>   haga. **Decidido y arreglado (15 sept 2026):** es la fuente más
+>   usada de las cinco en `lib/seed.ts`, así que esta es la baja de
+>   automatismo más grande de las cuatro — `isBlockedForAutoFill()`
+>   corta el autocompletado para todo `mercadolibre.com.ar` (el link se
+>   sigue pegando y guardando, solo que sin fetch automático). De paso,
+>   como nunca más se le pide la página a MercadoLibre, el User-Agent de
+>   `facebookexternalhit` deja de enviársele — el problema de
+>   identificarse como un bot que no es queda resuelto para este sitio
+>   sin tener que decidir qué UA "honesto" usar en su lugar.
+
 **Costo de infraestructura — resuelto (14 sept 2026), con supuestos
 explícitos en vez de datos medidos**
 Upstash cobra por volumen de comandos y almacenamiento; Vercel por
@@ -553,8 +661,14 @@ proveedor (verificados 14 sept 2026) y un supuesto de uso conservador:
   300KB revisualizadas ~20 veces/mes, un caso mueve del orden de 2GB/mes
   — muy por debajo del 1TB incluido en Vercel Pro hasta varios cientos de
   casos simultáneos (pasado eso, USD 0,15–0,35/GB según región). El
-  storage de la foto de perfil del corredor (Vercel Blob) es insignificante,
-  es por corredor, no por caso.
+  storage de la foto de perfil del corredor es insignificante y ni
+  siquiera usa Vercel Blob (ver sección 5: es una miniatura de 256px
+  guardada como data URL junto con el resto del corredor). Lo que sí usa
+  Vercel Blob de verdad, desde el 15 sept 2026, son las fotos de casa
+  subidas a mano (antes solo se podía pegar una URL) — comprimidas a
+  1600px antes de subir, el costo adicional de storage es marginal
+  frente al ancho de banda del proxy de imágenes de arriba, que sigue
+  siendo el driver más grande.
 
 **Conclusión: el costo no es la restricción para fijar precio.** Con los
 volúmenes esperados (decenas de casos por corredor, no miles — ya
@@ -618,19 +732,27 @@ nunca al revés; en el segundo, las seis rutas de mutación de casos
 verifican `kase.brokerId === broker.id` de forma consistente; en el
 tercero, las rutas de super-admin no confían solo en `proxy.ts` — vuelven
 a chequear `ADMIN_EMAILS` contra la sesión real de Google adentro de
-cada handler. Una mejora de hardening (no un bug de hoy): ese chequeo
-de `brokerId` vive repetido en cada ruta del panel en vez de adentro de
-`lib/cases.ts` — si el día de mañana se agrega una ruta nueva que llame
-`closeCase`/`renameCase`/etc. sin repetirlo, ahí sí se abriría un IDOR.
-Vale la pena mover el chequeo adentro de esas funciones el día que se
-toque ese archivo por otro motivo. Esto no reemplaza los tests
-automáticos de aislamiento que ya se pedían arriba — es una foto de un
-momento, no una garantía permanente contra una regresión futura.
+cada handler. Esto no reemplaza los tests automáticos de aislamiento que
+ya se pedían arriba — es una foto de un momento, no una garantía
+permanente contra una regresión futura.
+
+> **Hardening resuelto (15 sept 2026):** el chequeo de `brokerId` que
+> vivía repetido en cada ruta del panel se movió adentro de
+> `lib/cases.ts`. `renameCase`, `closeCase`, `reopenCase` y
+> `regeneratePassword` ahora reciben `brokerId` y verifican la
+> pertenencia del caso ellas mismas (vía el nuevo `getCaseForBroker`)
+> antes de escribir — si el día de mañana se agrega una ruta nueva que
+> las llame sin repetir el chequeo, sigue protegida por construcción, no
+> por convención. Las 5 rutas de `/api/panel/cases/[id]/*` (incluida
+> `impersonate`, que no muta pero comparte el mismo riesgo de
+> autorización) se simplificaron para usar `getCaseForBroker` en vez de
+> repetir `kase.brokerId !== broker.id` a mano. Los 4 tests de
+> aislamiento existentes (`test/isolation.test.mts`) siguen pasando.
 
 **Credenciales de caso en texto plano — identificado, riesgo aceptado
 por ahora**
-La contraseña de cada caso (`lib/cases.ts`, `randomCode(8)`) se guarda
-sin hashear, y el login la compara con `===` directo contra texto
+La contraseña de cada caso (`lib/cases.ts`, antes `randomCode(8)`) se
+guarda sin hashear, y el login la compara con `===` directo contra texto
 plano — a diferencia de una contraseña de usuario típica, es
 intencional: el corredor necesita poder *ver* la clave para compartirla
 por WhatsApp (botón "Compartir" en el panel), así que hashearla
@@ -646,8 +768,14 @@ exposición depende de un solo admin (vos) y un solo caso real
 (Carolina) — bajo. Importa más el día que haya varios corredores
 pagando con clientes reales: en ese momento conviene tratar ese JSON de
 backup como el activo más sensible del sistema (no guardarlo suelto,
-borrar copias viejas) y considerar subir la entropía de `randomCode(8)`.
-No se resuelve ahora — queda anotado para revisar más adelante.
+borrar copias viejas).
+
+> **Entropía subida (15 sept 2026):** `randomCode` ahora genera 12
+> caracteres en vez de 8, tanto al crear un caso como al regenerar la
+> clave — sobre el mismo alfabeto de 32 caracteres sin ambiguos, pasa de
+> ~40 a ~60 bits. No cambia nada más (sigue en texto plano, sigue
+> comparándose con `===`): el resto de este punto sigue sin resolverse,
+> queda anotado para cuando haya varios corredores pagando.
 
 **Barrido de "quedó pensado para un solo caso" (14 sept 2026) — dos
 bugs reales encontrados y resueltos**
