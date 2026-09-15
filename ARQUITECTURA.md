@@ -1012,6 +1012,14 @@ la pena seguir.**
 > un test formal. Sigue sin responder si pagaría, pero ya es uso real
 > generando pedidos reales, no una opinión sobre una propuesta.
 
+> **Tercera señal — 15 sept 2026: respondió la pregunta que faltaba.**
+> Se le preguntó directo, como proponía el párrafo de abajo, y dijo que
+> sí pagaría. Todavía falta la letra chica (cuánto, con qué frecuencia,
+> desde cuándo) — eso no se registra acá hasta confirmarlo, para no
+> inventar un número — pero la pregunta central de esta sección ("me
+> gusta" vs. "pagaría") ya tiene respuesta, y es la que de verdad valida
+> el negocio.
+
 El caso de uso ya está corriendo en vivo con Carolina cumpliendo, de
 manera informal, exactamente el rol que este documento propone
 formalizar. Antes de invertir en la capa multi-caso, vale más observar
