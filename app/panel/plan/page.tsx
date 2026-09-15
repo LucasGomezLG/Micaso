@@ -151,13 +151,34 @@ export default async function PanelPlanPage() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="text-3xl font-semibold" style={{ fontFamily: "var(--font-display)" }}>
             Tu Plan y Suscripción
           </h1>
           <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
             Gestioná el cupo de casos de tu cartera y el estado de tu cuenta en Micaso.
           </p>
+        </div>
+
+        {/* Aviso de pasarela en desarrollo */}
+        <div
+          className="mb-8 flex items-start gap-3 rounded-2xl border p-4 text-xs sm:text-sm"
+          style={{
+            borderColor: "var(--accent-soft-border)",
+            background: "color-mix(in srgb, var(--accent-soft) 50%, var(--surface))",
+          }}
+        >
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <Clock size={16} />
+          </span>
+          <div className="leading-relaxed">
+            <p className="font-semibold text-amber-700 dark:text-amber-300">
+              Pasarela de cobro automático con tarjeta en desarrollo
+            </p>
+            <p className="mt-0.5 text-xs" style={{ color: "var(--ink-muted)" }}>
+              Estamos finalizando la integración directa con Mercado Pago. Mientras tanto, tu prueba gratuita de 14 días está 100% activa sin costo y cualquier cambio o activación de plan se coordina de manera personalizada y directa por WhatsApp.
+            </p>
+          </div>
         </div>
 
         {/* Tarjeta de Estado Actual */}
@@ -245,15 +266,21 @@ export default async function PanelPlanPage() {
                 </div>
               </div>
 
-              <a
-                href={buildWhatsappLink(PLAN_LABEL[broker.plan])}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold"
-                style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-              >
-                <MessageSquare size={13} /> Coordinar suscripción
-              </a>
+              <div className="flex flex-col sm:items-end gap-1">
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  Checkout online en desarrollo
+                </span>
+                <a
+                  href={buildWhatsappLink(PLAN_LABEL[broker.plan])}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold"
+                  style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+                >
+                  <MessageSquare size={13} /> Coordinar por WhatsApp
+                </a>
+              </div>
             </div>
           )}
         </div>
@@ -327,22 +354,32 @@ export default async function PanelPlanPage() {
                         Plan en uso
                       </button>
                     ) : (
-                      <a
-                        href={buildWhatsappLink(p.name)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn w-full rounded-full py-2.5 text-center text-xs font-semibold transition-transform active:scale-95"
-                        style={
-                          p.highlight
-                            ? {
-                                background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, var(--gold)))",
-                                color: "var(--accent-ink)",
-                              }
-                            : { border: "1px solid var(--border-strong)", color: "var(--ink)" }
-                        }
-                      >
-                        {p.ctaLabel}
-                      </a>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between text-[11px]" style={{ color: "var(--ink-faint)" }}>
+                          <span className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                            Pago online en desarrollo
+                          </span>
+                          <span>Coordinación manual</span>
+                        </div>
+                        <a
+                          href={buildWhatsappLink(p.name)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn w-full rounded-full py-2.5 text-center text-xs font-semibold transition-transform active:scale-95"
+                          style={
+                            p.highlight
+                              ? {
+                                  background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, var(--gold)))",
+                                  color: "var(--accent-ink)",
+                                }
+                              : { border: "1px solid var(--border-strong)", color: "var(--ink)" }
+                          }
+                        >
+                          <MessageSquare size={13} className="inline mr-1" />
+                          {p.ctaLabel} vía WhatsApp
+                        </a>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -365,7 +402,7 @@ export default async function PanelPlanPage() {
               <strong>Cancelación sin penalidad:</strong> Podés cancelar en cualquier momento desde tu panel o escribiéndonos. Conservás acceso hasta la fecha de fin del mes ya abonado.
             </li>
             <li>
-              <strong>Cobro en pesos argentinos:</strong> Se procesa de forma recurrente en pesos al tipo de cambio del día a través de Mercado Pago.
+              <strong>Cobro en pesos argentinos:</strong> La pasarela automática con Mercado Pago está en desarrollo. Durante este período, las altas y renovaciones se acuerdan directamente por WhatsApp al valor de referencia en pesos.
             </li>
             <li>
               <strong>Tus datos nunca se pierden de golpe:</strong> Si interrumpís el pago, tu cuenta pasa a modo solo lectura durante 90 días para que puedas seguir consultando todo lo que cargaste.

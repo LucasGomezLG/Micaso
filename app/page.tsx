@@ -502,9 +502,7 @@ export default function LandingPage() {
               ))}
             </div>
             <p className="mt-6 text-xs" style={{ color: "var(--ink-muted)" }}>
-              Precios de referencia en dólares — el cobro se hace en pesos,
-              al tipo de cambio del día, a través de Mercado Pago. La prueba
-              de 14 días no pide tarjeta. Cancelás cuando quieras sin penalidad. Consulta nuestros{" "}
+              Precios de referencia en dólares — pasarela de cobro automático actualmente en desarrollo (la prueba de 14 días no pide tarjeta y es 100% gratuita). Cancelás cuando quieras sin penalidad. Consultá nuestros{" "}
               <Link href="/terminos" className="underline underline-offset-2">
                 términos de contratación
               </Link>.
