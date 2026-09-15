@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentBroker } from "@/lib/brokers";
-import { getCase } from "@/lib/cases";
+import { getCaseForBroker } from "@/lib/cases";
 import { CASE_COOKIE } from "@/lib/session";
 
 /** Le da al corredor la misma cookie de sesión que usa la familia, para
@@ -14,8 +14,12 @@ export async function POST(
   ctx: RouteContext<"/api/panel/cases/[id]/impersonate">
 ) {
   const { id } = await ctx.params;
-  const [broker, kase] = await Promise.all([getCurrentBroker(), getCase(id)]);
-  if (!kase || !broker || kase.brokerId !== broker.id) {
+  const broker = await getCurrentBroker();
+  if (!broker) {
+    return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  }
+  const kase = await getCaseForBroker(id, broker.id);
+  if (!kase) {
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
   if (kase.estado === "archivado") {

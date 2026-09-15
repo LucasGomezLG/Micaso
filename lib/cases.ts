@@ -90,7 +90,7 @@ export async function createCase(
     tipoCaso,
     estado: "activo",
     username: randomCode(6).toLowerCase(),
-    password: randomCode(8),
+    password: randomCode(12),
     people: [],
     soloLecturaDesde: null,
     createdAt: now,
@@ -112,6 +112,17 @@ export async function listCasesForBroker(brokerId: string): Promise<Case[]> {
 export async function getCase(caseId: string): Promise<Case | null> {
   const cases = await getAllCases();
   return cases[caseId] ?? null;
+}
+
+/** Único punto donde se verifica que un caso pertenezca a un corredor
+ * dado — usado tanto por las rutas del panel (para el 404 si no es
+ * suyo) como, ahora, por los mutadores de abajo (renameCase, closeCase,
+ * reopenCase, regeneratePassword), para que ese chequeo no dependa de
+ * que cada ruta nueva se acuerde de repetirlo. Ver ARQUITECTURA.md
+ * sección 9, "mejora de hardening" sobre este mismo punto. */
+export async function getCaseForBroker(caseId: string, brokerId: string): Promise<Case | null> {
+  const kase = await getCase(caseId);
+  return kase && kase.brokerId === brokerId ? kase : null;
 }
 
 /** Todos los casos de todos los corredores — usado por el backup
@@ -142,7 +153,9 @@ async function updateCase(caseId: string, patch: Partial<Case>): Promise<Case | 
   return result[caseId] ?? null;
 }
 
-export async function renameCase(caseId: string, titulo: string): Promise<Case | null> {
+export async function renameCase(caseId: string, brokerId: string, titulo: string): Promise<Case | null> {
+  const kase = await getCaseForBroker(caseId, brokerId);
+  if (!kase) return null;
   return updateCase(caseId, { titulo });
 }
 
@@ -154,8 +167,10 @@ export async function updatePeople(caseId: string, people: string[]): Promise<Ca
   return updateCase(caseId, { people: cleaned });
 }
 
-export async function regeneratePassword(caseId: string): Promise<Case | null> {
-  return updateCase(caseId, { password: randomCode(8) });
+export async function regeneratePassword(caseId: string, brokerId: string): Promise<Case | null> {
+  const kase = await getCaseForBroker(caseId, brokerId);
+  if (!kase) return null;
+  return updateCase(caseId, { password: randomCode(12) });
 }
 
 /** Cierre manual: pasa a `solo_lectura`, no directo a `archivado` — la
@@ -166,7 +181,9 @@ export async function regeneratePassword(caseId: string): Promise<Case | null> {
  * Ver ARQUITECTURA.md sección 6 y 9. El bloqueo de escritura en
  * solo_lectura vive en proxy.ts; el archivado a los 90 días vive en
  * archiveStaleReadOnlyCases() (ver abajo), llamado por el cron. */
-export async function closeCase(caseId: string): Promise<Case | null> {
+export async function closeCase(caseId: string, brokerId: string): Promise<Case | null> {
+  const kase = await getCaseForBroker(caseId, brokerId);
+  if (!kase) return null;
   return updateCase(caseId, { estado: "solo_lectura", soloLecturaDesde: new Date().toISOString() });
 }
 
@@ -175,8 +192,8 @@ export async function closeCase(caseId: string): Promise<Case | null> {
  * lib/types.ts, no de un botón en el panel). Un caso reabierto vuelve a
  * contar contra el tope de casos activos del plan, por eso repite el
  * mismo chequeo que createCase(). */
-export async function reopenCase(caseId: string): Promise<Case | null> {
-  const kase = await getCase(caseId);
+export async function reopenCase(caseId: string, brokerId: string): Promise<Case | null> {
+  const kase = await getCaseForBroker(caseId, brokerId);
   if (!kase) return null;
   await assertUnderCaseLimit(kase.brokerId);
   return updateCase(caseId, { estado: "activo", soloLecturaDesde: null });

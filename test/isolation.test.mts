@@ -19,7 +19,7 @@ import { join } from "node:path";
 const dbDir = mkdtempSync(join(tmpdir(), "micaso-test-"));
 process.env.MICASO_LOCAL_DB_PATH = join(dbDir, "store.json");
 
-const { createCase, listCasesForBroker } = await import("../lib/cases");
+const { createCase, listCasesForBroker, renameCase, closeCase } = await import("../lib/cases");
 const { getHouses, addHouse, updateHouse, getChecklist, deleteChecklistItem } = await import(
   "../lib/store"
 );
@@ -72,4 +72,17 @@ test("listCasesForBroker solo devuelve los casos de ese corredor", async () => {
   const forX = await listCasesForBroker("broker-x");
   assert.ok(forX.some((c) => c.id === caseA.id));
   assert.ok(!forX.some((c) => c.id === caseB.id));
+});
+
+test("un corredor no puede renombrar ni cerrar el caso de otro corredor", async () => {
+  const caseA = await createCase("broker-alpha", "Caso Alpha", "compra");
+  const renamed = await renameCase(caseA.id, "broker-beta", "Hackeado");
+  assert.equal(renamed, null);
+
+  const closed = await closeCase(caseA.id, "broker-beta");
+  assert.equal(closed, null);
+
+  const legitClose = await closeCase(caseA.id, "broker-alpha");
+  assert.ok(legitClose);
+  assert.equal(legitClose.estado, "solo_lectura");
 });

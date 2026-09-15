@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import { getCurrentBroker } from "@/lib/brokers";
-import { getCase, reopenCase } from "@/lib/cases";
+import { getCaseForBroker, reopenCase } from "@/lib/cases";
 
 export async function POST(
   _request: Request,
   ctx: RouteContext<"/api/panel/cases/[id]/reopen">
 ) {
   const { id } = await ctx.params;
-  const [broker, kase] = await Promise.all([getCurrentBroker(), getCase(id)]);
-  if (!kase || !broker || kase.brokerId !== broker.id) {
+  const broker = await getCurrentBroker();
+  if (!broker) {
+    return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  }
+  const kase = await getCaseForBroker(id, broker.id);
+  if (!kase) {
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
   if (kase.estado !== "solo_lectura") {
@@ -16,7 +20,7 @@ export async function POST(
   }
 
   try {
-    const updated = await reopenCase(id);
+    const updated = await reopenCase(id, broker.id);
     return NextResponse.json({ case: updated });
   } catch (err) {
     const message = err instanceof Error ? err.message : "No se pudo reabrir el caso.";
