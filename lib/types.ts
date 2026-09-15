@@ -81,9 +81,10 @@ export interface House {
   dormitorios: number | null;
   cochera: boolean | null;
   superficieM2: number | null;
-  /** Si la propiedad es apta para el crédito hipotecario BBVA — a diferencia
-   * de `cochera` (dato de la propiedad), esto lo toca la familia/corredor a
-   * mano tras averiguar con la inmobiliaria, así que arranca en "no_se". */
+  /** Si la propiedad es apta para el crédito hipotecario del caso — a
+   * diferencia de `cochera` (dato de la propiedad), esto lo toca la
+   * familia/corredor a mano tras averiguar con la inmobiliaria, así que
+   * arranca en "no_se". */
   aptoCredito: AptoCredito;
   images: string[];
   comments: HouseComment[];

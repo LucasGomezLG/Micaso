@@ -7,5 +7,5 @@ export const dynamic = "force-dynamic";
 export default async function CalculadoraPage() {
   const caseId = await getCaseId();
   const criteria = await getCriteria(caseId);
-  return <CalculadoraClient loan={criteria.loan} />;
+  return <CalculadoraClient loan={criteria.loan} caseId={caseId} />;
 }

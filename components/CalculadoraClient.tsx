@@ -7,9 +7,14 @@ import { LoanInfo } from "@/lib/types";
 import { formatArs, formatPercent, formatUsd } from "@/lib/format";
 import { frenchInstallment } from "@/lib/mortgage";
 
-const STORAGE_KEY = "casa-norte-calculadora";
+const STORAGE_KEY_PREFIX = "micaso-calculadora:";
 
-export default function CalculadoraClient({ loan }: { loan: LoanInfo }) {
+export default function CalculadoraClient({ loan, caseId }: { loan: LoanInfo; caseId: string }) {
+  // Antes era una sola clave global ("casa-norte-calculadora", de cuando
+  // esto era una app de un solo caso) — un corredor que entra a dos
+  // casos distintos desde el mismo navegador (botón "Entrar al caso" en
+  // el panel) terminaba viendo los numeros guardados del caso anterior.
+  const STORAGE_KEY = STORAGE_KEY_PREFIX + caseId;
   const impliedFx = loan.bankMaxUsd > 0 ? Math.round(loan.approvedAmountArs / loan.bankMaxUsd) : 1000;
   // rateLabel uses Argentine comma-decimal ("7,5% + UVA") — parseFloat alone
   // stops at the comma and silently returns 7 instead of 7.5.
@@ -42,7 +47,7 @@ export default function CalculadoraClient({ loan }: { loan: LoanInfo }) {
         }, 0);
       }
     } catch {}
-  }, []);
+  }, [STORAGE_KEY]);
 
   useEffect(() => {
     try {
@@ -51,7 +56,7 @@ export default function CalculadoraClient({ loan }: { loan: LoanInfo }) {
         JSON.stringify({ propertyValue, ownFunds, fx, tna, months, income, closingCostPct })
       );
     } catch {}
-  }, [propertyValue, ownFunds, fx, tna, months, income, closingCostPct]);
+  }, [STORAGE_KEY, propertyValue, ownFunds, fx, tna, months, income, closingCostPct]);
 
   const closingCosts = propertyValue * (closingCostPct / 100);
   const totalCashNeededContado = propertyValue + closingCosts;

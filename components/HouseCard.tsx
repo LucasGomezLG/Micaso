@@ -30,6 +30,12 @@ import EditHouseModal from "@/components/EditHouseModal";
 import VisitReview from "@/components/VisitReview";
 import Select from "@/components/Select";
 
+// Global (no por caso) a propósito: el nombre en sí no identifica un
+// caso, y se valida contra `people` del caso actual antes de usarlo
+// (ver el useEffect más abajo) — así no arrastra un nombre que no
+// existe en este caso desde otro que se vio antes en el mismo navegador
+// (por ejemplo, un corredor que entra a dos casos distintos con "Entrar
+// al caso" desde el mismo panel).
 const AUTHOR_KEY = "casa-comment-author";
 
 const APTO_CREDITO_NEXT: Record<AptoCredito, AptoCredito> = {
@@ -88,11 +94,11 @@ export default function HouseCard({
   useEffect(() => {
     try {
       const saved = localStorage.getItem(AUTHOR_KEY);
-      if (saved) {
+      if (saved && people.includes(saved)) {
         setTimeout(() => setCommentAuthor(saved), 0);
       }
     } catch {}
-  }, []);
+  }, [people]);
 
   async function postComment() {
     const text = commentText.trim();
