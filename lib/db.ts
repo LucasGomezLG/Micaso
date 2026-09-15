@@ -9,7 +9,11 @@ const token =
 
 const redis = url && token ? new Redis({ url, token }) : null;
 
-const LOCAL_DB_PATH = path.join(process.cwd(), ".data", "store.json");
+// Override solo para tests (ver test/isolation.test.ts) — así corren
+// contra un archivo temporal propio en vez de pisar `.data/store.json`,
+// que además usa el dev server local mientras se prueba a mano.
+const LOCAL_DB_PATH =
+  process.env.MICASO_LOCAL_DB_PATH || path.join(process.cwd(), ".data", "store.json");
 
 async function readLocalStore(): Promise<Record<string, unknown>> {
   try {
