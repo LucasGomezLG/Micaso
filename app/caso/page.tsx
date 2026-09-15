@@ -304,34 +304,79 @@ export default async function HomePage() {
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg">Agregadas hace poco</h2>
-          <Link href="/caso/casas" className="text-sm font-medium" style={{ color: "var(--accent)" }}>
-            Ver todas ({houses.length}) →
-          </Link>
+          <h2 className="text-lg">Propiedades en seguimiento</h2>
+          {houses.length > 0 && (
+            <Link href="/caso/casas" className="text-sm font-medium" style={{ color: "var(--accent)" }}>
+              Ver todas ({houses.length}) →
+            </Link>
+          )}
         </div>
-        <div className="flex flex-col gap-2">
-          {recent.map((house) => (
-            <a
-              key={house.id}
-              href={house.url ?? "/caso/casas"}
-              target={house.url ? "_blank" : undefined}
-              rel="noreferrer"
-              className="flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors hover:border-[var(--border-strong)]"
-              style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+        {houses.length === 0 ? (
+          <div
+            className="flex flex-col items-center justify-center rounded-3xl border p-8 text-center sm:p-12"
+            style={{
+              background: "var(--surface)",
+              borderColor: "var(--border)",
+              boxShadow: "var(--shadow-card)",
+            }}
+          >
+            <span
+              className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl text-2xl shadow-sm"
+              style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
             >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{house.title}</p>
-                <p className="mono text-xs" style={{ color: "var(--ink-faint)" }}>
-                  {house.zone ?? house.source} · agregó {house.addedBy} · {formatDate(house.addedAt)}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <span className="mono text-sm">{formatUsd(house.priceUsd)}</span>
-                <StatusBadge status={house.status} />
-              </div>
-            </a>
-          ))}
-        </div>
+              🏡
+            </span>
+            <h3 className="text-xl font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+              Todavía no hay propiedades cargadas
+            </h3>
+            <p className="mt-2 max-w-md text-xs sm:text-sm leading-relaxed" style={{ color: "var(--ink-muted)" }}>
+              Cuando encuentren una propiedad en ZonaProp, MercadoLibre o Argenprop que les llame la atención, péguenla acá para analizarla juntos y coordinar visitas.
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href="/caso/casas"
+                className="btn btn-primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs sm:text-sm font-semibold"
+                style={{
+                  background: "linear-gradient(135deg, var(--accent), var(--gold))",
+                  color: "var(--accent-ink)",
+                }}
+              >
+                + Cargar primer aviso
+              </Link>
+              <Link
+                href="/caso/checklist"
+                className="btn inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs sm:text-sm font-medium"
+                style={{ border: "1px solid var(--border)", color: "var(--ink)" }}
+              >
+                Ver checklist de trámites
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {recent.map((house) => (
+              <a
+                key={house.id}
+                href={house.url ?? "/caso/casas"}
+                target={house.url ? "_blank" : undefined}
+                rel="noreferrer"
+                className="flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors hover:border-[var(--border-strong)]"
+                style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{house.title}</p>
+                  <p className="mono text-xs" style={{ color: "var(--ink-faint)" }}>
+                    {house.zone ?? house.source} · agregó {house.addedBy} · {formatDate(house.addedAt)}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="mono text-sm">{formatUsd(house.priceUsd)}</span>
+                  <StatusBadge status={house.status} />
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

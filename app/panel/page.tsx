@@ -5,7 +5,7 @@ import { getCaseSummary } from "@/lib/store";
 import { PLAN_CASE_LIMIT, PLAN_LABEL } from "@/lib/types";
 import CreateCaseModal from "@/components/CreateCaseModal";
 import PanelLogoutButton from "@/components/PanelLogoutButton";
-import CaseRow from "@/components/CaseRow";
+import CaseList from "@/components/CaseList";
 import PanelDashboard, { AttentionItem } from "@/components/PanelDashboard";
 import { MicasoMark } from "@/components/MicasoMark";
 import BrokerNameEditor from "@/components/BrokerNameEditor";
@@ -161,25 +161,11 @@ export default async function PanelPage() {
             <BrokerOnboarding broker={broker} />
           ) : null
         ) : (
-          <>
-            {activeCases.length > 0 && (
-              <div className="mt-8 flex flex-col gap-3">
-                {activeCases.map((kase) => (
-                  <CaseRow key={kase.id} initialCase={kase} summary={summaries[kase.id]} alert={alertFor(kase.id)} />
-                ))}
-              </div>
-            )}
-            {inactiveCases.length > 0 && (
-              <div className={activeCases.length > 0 ? "mt-10" : "mt-8"}>
-                <p className="eyebrow mb-3">Casos cerrados ({inactiveCases.length})</p>
-                <div className="flex flex-col gap-3">
-                  {inactiveCases.map((kase) => (
-                    <CaseRow key={kase.id} initialCase={kase} summary={summaries[kase.id]} alert={alertFor(kase.id)} />
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
+          <CaseList
+            cases={cases}
+            summaries={summaries}
+            attentionItems={attentionItems}
+          />
         )}
 
         <footer className="mt-14 border-t pt-6 pb-4" style={{ borderColor: "var(--border)" }}>

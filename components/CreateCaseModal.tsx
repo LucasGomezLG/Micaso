@@ -11,6 +11,7 @@ export default function CreateCaseModal({ label = "+ Nuevo caso" }: { label?: st
   const [open, setOpen] = useState(false);
   const [titulo, setTitulo] = useState("");
   const [tipoCaso, setTipoCaso] = useState<TipoCaso>("compra");
+  const [personas, setPersonas] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,16 +19,18 @@ export default function CreateCaseModal({ label = "+ Nuevo caso" }: { label?: st
     e.preventDefault();
     setLoading(true);
     setError(null);
+    const people = personas.split(",").map((p) => p.trim()).filter(Boolean);
     const res = await fetch("/api/panel/cases", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titulo, tipoCaso }),
+      body: JSON.stringify({ titulo, tipoCaso, people }),
     });
     setLoading(false);
     if (res.ok) {
       toast.success("Caso creado.");
       setOpen(false);
       setTitulo("");
+      setPersonas("");
       setTipoCaso("compra");
       router.refresh();
     } else {
@@ -98,6 +101,16 @@ export default function CreateCaseModal({ label = "+ Nuevo caso" }: { label?: st
                   <option value="alquiler">Alquiler</option>
                   <option value="otro">Otro</option>
                 </Select>
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="eyebrow">Integrantes de la familia (opcional)</span>
+                <input
+                  placeholder="Ej. Lucas, Abril (separados por coma)"
+                  value={personas}
+                  onChange={(e) => setPersonas(e.target.value)}
+                  className="rounded-lg border px-3 py-2"
+                  style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
+                />
               </label>
               {error && (
                 <p className="text-xs" style={{ color: "var(--status-descartada)" }}>

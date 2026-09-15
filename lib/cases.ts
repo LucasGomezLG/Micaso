@@ -79,10 +79,12 @@ async function assertUnderCaseLimit(brokerId: string): Promise<void> {
 export async function createCase(
   brokerId: string,
   titulo: string,
-  tipoCaso: TipoCaso
+  tipoCaso: TipoCaso,
+  people: string[] = []
 ): Promise<Case> {
   await assertUnderCaseLimit(brokerId);
   const now = new Date().toISOString();
+  const cleanedPeople = Array.from(new Set(people.map((p) => p.trim()).filter(Boolean)));
   const kase: Case = {
     id: crypto.randomUUID(),
     brokerId,
@@ -91,7 +93,7 @@ export async function createCase(
     estado: "activo",
     username: randomCode(6).toLowerCase(),
     password: randomCode(12),
-    people: [],
+    people: cleanedPeople,
     soloLecturaDesde: null,
     createdAt: now,
     updatedAt: now,
