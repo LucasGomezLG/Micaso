@@ -228,6 +228,11 @@ Lo mínimo nuevo para no reinventar lo que ya resuelven bien otros.
   producto: **decidido, se llama Micaso** (ver sección 11) — "Casa" queda
   como nombre interno/histórico de la herramienta original, no como marca
   pública.
+
+  > **Implementado (verificado 15 sept 2026):** `micaso.com.ar` está
+  > comprado y en vivo, sirviendo la landing real (headlines y precios
+  > de sección 11 coinciden). Ver también sección 11, que tenía esto
+  > anotado como pendiente.
 - **Almacenamiento de imágenes subidas** (Vercel Blob u otro) — hoy todas
   las fotos de la app vienen de URLs externas (scrapeadas de un aviso, o
   pegadas a mano en el editor); la foto de perfil del corredor es la
@@ -847,10 +852,9 @@ De cara al corredor y a la familia, el producto se llama **Micaso** —
 juego de palabras con "mi casa", y además el nombre literal de la unidad
 del producto (un "caso" por familia, sección 3). "Casa" queda como
 nombre interno/histórico de la herramienta original en `D:\Casa`.
-Verificado sin conflictos con proptech existente y sin sitio activo en
-`micaso.com.ar`. Falta solo confirmar disponibilidad real y comprar el
-dominio antes de publicar la landing — eso ya no es una decisión, es un
-trámite.
+Verificado sin conflictos con proptech existente. **Resuelto (verificado
+15 sept 2026):** el dominio ya está comprado y la landing está publicada
+en vivo en `micaso.com.ar` — el trámite que faltaba ya se hizo.
 
 ## 12. Camino de validación sugerido
 
