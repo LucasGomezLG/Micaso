@@ -387,6 +387,18 @@ export default function CasasBoard({
         </div>
       </div>
 
+      {stage === "visitas" && (
+        <div
+          className="flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-xs animate-fade-in"
+          style={{ background: "var(--accent-soft)", borderColor: "var(--accent-soft-border)", color: "var(--ink)" }}
+        >
+          <span className="text-base shrink-0">🤝</span>
+          <span>
+            <strong>Despreocupate del ida y vuelta:</strong> cuando una casa te interese, marcala como <em>&quot;A coordinar&quot;</em>. Tu corredor se encarga de contactar a la inmobiliaria y coordinar la visita para ustedes.
+          </span>
+        </div>
+      )}
+
       {visible.length === 0 ? (
         <p className="py-12 text-center text-sm" style={{ color: "var(--ink-faint)" }}>
           {searchQuery ? "No se encontraron propiedades para tu búsqueda." : "No hay propiedades en esta vista todavía."}

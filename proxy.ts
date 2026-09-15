@@ -45,8 +45,10 @@ export const proxy = auth((request) => {
   const userEmail = request.auth?.user?.email || devEmail;
 
   // Si ya tiene sesión activa de Google y va a /panel/login o /login:
-  // no volver a pedirle login de Google, mandarlo directo a su panel o destino:
-  if (userEmail && (pathname === "/panel/login" || pathname === "/login")) {
+  // no volver a pedirle login de Google, mandarlo directo a su panel o destino
+  // (a menos que venga a /login con parámetros de caso ?u=..., en cuyo caso quiere entrar al caso puntual):
+  const isCaseLoginWithParams = pathname === "/login" && request.nextUrl.searchParams.has("u");
+  if (userEmail && !isCaseLoginWithParams && (pathname === "/panel/login" || pathname === "/login")) {
     const next = request.nextUrl.searchParams.get("next");
     if (next && next !== "/login" && next !== "/panel/login") {
       return NextResponse.redirect(new URL(next, request.url));

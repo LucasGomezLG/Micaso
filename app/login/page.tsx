@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MicasoMark } from "@/components/MicasoMark";
@@ -8,28 +8,52 @@ import { MicasoMark } from "@/components/MicasoMark";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const initialUser = searchParams.get("u") || "";
+  const initialPass = searchParams.get("p") || "";
+
+  const [username, setUsername] = useState(initialUser);
+  const [password, setPassword] = useState(initialPass);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [autoLoggingIn, setAutoLoggingIn] = useState(Boolean(initialUser && initialPass));
+
+  async function performLogin(u: string, p: string, isAuto = false) {
+    setLoading(true);
+    if (isAuto) setAutoLoggingIn(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: u, password: p }),
+      });
+      if (res.ok) {
+        // router.replace para que los parámetros ?u=...&p=... no queden en el historial del navegador
+        router.replace(searchParams.get("next") || "/caso");
+        router.refresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "No se pudo entrar.");
+        setAutoLoggingIn(false);
+        setLoading(false);
+      }
+    } catch {
+      setError("Error de conexión al intentar ingresar.");
+      setAutoLoggingIn(false);
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (initialUser && initialPass) {
+      performLogin(initialUser, initialPass, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-    const res = await fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-    setLoading(false);
-    if (res.ok) {
-      router.push(searchParams.get("next") || "/caso");
-      router.refresh();
-    } else {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error || "No se pudo entrar.");
-    }
+    performLogin(username, password, false);
   }
 
   return (
@@ -65,43 +89,63 @@ function LoginForm() {
         <p className="mt-4 text-sm" style={{ color: "var(--ink-muted)" }}>
           Acceso a tu caso — entrá con el usuario y la contraseña que te compartió tu corredor.
         </p>
-        <label className="mt-5 flex flex-col gap-1 text-sm">
-          <span className="eyebrow">Usuario</span>
-          <input
-            type="text"
-            autoFocus
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="rounded-lg border px-3 py-2"
-            style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
-          />
-        </label>
-        <label className="mt-3 flex flex-col gap-1 text-sm">
-          <span className="eyebrow">Contraseña</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="rounded-lg border px-3 py-2"
-            style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
-          />
-        </label>
-        {error && (
-          <p className="mt-2 text-xs" style={{ color: "var(--status-descartada)" }}>
-            {error}
-          </p>
+
+        {autoLoggingIn ? (
+          <div className="my-8 flex flex-col items-center justify-center text-center gap-3 py-4">
+            <span
+              className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
+              style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }}
+            />
+            <div>
+              <p className="text-sm font-semibold" style={{ color: "var(--ink)" }}>
+                Ingresando a tu caso…
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: "var(--ink-muted)" }}>
+                Acceso directo verificado
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <label className="mt-5 flex flex-col gap-1 text-sm">
+              <span className="eyebrow">Usuario</span>
+              <input
+                type="text"
+                autoFocus={!initialUser}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="rounded-lg border px-3 py-2"
+                style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
+              />
+            </label>
+            <label className="mt-3 flex flex-col gap-1 text-sm">
+              <span className="eyebrow">Contraseña</span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="rounded-lg border px-3 py-2"
+                style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
+              />
+            </label>
+            {error && (
+              <p className="mt-2 text-xs" style={{ color: "var(--status-descartada)" }}>
+                {error}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={loading || !username || !password}
+              className="btn btn-primary mt-4 w-full rounded-full px-4 py-2 text-sm font-semibold"
+              style={{ background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, var(--gold)))", color: "var(--accent-ink)" }}
+            >
+              {loading ? "Entrando…" : "Entrar"}
+            </button>
+          </>
         )}
-        <button
-          type="submit"
-          disabled={loading || !username || !password}
-          className="btn btn-primary mt-4 w-full rounded-full px-4 py-2 text-sm font-semibold"
-          style={{ background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, var(--gold)))", color: "var(--accent-ink)" }}
-        >
-          {loading ? "Entrando…" : "Entrar"}
-        </button>
 
         <div className="mt-4 border-t pt-3 text-center flex flex-col gap-2" style={{ borderColor: "var(--border)" }}>
           <Link

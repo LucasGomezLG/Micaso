@@ -171,17 +171,19 @@ export default function CaseRow({
   const [copiedCreds, setCopiedCreds] = useState(false);
 
   async function copiarCredenciales() {
-    const loginUrl = `${window.location.origin}/login`;
-    const texto = `Acceso Micaso para "${kase.titulo}":\nLink: ${loginUrl}\nUsuario: ${kase.username}\nContraseña: ${kase.password}`;
+    const params = new URLSearchParams({ u: kase.username, p: kase.password });
+    const loginUrl = `${window.location.origin}/login?${params.toString()}`;
+    const texto = `Acceso Micaso para "${kase.titulo}":\nLink directo: ${loginUrl}\n\n🔒 Compartí este link solamente con las personas que te acompañen o ayuden en la búsqueda.\n\nUsuario: ${kase.username}\nContraseña: ${kase.password}`;
     await navigator.clipboard.writeText(texto);
     setCopiedCreds(true);
-    toast.success("Credenciales copiadas al portapapeles");
+    toast.success("Credenciales y link de acceso directo copiados");
     setTimeout(() => setCopiedCreds(false), 2000);
   }
 
   function compartirPorWhatsapp() {
-    const loginUrl = `${window.location.origin}/login`;
-    const mensaje = `¡Hola! Ya podés seguir la búsqueda de "${kase.titulo}" en Micaso.\n\nEntrá acá: ${loginUrl}\nUsuario: ${kase.username}\nContraseña: ${kase.password}\n\nAhí vas a ver el presupuesto, las propiedades que vamos viendo, las visitas coordinadas y todo lo que vaya haciendo falta — todo junto, en un solo lugar.`;
+    const params = new URLSearchParams({ u: kase.username, p: kase.password });
+    const loginUrl = `${window.location.origin}/login?${params.toString()}`;
+    const mensaje = `¡Hola! Ya podés seguir la búsqueda de "${kase.titulo}" en Micaso.\n\n👉 Entrá directo con 1 toque acá:\n${loginUrl}\n\n🔒 *Compartí este link solamente con las personas que te acompañen o ayuden en la búsqueda.*\n\n(Tus datos de acceso por si entrás desde otro dispositivo:\nUsuario: ${kase.username}\nContraseña: ${kase.password})\n\nAhí vas a ver el presupuesto, las propiedades que vamos viendo, las visitas coordinadas y todo lo que vaya haciendo falta — todo junto, en un solo lugar.`;
     window.open(`https://wa.me/?text=${encodeURIComponent(mensaje)}`, "_blank", "noopener,noreferrer");
   }
 

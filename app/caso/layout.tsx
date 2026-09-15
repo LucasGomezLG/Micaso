@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Nav from "@/components/Nav";
+import ClientOnboardingModal from "@/components/ClientOnboardingModal";
 import { getCaseId } from "@/lib/session";
 import { getCase } from "@/lib/cases";
 import { getBroker, getCurrentBroker } from "@/lib/brokers";
@@ -34,6 +35,15 @@ export default async function CasoLayout({ children }: LayoutProps<"/caso">) {
         tipoCaso={kase?.tipoCaso ?? "compra"}
         brokerName={broker?.nombreMarca ?? null}
         brokerImage={broker?.imagenUrl ?? null}
+        viewingAsBroker={viewingAsBroker}
+        isDemo={isDemo}
+      />
+      <ClientOnboardingModal
+        caseId={caseId}
+        caseTitle={kase?.titulo ?? "Tu búsqueda"}
+        brokerName={broker?.nombreMarca ?? null}
+        brokerImage={broker?.imagenUrl ?? null}
+        existingPeople={kase?.people ?? []}
         viewingAsBroker={viewingAsBroker}
         isDemo={isDemo}
       />
