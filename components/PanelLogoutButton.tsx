@@ -5,15 +5,16 @@ export default function PanelLogoutButton() {
     <form
       action={async () => {
         "use server";
+        const { cookies } = await import("next/headers");
+        const cookieStore = await cookies();
+        cookieStore.delete("case_id");
         if (process.env.NODE_ENV !== "production") {
-          const { cookies } = await import("next/headers");
-          const cookieStore = await cookies();
           cookieStore.delete("micaso_dev_user");
         }
         await signOut({ redirectTo: "/" });
       }}
     >
-      <button type="submit" className="text-sm font-medium" style={{ color: "var(--ink-muted)" }}>
+      <button type="submit" className="text-sm font-medium hover:underline" style={{ color: "var(--ink-muted)" }}>
         Cerrar sesión
       </button>
     </form>

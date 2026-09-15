@@ -1,10 +1,16 @@
 import Link from "next/link";
-import { signIn } from "@/auth";
+import { redirect } from "next/navigation";
+import { auth, signIn } from "@/auth";
 import { MicasoMark } from "@/components/MicasoMark";
 
 export default async function PanelLoginPage(props: PageProps<"/panel/login">) {
   const searchParams = await props.searchParams;
   const next = typeof searchParams.next === "string" ? searchParams.next : "/panel";
+
+  const session = await auth();
+  if (session?.user?.email) {
+    redirect(next);
+  }
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10" style={{ background: "var(--paper)" }}>

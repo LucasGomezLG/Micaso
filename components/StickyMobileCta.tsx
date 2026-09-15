@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-export default function StickyMobileCta() {
+export default function StickyMobileCta({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -28,11 +28,11 @@ export default function StickyMobileCta() {
       style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface) 94%, transparent)" }}
     >
       <Link
-        href="/panel/login"
+        href={isLoggedIn ? "/panel" : "/panel/login"}
         className="btn btn-primary block rounded-full px-5 py-3 text-center text-sm font-semibold"
         style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
       >
-        Empezar prueba gratis
+        {isLoggedIn ? "Ir a mi panel →" : "Empezar prueba gratis"}
       </Link>
     </div>
   );

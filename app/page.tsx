@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Check, Home, Link2, Lock, Palette, Sparkles, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { auth } from "@/auth";
 import ContactModal from "@/components/ContactModal";
 import StickyMobileCta from "@/components/StickyMobileCta";
 import LandingShowcase from "@/components/LandingShowcase";
@@ -118,7 +119,10 @@ const MOCK_HOUSES: { title: string; zone: string; price: string; status: string;
 
 const NOISE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`;
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const session = await auth();
+  const user = session?.user;
+
   return (
     <div className="relative flex min-h-full flex-col" style={{ background: "var(--paper)", color: "var(--ink)" }}>
       <div
@@ -145,20 +149,36 @@ export default function LandingPage() {
           </span>
           <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle />
-            <Link
-              href="/login"
-              className="rounded-full px-3 py-2 text-sm font-medium sm:px-4"
-              style={{ color: "var(--ink-muted)" }}
-            >
-              Ingresar
-            </Link>
-            <Link
-              href="/panel/login"
-              className="btn btn-primary hidden rounded-full px-4 py-2 text-sm font-semibold sm:inline-flex"
-              style={{ background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, var(--gold)))", color: "var(--accent-ink)" }}
-            >
-              Empezar prueba gratis
-            </Link>
+            {user ? (
+              <Link
+                href="/panel"
+                className="btn btn-primary rounded-full px-4 py-2 text-sm font-semibold inline-flex items-center gap-2"
+                style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+              >
+                {user.image && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.image} alt="" className="h-5 w-5 rounded-full" referrerPolicy="no-referrer" />
+                )}
+                Ir a mi panel →
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-full px-3 py-2 text-sm font-medium sm:px-4"
+                  style={{ color: "var(--ink-muted)" }}
+                >
+                  Ingresar
+                </Link>
+                <Link
+                  href="/panel/login"
+                  className="btn btn-primary hidden rounded-full px-4 py-2 text-sm font-semibold sm:inline-flex"
+                  style={{ background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, var(--gold)))", color: "var(--accent-ink)" }}
+                >
+                  Empezar prueba gratis
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -210,11 +230,11 @@ export default function LandingPage() {
                 </p>
                 <div className="mt-9 flex flex-wrap items-center gap-3">
                   <Link
-                    href="/panel/login"
+                    href={user ? "/panel" : "/panel/login"}
                     className="btn btn-primary rounded-full px-6 py-3.5 text-sm font-semibold"
                     style={{ background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, var(--gold)))", color: "var(--accent-ink)" }}
                   >
-                    Empezar prueba gratis
+                    {user ? "Ir a mi panel →" : "Empezar prueba gratis"}
                   </Link>
                   <a
                     href="/api/demo-access"
@@ -580,11 +600,11 @@ export default function LandingPage() {
                 </p>
               </div>
               <Link
-                href="/panel/login"
+                href={user ? "/panel" : "/panel/login"}
                 className="btn relative shrink-0 rounded-full px-6 py-3.5 text-sm font-semibold"
                 style={{ background: "var(--gold)", color: "#12181f" }}
               >
-                Empezar prueba gratis
+                {user ? "Ir a mi panel →" : "Empezar prueba gratis"}
               </Link>
             </div>
           </div>
@@ -609,7 +629,7 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      <StickyMobileCta />
+      <StickyMobileCta isLoggedIn={Boolean(user)} />
     </div>
   );
 }

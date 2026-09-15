@@ -103,11 +103,18 @@ function LoginForm() {
           {loading ? "Entrando…" : "Entrar"}
         </button>
 
-        <div className="mt-4 border-t pt-3 text-center" style={{ borderColor: "var(--border)" }}>
+        <div className="mt-4 border-t pt-3 text-center flex flex-col gap-2" style={{ borderColor: "var(--border)" }}>
+          <Link
+            href="/panel/login"
+            className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold"
+            style={{ color: "var(--accent)" }}
+          >
+            ¿Sos corredor inmobiliario? Entrá a tu panel con Google →
+          </Link>
           <a
             href="/api/demo-access"
-            className="inline-flex items-center gap-1 text-xs font-semibold hover:underline"
-            style={{ color: "var(--accent)" }}
+            className="inline-flex items-center justify-center gap-1 text-xs hover:underline"
+            style={{ color: "var(--ink-muted)" }}
           >
             ¿Querés probar la app? Ver caso demo interactivo →
           </a>

@@ -39,14 +39,24 @@ function isUnder(pathname: string, prefixes: string[]): boolean {
 export const proxy = auth((request) => {
   const { pathname } = request.nextUrl;
 
-  if (isUnder(pathname, PUBLIC_PATHS)) {
-    return NextResponse.next();
-  }
-
   // Dev mock user support
   const devEmail =
     process.env.NODE_ENV !== "production" ? request.cookies.get("micaso_dev_user")?.value : null;
   const userEmail = request.auth?.user?.email || devEmail;
+
+  // Si ya tiene sesión activa de Google y va a /panel/login o /login:
+  // no volver a pedirle login de Google, mandarlo directo a su panel o destino:
+  if (userEmail && (pathname === "/panel/login" || pathname === "/login")) {
+    const next = request.nextUrl.searchParams.get("next");
+    if (next && next !== "/login" && next !== "/panel/login") {
+      return NextResponse.redirect(new URL(next, request.url));
+    }
+    return NextResponse.redirect(new URL("/panel", request.url));
+  }
+
+  if (isUnder(pathname, PUBLIC_PATHS)) {
+    return NextResponse.next();
+  }
 
   // Panel del corredor: sesión de Google vía Auth.js o dev mock
   if (isUnder(pathname, BROKER_PREFIXES)) {
@@ -84,12 +94,13 @@ export const proxy = auth((request) => {
   // requiere cookie con el id de caso, validado contra lo guardado en la
   // base (no una contraseña compartida) — un caso archivado (cerrado hace
   // más de 90 días en solo-lectura, o de baja) pierde el acceso del todo.
-  return checkCaseAccess(request, pathname);
+  return checkCaseAccess(request, pathname, userEmail);
 });
 
 async function checkCaseAccess(
   request: Parameters<Parameters<typeof auth>[0]>[0],
-  pathname: string
+  pathname: string,
+  userEmail?: string | null
 ) {
   const caseId = request.cookies.get(CASE_COOKIE)?.value;
   const kase = caseId ? await getCase(caseId) : null;
@@ -119,6 +130,12 @@ async function checkCaseAccess(
 
   if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  // Si es un corredor logueado con Google que intentó acceder a /caso pero no tiene cookie de caso:
+  // en vez de tirarlo a la pantalla de usuario/contraseña de cliente, mandarlo a su panel para que elija su caso
+  if (userEmail) {
+    return NextResponse.redirect(new URL("/panel", request.url));
   }
 
   const loginUrl = new URL("/login", request.url);

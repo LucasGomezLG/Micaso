@@ -8,4 +8,9 @@ import Google from "next-auth/providers/google";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   providers: [Google],
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 días de sesión persistente
+    updateAge: 24 * 60 * 60, // renovar cada 24 horas con actividad
+  },
 });
