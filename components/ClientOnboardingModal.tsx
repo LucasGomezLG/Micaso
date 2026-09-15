@@ -40,7 +40,10 @@ export default function ClientOnboardingModal({
     // Si quien mira es el corredor o ya completó el onboarding en este dispositivo, no mostrar
     if (viewingAsBroker) return;
 
-    const alreadyOnboarded = localStorage.getItem(ONBOARDED_KEY_PREFIX + caseId);
+    const params = new URLSearchParams(window.location.search);
+    const forceOnboarding = params.get("onboarding") === "true";
+
+    const alreadyOnboarded = !forceOnboarding && localStorage.getItem(ONBOARDED_KEY_PREFIX + caseId);
     if (!alreadyOnboarded) {
       // Revisar si ya tenía autor recordado
       const savedAuthor = localStorage.getItem(AUTHOR_KEY);
@@ -49,7 +52,7 @@ export default function ClientOnboardingModal({
       }
       setOpen(true);
     }
-  }, [caseId, viewingAsBroker, isDemo, existingPeople]);
+  }, [caseId, viewingAsBroker, existingPeople]);
 
   function closeAndMarkDone() {
     try {
@@ -276,7 +279,7 @@ export default function ClientOnboardingModal({
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="btn rounded-full px-4 py-2.5 text-xs font-medium"
+                  className="btn inline-flex items-center justify-center rounded-full px-4 py-2.5 text-xs font-medium"
                   style={{ border: "1px solid var(--border)", color: "var(--ink-muted)" }}
                 >
                   Atrás
@@ -285,7 +288,7 @@ export default function ClientOnboardingModal({
                   type="button"
                   disabled={savingName || (!customName.trim() && !selectedName)}
                   onClick={handleStep2Next}
-                  className="btn btn-primary flex-1 items-center justify-center gap-1.5 rounded-full py-2.5 text-xs sm:text-sm font-semibold"
+                  className="btn btn-primary inline-flex flex-1 items-center justify-center gap-1.5 rounded-full py-2.5 text-xs sm:text-sm font-semibold whitespace-nowrap"
                   style={{
                     background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, var(--gold)))",
                     color: "var(--accent-ink)",
