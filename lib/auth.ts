@@ -1,8 +1,11 @@
 // Login del panel de corredor: Auth.js (Google OAuth), ver auth.ts.
 // FOUNDER_EMAIL mapea la cuenta de Google de Lucas al mismo
 // dev-broker de siempre, para no migrar el caso demo de Lucas y Abril
-// a mano — ver lib/brokers.ts.
-export const FOUNDER_EMAIL = "luccaass96@gmail.com";
+// a mano — ver lib/brokers.ts. Configurado como variable de entorno en
+// Vercel; el valor de acá es solo el fallback para correr en local sin
+// tener que setearla.
+export const FOUNDER_EMAIL =
+  process.env.FOUNDER_EMAIL ?? "luccaass96@gmail.com";
 export const DEV_BROKER_ID = "dev-broker";
 
 // Panel de super-admin (ARQUITECTURA.md sección 7): mismo login de

@@ -19,13 +19,13 @@ const INTRO: Record<TipoCaso, string> = {
 };
 
 const STAT_TILES: { status: HouseStatus; label: string }[] = [
-  { status: "pendiente", label: "Pendientes" },
-  { status: "duda_visitar", label: "Duda si visitar" },
-  { status: "a_coordinar", label: "Visita a coordinar" },
-  { status: "coordinada", label: "Visita coordinada" },
-  { status: "gusto", label: "Gustó" },
-  { status: "no_gusto", label: "No gustó" },
-  { status: "oferta", label: "Oferta hecha" },
+  { status: "pendiente", label: "Por revisar" },
+  { status: "duda_visitar", label: "En duda" },
+  { status: "a_coordinar", label: "A coordinar" },
+  { status: "coordinada", label: "Visita agendada" },
+  { status: "gusto", label: "Nos gustó" },
+  { status: "no_gusto", label: "No convenció" },
+  { status: "oferta", label: "En oferta" },
   { status: "descartada", label: "Descartadas" },
 ];
 

@@ -11,16 +11,71 @@ import HouseCard from "@/components/HouseCard";
 import AddHouseModal from "@/components/AddHouseModal";
 import Select from "@/components/Select";
 
-type Tab = "todas" | HouseStatus;
+export type StageId = "todas" | "por_revisar" | "visitas" | "finalistas" | "descartadas" | "borrada";
 
-const TABS: Tab[] = ["todas", ...PIPELINE_STATUSES, "borrada"];
-// Visual grouping only — a thin divider is drawn before the first tab of
-// each of these groups (deal-progress stages, then the trash).
-const GROUP_STARTS = new Set<Tab>(["oferta", "borrada"]);
-const TAB_LABEL: Record<Tab, string> = {
-  todas: "Todas",
-  ...STATUS_LABEL,
-};
+interface StageDef {
+  id: StageId;
+  label: string;
+  statuses: HouseStatus[];
+  subLabels?: Partial<Record<HouseStatus, string>>;
+}
+
+const STAGES: StageDef[] = [
+  {
+    id: "todas",
+    label: "Todas",
+    statuses: [],
+  },
+  {
+    id: "por_revisar",
+    label: "Por revisar",
+    statuses: ["pendiente", "duda_visitar"],
+    subLabels: {
+      pendiente: "Nuevas",
+      duda_visitar: "En duda",
+    },
+  },
+  {
+    id: "visitas",
+    label: "Visitas",
+    statuses: ["a_coordinar", "coordinada"],
+    subLabels: {
+      a_coordinar: "A coordinar",
+      coordinada: "Visita agendada",
+    },
+  },
+  {
+    id: "finalistas",
+    label: "Finalistas",
+    statuses: ["gusto", "oferta", "comprada"],
+    subLabels: {
+      gusto: "Nos gustó",
+      oferta: "En oferta",
+      comprada: "Comprada 🎉",
+    },
+  },
+  {
+    id: "descartadas",
+    label: "Descartadas",
+    statuses: ["no_gusto", "descartada"],
+    subLabels: {
+      no_gusto: "No convenció",
+      descartada: "Descartadas",
+    },
+  },
+];
+
+function getInitialState(initialStatus: string): { stage: StageId; subStatus: "todas" | HouseStatus } {
+  if (initialStatus === "borrada") {
+    return { stage: "borrada", subStatus: "todas" };
+  }
+  for (const s of STAGES) {
+    if (s.statuses.includes(initialStatus as HouseStatus)) {
+      return { stage: s.id, subStatus: initialStatus as HouseStatus };
+    }
+  }
+  return { stage: "todas", subStatus: "todas" };
+}
 
 type Sort = "recientes" | "precio-asc" | "precio-desc";
 
@@ -38,9 +93,9 @@ export default function CasasBoard({
   people: string[];
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>(
-    TABS.includes(initialStatus as Tab) ? (initialStatus as Tab) : "todas"
-  );
+  const initial = useMemo(() => getInitialState(initialStatus), [initialStatus]);
+  const [stage, setStage] = useState<StageId>(initial.stage);
+  const [subStatus, setSubStatus] = useState<"todas" | HouseStatus>(initial.subStatus);
   const [zone, setZone] = useState("todas");
   const [sort, setSort] = useState<Sort>("recientes");
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,15 +105,41 @@ export default function CasasBoard({
   const destacadasCount = useMemo(() => activeHouses.filter((h) => h.highlighted).length, [activeHouses]);
 
   const counts = useMemo(() => {
-    const base = { todas: activeHouses.length } as Record<Tab, number>;
-    for (const status of PIPELINE_STATUSES) base[status] = 0;
-    base.borrada = 0;
-    for (const house of houses) base[house.status]++;
-    return base;
+    const byStatus = { todas: activeHouses.length, borrada: 0 } as Record<string, number>;
+    for (const status of PIPELINE_STATUSES) byStatus[status] = 0;
+    for (const house of houses) {
+      byStatus[house.status] = (byStatus[house.status] || 0) + 1;
+    }
+
+    const byStage: Record<StageId, number> = {
+      todas: activeHouses.length,
+      por_revisar: (byStatus.pendiente || 0) + (byStatus.duda_visitar || 0),
+      visitas: (byStatus.a_coordinar || 0) + (byStatus.coordinada || 0),
+      finalistas: (byStatus.gusto || 0) + (byStatus.oferta || 0) + (byStatus.comprada || 0),
+      descartadas: (byStatus.no_gusto || 0) + (byStatus.descartada || 0),
+      borrada: byStatus.borrada || 0,
+    };
+
+    return { byStatus, byStage };
   }, [houses, activeHouses]);
 
   const visible = useMemo(() => {
-    let list = tab === "todas" ? activeHouses : houses.filter((h) => h.status === tab);
+    let list: House[];
+    if (stage === "todas") {
+      list = activeHouses;
+    } else if (stage === "borrada") {
+      list = houses.filter((h) => h.status === "borrada");
+    } else {
+      const activeStage = STAGES.find((s) => s.id === stage);
+      if (!activeStage) {
+        list = activeHouses;
+      } else if (subStatus !== "todas" && activeStage.statuses.includes(subStatus)) {
+        list = houses.filter((h) => h.status === subStatus);
+      } else {
+        list = houses.filter((h) => activeStage.statuses.includes(h.status));
+      }
+    }
+
     if (zone !== "todas") list = list.filter((h) => h.zone === zone);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
@@ -78,7 +159,14 @@ export default function CasasBoard({
       return a.addedAt < b.addedAt ? 1 : -1;
     });
     return list;
-  }, [houses, activeHouses, tab, zone, sort, searchQuery]);
+  }, [houses, activeHouses, stage, subStatus, zone, sort, searchQuery]);
+
+  function handleSelectStage(newStage: StageId) {
+    setStage(newStage);
+    setSubStatus("todas");
+  }
+
+  const currentStageDef = STAGES.find((s) => s.id === stage);
 
   async function handleChange(id: string, patch: Partial<House>): Promise<boolean> {
     const res = await fetch(`/api/houses/${id}`, {
@@ -141,31 +229,108 @@ export default function CasasBoard({
         </div>
       </div>
 
-      <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
-        {TABS.map((t) => (
-          <span key={t} className="flex shrink-0 items-center gap-2">
-            {GROUP_STARTS.has(t) && (
-              <span aria-hidden className="mx-1 h-5 w-px shrink-0" style={{ background: "var(--border)" }} />
-            )}
+      {/* Barra de etapas (Embudo simplificado) */}
+      <div className="flex flex-col gap-2.5">
+        <div className="-mx-4 flex items-center justify-between gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+          <div className="flex shrink-0 items-center gap-2">
+            {STAGES.map((s) => {
+              const active = stage === s.id;
+              const count = counts.byStage[s.id];
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => handleSelectStage(s.id)}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition-all"
+                  style={{
+                    background: active ? "var(--accent)" : "var(--surface)",
+                    color: active ? "var(--accent-ink)" : "var(--ink-muted)",
+                    border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                    boxShadow: active ? "0 2px 8px -2px rgba(0,0,0,0.14)" : "none",
+                  }}
+                >
+                  <span>{s.label}</span>
+                  <span
+                    className="rounded-full px-1.5 py-0.5 text-xs font-semibold"
+                    style={{
+                      background: active
+                        ? "color-mix(in srgb, var(--accent-ink) 18%, transparent)"
+                        : "color-mix(in srgb, var(--ink) 8%, transparent)",
+                      color: active ? "var(--accent-ink)" : "var(--ink-muted)",
+                    }}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex shrink-0 items-center pl-2">
+            <span aria-hidden className="mr-2 h-4 w-px shrink-0" style={{ background: "var(--border)" }} />
             <button
-              onClick={() => setTab(t)}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium"
+              onClick={() => handleSelectStage("borrada")}
+              title="Papelera de propiedades eliminadas"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
               style={{
-                background: tab === t ? "var(--accent)" : "var(--surface)",
-                color:
-                  tab === t
-                    ? "var(--accent-ink)"
-                    : t === "borrada"
-                      ? "var(--ink-faint)"
-                      : "var(--ink-muted)",
-                border: `1px solid ${tab === t ? "var(--accent)" : "var(--border)"}`,
+                background: stage === "borrada" ? "var(--status-descartada-bg)" : "transparent",
+                color: stage === "borrada" ? "var(--status-descartada)" : "var(--ink-faint)",
+                border: `1px solid ${stage === "borrada" ? "var(--status-descartada)" : "transparent"}`,
               }}
             >
-              {t === "borrada" && <Trash2 size={13} />}
-              {TAB_LABEL[t]} · {counts[t]}
+              <Trash2 size={13} />
+              <span>Papelera</span>
+              {counts.byStage.borrada > 0 && <span>· {counts.byStage.borrada}</span>}
             </button>
-          </span>
-        ))}
+          </div>
+        </div>
+
+        {/* Fila secundaria: sub-filtros de la etapa activa (si tiene sub-estados) */}
+        {currentStageDef && currentStageDef.statuses.length > 0 && (
+          <div
+            className="flex flex-wrap items-center gap-1.5 rounded-xl border p-1.5 text-xs transition-all animate-fade-in"
+            style={{
+              borderColor: "var(--border)",
+              background: "color-mix(in srgb, var(--surface) 65%, var(--paper))",
+            }}
+          >
+            <span className="px-2 font-medium" style={{ color: "var(--ink-faint)" }}>
+              Filtrar {currentStageDef.label.toLowerCase()}:
+            </span>
+            <button
+              onClick={() => setSubStatus("todas")}
+              className="rounded-lg px-2.5 py-1 font-medium transition-all"
+              style={{
+                background: subStatus === "todas" ? "var(--surface)" : "transparent",
+                color: subStatus === "todas" ? "var(--ink)" : "var(--ink-muted)",
+                boxShadow: subStatus === "todas" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                border: `1px solid ${subStatus === "todas" ? "var(--border-strong)" : "transparent"}`,
+              }}
+            >
+              Todas ({counts.byStage[currentStageDef.id]})
+            </button>
+            {currentStageDef.statuses.map((st) => {
+              const label = currentStageDef.subLabels?.[st] || STATUS_LABEL[st];
+              const active = subStatus === st;
+              const count = counts.byStatus[st] || 0;
+              return (
+                <button
+                  key={st}
+                  onClick={() => setSubStatus(st)}
+                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 font-medium transition-all"
+                  style={{
+                    background: active ? "var(--surface)" : "transparent",
+                    color: active ? "var(--ink)" : count === 0 ? "var(--ink-faint)" : "var(--ink-muted)",
+                    boxShadow: active ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                    border: `1px solid ${active ? "var(--border-strong)" : "transparent"}`,
+                  }}
+                >
+                  <span>{label}</span>
+                  <span style={{ opacity: count === 0 ? 0.5 : 0.8 }}>({count})</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

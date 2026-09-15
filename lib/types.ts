@@ -204,16 +204,16 @@ export interface Case {
 }
 
 export const STATUS_LABEL: Record<HouseStatus, string> = {
-  pendiente: "Pendiente",
-  duda_visitar: "Duda si visitar",
-  a_coordinar: "Visita a coordinar",
-  coordinada: "Visita coordinada",
-  gusto: "Visitada — gustó",
-  no_gusto: "Visitada — no gustó",
-  oferta: "Oferta hecha",
+  pendiente: "Por revisar",
+  duda_visitar: "En duda",
+  a_coordinar: "A coordinar",
+  coordinada: "Visita agendada",
+  gusto: "Nos gustó",
+  no_gusto: "No convenció",
+  oferta: "En oferta",
   comprada: "Comprada 🎉",
-  descartada: "Descartada",
-  borrada: "Borrada",
+  descartada: "Descartadas",
+  borrada: "Papelera",
 };
 
 /** Statuses shown as regular search-pipeline tabs, in funnel order
