@@ -31,6 +31,33 @@ function extractPreloadImages(html: string): string[] {
   return found;
 }
 
+/** Algunos sitios inmobiliarios todavía usan microdata de schema.org
+ * (`itemprop="image"`, `itemprop="price"`) en vez de o además de
+ * JSON-LD — mismo truco que `extractMetaAll`: el atributo puede venir
+ * antes o después del valor según el sitio. */
+function extractItemprop(html: string, prop: string): string[] {
+  const patterns = [
+    new RegExp(`<[^>]+itemprop=["']${prop}["'][^>]*(?:content|src|href)=["']([^"']*)["']`, "gi"),
+    new RegExp(`<[^>]+(?:content|src|href)=["']([^"']*)["'][^>]*itemprop=["']${prop}["']`, "gi"),
+  ];
+  const found: string[] = [];
+  for (const pattern of patterns) {
+    for (const match of html.matchAll(pattern)) found.push(decodeHtmlEntities(match[1]));
+  }
+  return found;
+}
+
+/** Mismo criterio de cautela que `guessFromJsonLd`: solo confiar en el
+ * precio si el propio microdata dice que la moneda es USD, no adivinar. */
+function guessPriceFromMicrodata(html: string): number | null {
+  const currencies = extractItemprop(html, "priceCurrency");
+  if (!currencies.some((c) => c.toUpperCase() === "USD")) return null;
+  const value = extractItemprop(html, "price")
+    .map(Number)
+    .find((n) => !Number.isNaN(n) && n > 1000);
+  return value ?? null;
+}
+
 function decodeHtmlEntities(text: string): string {
   return text
     .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
@@ -113,6 +140,38 @@ function guessPriceUsd(...texts: (string | null)[]): number | null {
   return null;
 }
 
+/** Sitios/rutas donde no se autocompleta porque el sitio no lo permite
+ * (robots.txt o términos de uso) — verificado 15 sept 2026, ver
+ * ARQUITECTURA.md sección 9. El link se sigue pegando y guardando tal
+ * cual (eso no es scraping, es solo un texto que un humano ya
+ * compartió); lo que se corta es el fetch automático para sacar
+ * título/foto/precio.
+ * - MercadoLibre: términos de uso art. 12 — prohíbe cualquier acceso
+ *   automatizado al sitio sin importar el User-Agent, no es solo el
+ *   robots.txt (que además bloquea por nombre a los bots de IA).
+ * - ArgenProp: términos de uso art. 26.3 — nombra "scraping"
+ *   explícitamente como uso prohibido del sitio.
+ * - Mudafy: `robots.txt` prohíbe crawlear `/ficha/*` para cualquier
+ *   bot; el resto del sitio (ej. `/casas/*`) no está vedado. */
+function isBlockedForAutoFill(url: URL): boolean {
+  const host = url.hostname.toLowerCase();
+  if (/(^|\.)mercadolibre\.com\.ar$/.test(host)) return true;
+  if (/(^|\.)argenprop\.com$/.test(host)) return true;
+  if (/(^|\.)mudafy\.com\.ar$/.test(host) && url.pathname.startsWith("/ficha/")) return true;
+  return false;
+}
+
+/** RE/MAX (`robots.txt`, `User-agent: *`) prohíbe crawlear cualquier URL
+ * con el parámetro `associate` — es el ID del agente que comparte el
+ * link, no cambia el contenido del aviso, así que sacarlo antes de
+ * pedir la página no pierde nada y deja de pisar esa regla. */
+function stripDisallowedQuery(url: URL): URL {
+  if (!/(^|\.)remax\.com\.ar$/i.test(url.hostname)) return url;
+  const cleaned = new URL(url);
+  cleaned.searchParams.delete("associate");
+  return cleaned;
+}
+
 const USER_AGENTS = [
   // Most sites special-case this UA to serve a full page for link previews.
   "Mozilla/5.0 (compatible; facebookexternalhit/1.1; +http://www.facebook.com/externalhit_uatext.php)",
@@ -155,16 +214,25 @@ export async function POST(request: NextRequest) {
   if (!url || typeof url !== "string") {
     return NextResponse.json({ error: "Falta la URL" }, { status: 400 });
   }
+  let parsed: URL;
   try {
-    if (!isSafeExternalUrl(new URL(url))) {
+    parsed = new URL(url);
+    if (!isSafeExternalUrl(parsed)) {
       return NextResponse.json({ error: "Host no permitido" }, { status: 400 });
     }
   } catch {
     return NextResponse.json({ error: "URL inválida" }, { status: 400 });
   }
+  if (isBlockedForAutoFill(parsed)) {
+    return NextResponse.json(
+      { error: "Este sitio no permite autocompletar este aviso — cargalo a mano." },
+      { status: 200 }
+    );
+  }
+  const fetchUrl = stripDisallowedQuery(parsed).toString();
 
   try {
-    const fetched = await fetchHtml(url);
+    const fetched = await fetchHtml(fetchUrl);
     if ("error" in fetched) {
       return NextResponse.json({ error: fetched.error }, { status: 200 });
     }
@@ -176,10 +244,19 @@ export async function POST(request: NextRequest) {
     const description = extractMeta(html, "og:description");
     const jsonLd = guessFromJsonLd(html);
     const images = [
-      ...new Set([...extractMetaAll(html, "og:image"), ...jsonLd.images, ...extractPreloadImages(html)]),
+      ...new Set([
+        ...extractMetaAll(html, "og:image"),
+        ...extractMetaAll(html, "twitter:image"),
+        ...jsonLd.images,
+        ...extractItemprop(html, "image"),
+        ...extractPreloadImages(html),
+      ]),
     ].slice(0, 8);
     const priceUsd =
-      jsonLd.priceUsd ?? guessPriceUsd(title, description) ?? guessPriceFromEmbeddedJson(html);
+      jsonLd.priceUsd ??
+      guessPriceFromMicrodata(html) ??
+      guessPriceUsd(title, description) ??
+      guessPriceFromEmbeddedJson(html);
 
     return NextResponse.json({
       title: title ? decodeHtmlEntities(title).trim() : null,
