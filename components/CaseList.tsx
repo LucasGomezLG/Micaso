@@ -57,7 +57,7 @@ export default function CaseList({ cases, summaries, attentionItems }: CaseListP
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Pestañas de estado */}
         <div
-          className="inline-flex items-center gap-1 rounded-xl border p-1 text-xs font-medium"
+          className="inline-flex max-w-full overflow-x-auto items-center gap-1 rounded-xl border p-1 text-xs font-medium"
           style={{
             background: "color-mix(in srgb, var(--surface) 80%, var(--paper))",
             borderColor: "var(--border)",
@@ -66,7 +66,7 @@ export default function CaseList({ cases, summaries, attentionItems }: CaseListP
           <button
             type="button"
             onClick={() => setTab("activos")}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 sm:px-3 transition-all"
             style={{
               background: tab === "activos" ? "var(--surface)" : "transparent",
               color: tab === "activos" ? "var(--ink)" : "var(--ink-muted)",
@@ -89,7 +89,7 @@ export default function CaseList({ cases, summaries, attentionItems }: CaseListP
           <button
             type="button"
             onClick={() => setTab("todos")}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 sm:px-3 transition-all"
             style={{
               background: tab === "todos" ? "var(--surface)" : "transparent",
               color: tab === "todos" ? "var(--ink)" : "var(--ink-muted)",
@@ -112,7 +112,7 @@ export default function CaseList({ cases, summaries, attentionItems }: CaseListP
           <button
             type="button"
             onClick={() => setTab("cerrados")}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 sm:px-3 transition-all"
             style={{
               background: tab === "cerrados" ? "var(--surface)" : "transparent",
               color: tab === "cerrados" ? "var(--ink)" : "var(--ink-muted)",

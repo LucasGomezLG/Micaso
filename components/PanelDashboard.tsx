@@ -62,7 +62,7 @@ export default function PanelDashboard({
                 className="card-hover flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-sm"
                 style={{ borderColor: "var(--border)", background: "var(--surface)" }}
               >
-                <span>
+                <span className="min-w-0 break-words">
                   <span className="font-semibold">{item.caseTitulo}</span>{" "}
                   <span style={{ color: "var(--ink-muted)" }}>
                     {item.kind === "overdue"

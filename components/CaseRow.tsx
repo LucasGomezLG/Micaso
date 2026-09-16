@@ -198,7 +198,7 @@ export default function CaseRow({
   return (
     <div
       id={`case-${kase.id}`}
-      className="card-hover relative flex scroll-mt-24 flex-col gap-4 overflow-hidden rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between"
+      className="card-hover relative flex scroll-mt-24 flex-col gap-4 overflow-hidden rounded-2xl border p-4 sm:p-5 sm:flex-row sm:items-center sm:justify-between"
       style={{ borderColor: "var(--border)", background: "var(--surface)", boxShadow: "var(--shadow-card)" }}
     >
       <div aria-hidden className="absolute inset-y-0 left-0 w-1" style={{ background: railColor, opacity: isArchivado ? 0.4 : 0.9 }} />
@@ -274,9 +274,9 @@ export default function CaseRow({
         )}
       </div>
 
-      <div className="flex shrink-0 flex-col items-end gap-2">
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0 sm:items-end">
         <div
-          className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border px-3.5 py-2 text-sm"
+          className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-xl border px-3 py-2 text-xs sm:w-auto sm:justify-start sm:text-sm"
           style={{ borderColor: "var(--border)", background: "var(--paper)" }}
         >
           <span style={{ color: "var(--ink-muted)" }}>
@@ -299,7 +299,7 @@ export default function CaseRow({
             {copiedCreds ? "¡Copiado!" : "Copiar"}
           </button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
           <button
             type="button"
             onClick={compartirPorWhatsapp}

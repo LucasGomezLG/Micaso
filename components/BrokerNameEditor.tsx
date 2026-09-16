@@ -59,7 +59,7 @@ export default function BrokerNameEditor({
             setEditing(false);
           }
         }}
-        className={className ?? "rounded-lg border px-2 py-1 text-sm"}
+        className={[className ?? "rounded-lg border px-2 py-1 text-sm", "min-w-0"].filter(Boolean).join(" ")}
         style={style ?? { borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
       />
     );
@@ -70,11 +70,11 @@ export default function BrokerNameEditor({
       type="button"
       onClick={() => setEditing(true)}
       title={hint ?? "Cambiar cómo te ven tus clientes"}
-      className={[className, "inline-flex items-center gap-1.5"].filter(Boolean).join(" ")}
+      className={[className, "inline-flex items-center gap-1.5 min-w-0"].filter(Boolean).join(" ")}
       style={style}
     >
-      {saving ? "Guardando…" : name}
-      <Pencil size={11} style={{ color: "var(--ink-faint)" }} />
+      <span className="truncate">{saving ? "Guardando…" : name}</span>
+      <Pencil size={11} className="shrink-0" style={{ color: "var(--ink-faint)" }} />
     </button>
   );
 }

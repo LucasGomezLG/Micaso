@@ -16,6 +16,7 @@ import { MicasoMark } from "@/components/MicasoMark";
 import ThemeToggle from "@/components/ThemeToggle";
 import PanelLogoutButton from "@/components/PanelLogoutButton";
 import WhatsappLinkButton from "@/components/WhatsappLinkButton";
+import PlanGatewayNotice from "@/components/PlanGatewayNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -115,14 +116,14 @@ export default async function PanelPlanPage() {
   }
 
   return (
-    <div className="min-h-full" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+    <div className="min-h-full overflow-x-clip" style={{ background: "var(--paper)", color: "var(--ink)" }}>
       {/* Header */}
       <header
         className="sticky top-0 z-20 border-b backdrop-blur-md"
         style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface) 88%, transparent)" }}
       >
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
-          <Link href="/panel" className="flex items-center gap-2">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3.5 sm:gap-4 sm:px-6">
+          <Link href="/panel" className="flex shrink-0 items-center gap-2">
             <span
               className="flex h-7 w-7 items-center justify-center rounded-lg"
               style={{ background: "linear-gradient(135deg, var(--accent), var(--gold))" }}
@@ -132,13 +133,13 @@ export default async function PanelPlanPage() {
             <span className="text-lg font-semibold" style={{ fontFamily: "var(--font-display)" }}>
               Micaso
             </span>
-            <span className="eyebrow ml-1">Suscripción</span>
+            <span className="eyebrow ml-1 hidden sm:inline">Suscripción</span>
           </Link>
 
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Link
               href="/panel"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold hover:underline"
+              className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold hover:underline"
               style={{ color: "var(--accent)" }}
             >
               <ArrowLeft size={14} />
@@ -161,26 +162,8 @@ export default async function PanelPlanPage() {
           </p>
         </div>
 
-        {/* Aviso de pasarela en desarrollo */}
-        <div
-          className="mb-8 flex items-start gap-3 rounded-2xl border p-4 text-xs sm:text-sm"
-          style={{
-            borderColor: "var(--accent-soft-border)",
-            background: "color-mix(in srgb, var(--accent-soft) 50%, var(--surface))",
-          }}
-        >
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-            <Clock size={16} />
-          </span>
-          <div className="leading-relaxed">
-            <p className="font-semibold text-amber-700 dark:text-amber-300">
-              Pasarela de cobro automático con tarjeta en desarrollo
-            </p>
-            <p className="mt-0.5 text-xs" style={{ color: "var(--ink-muted)" }}>
-              Estamos finalizando la integración directa con Mercado Pago. Mientras tanto, tu prueba gratuita de 14 días está 100% activa sin costo y cualquier cambio o activación de plan se coordina de manera personalizada y directa por WhatsApp.
-            </p>
-          </div>
-        </div>
+        {/* Aviso de pasarela en desarrollo (descartable con X) */}
+        <PlanGatewayNotice />
 
         {/* Tarjeta de Estado Actual */}
         <div

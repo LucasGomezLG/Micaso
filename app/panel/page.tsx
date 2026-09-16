@@ -59,7 +59,6 @@ export default async function PanelPage() {
   const [broker, adminEmail] = await Promise.all([getCurrentBroker(), getCurrentAdminEmail()]);
   const cases = broker ? await listCasesForBroker(broker.id) : [];
   const activeCases = cases.filter((c) => c.estado === "activo");
-  const inactiveCases = cases.filter((c) => c.estado !== "activo");
   const activos = activeCases.length;
 
   // Resumen de propiedades por caso (pendientes/destacadas/última
@@ -72,19 +71,14 @@ export default async function PanelPage() {
 
   const { attentionItems, totalPropiedades, nextVisita } = buildAttentionData(activeCases, summaries);
 
-  function alertFor(caseId: string): "overdue" | "soon" | null {
-    const hit = attentionItems.find((item) => item.caseId === caseId);
-    return hit?.kind ?? null;
-  }
-
   return (
-    <div className="min-h-full" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+    <div className="min-h-full overflow-x-clip" style={{ background: "var(--paper)", color: "var(--ink)" }}>
       <header
         className="sticky top-0 z-20 border-b backdrop-blur-md"
         style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface) 85%, transparent)" }}
       >
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4 sm:gap-4 sm:px-6">
+          <Link href="/" className="flex shrink-0 items-center gap-2">
             <span
               className="flex h-7 w-7 items-center justify-center rounded-lg"
               style={{ background: "linear-gradient(135deg, var(--accent), var(--gold))" }}
@@ -95,21 +89,30 @@ export default async function PanelPage() {
               Micaso
             </span>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             {adminEmail && (
-              <Link href="/superadmin" className="eyebrow" style={{ color: "var(--accent)" }}>
-                Super-admin
+              <Link
+                href="/superadmin"
+                className="eyebrow shrink-0 rounded-full border px-2 py-0.5 text-[10px] sm:border-0 sm:p-0 sm:text-xs"
+                style={{ color: "var(--accent)", borderColor: "var(--accent-soft-border)" }}
+              >
+                <span className="hidden sm:inline">Super-admin</span>
+                <span className="sm:hidden">Admin</span>
               </Link>
             )}
             {broker && (
-              <span className="flex items-center gap-2 text-sm" style={{ color: "var(--ink-muted)" }}>
+              <span className="flex min-w-0 items-center gap-1.5 text-sm sm:gap-2" style={{ color: "var(--ink-muted)" }}>
                 <BrokerAvatarEditor
                   key={broker.imagenUrl}
                   initialImagenUrl={broker.imagenUrl}
                   nombreMarca={broker.nombreMarca}
                   size={24}
                 />
-                <BrokerNameEditor key={broker.nombreMarca} initialName={broker.nombreMarca} />
+                <BrokerNameEditor
+                  key={broker.nombreMarca}
+                  initialName={broker.nombreMarca}
+                  className="hidden sm:inline-flex max-w-[150px] truncate"
+                />
               </span>
             )}
             <ThemeToggle />
@@ -118,7 +121,7 @@ export default async function PanelPage() {
         </div>
       </header>
 
-      <div aria-hidden className="pointer-events-none relative h-0 overflow-visible">
+      <div aria-hidden className="pointer-events-none relative h-0 overflow-hidden">
         <div
           className="absolute -top-16 left-1/2 h-64 w-[36rem] -translate-x-1/2 rounded-full blur-3xl"
           style={{ background: "var(--accent)", opacity: 0.12 }}
