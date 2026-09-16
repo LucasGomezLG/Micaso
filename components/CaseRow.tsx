@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, Copy, LogIn, Pencil, Share2 } from "lucide-react";
@@ -49,6 +50,7 @@ export default function CaseRow({
   const [editing, setEditing] = useState(false);
   const [titulo, setTitulo] = useState(kase.titulo);
   const [loading, setLoading] = useState<"rename" | "password" | "close" | "reopen" | "enter" | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"password" | "close" | "reopen" | null>(null);
 
   async function saveTitulo() {
     const next = titulo.trim();
@@ -72,90 +74,79 @@ export default function CaseRow({
     setKase((await res.json()).case);
   }
 
-  function regenerarClave() {
-    toast("¿Regenerar la contraseña de este caso?", {
+  async function regenerarClave() {
+    setConfirmAction(null);
+    setLoading("password");
+    const res = await fetch(`/api/panel/cases/${kase.id}/regenerate-password`, { method: "POST" });
+    setLoading(null);
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo regenerar la contraseña."));
+      return;
+    }
+    const updated = (await res.json()).case;
+    setKase(updated);
+    toast.success(`Nueva contraseña generada: ${updated.password}`, {
+      action: {
+        label: "Copiar",
+        onClick: () => {
+          navigator.clipboard.writeText(updated.password).catch(() => {});
+        },
+      },
+    });
+  }
+
+  async function cerrarCaso() {
+    setConfirmAction(null);
+    setLoading("close");
+    const res = await fetch(`/api/panel/cases/${kase.id}/close`, { method: "POST" });
+    setLoading(null);
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo cerrar el caso."));
+      return;
+    }
+    setKase((await res.json()).case);
+    toast.success("Caso cerrado — pasó a modo solo lectura.");
+    router.refresh();
+  }
+
+  async function reabrirCaso() {
+    setConfirmAction(null);
+    setLoading("reopen");
+    const res = await fetch(`/api/panel/cases/${kase.id}/reopen`, { method: "POST" });
+    setLoading(null);
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo reabrir el caso."));
+      return;
+    }
+    setKase((await res.json()).case);
+    toast.success("Caso reabierto — vuelve a estar activo.");
+    router.refresh();
+  }
+
+  const CONFIRM_CONFIG: Record<
+    "password" | "close" | "reopen",
+    { title: string; description: string; confirmLabel: string; onConfirm: () => void; danger?: boolean }
+  > = {
+    password: {
+      title: "¿Regenerar la contraseña de este caso?",
       description: "La clave actual dejará de funcionar y deberás compartir la nueva con la familia.",
-      duration: 12000,
-      action: {
-        label: "Sí, regenerar",
-        onClick: async () => {
-          setLoading("password");
-          const res = await fetch(`/api/panel/cases/${kase.id}/regenerate-password`, { method: "POST" });
-          setLoading(null);
-          if (!res.ok) {
-            toast.error(await apiErrorMessage(res, "No se pudo regenerar la contraseña."));
-            return;
-          }
-          const updated = (await res.json()).case;
-          setKase(updated);
-          toast.success(`Nueva contraseña generada: ${updated.password}`, {
-            action: {
-              label: "Copiar",
-              onClick: () => {
-                navigator.clipboard.writeText(updated.password).catch(() => {});
-              },
-            },
-          });
-        },
-      },
-      cancel: {
-        label: "Cancelar",
-        onClick: () => {},
-      },
-    });
-  }
-
-  function cerrarCaso() {
-    toast("¿Cerrar este caso?", {
+      confirmLabel: "Sí, regenerar",
+      onConfirm: regenerarClave,
+    },
+    close: {
+      title: "¿Cerrar este caso?",
       description: "Pasará a modo solo lectura: la familia conservará su historial pero no podrá agregar nuevas propiedades ni comentarios.",
-      duration: 12000,
-      action: {
-        label: "Sí, cerrar caso",
-        onClick: async () => {
-          setLoading("close");
-          const res = await fetch(`/api/panel/cases/${kase.id}/close`, { method: "POST" });
-          setLoading(null);
-          if (!res.ok) {
-            toast.error(await apiErrorMessage(res, "No se pudo cerrar el caso."));
-            return;
-          }
-          setKase((await res.json()).case);
-          toast.success("Caso cerrado — pasó a modo solo lectura.");
-          router.refresh();
-        },
-      },
-      cancel: {
-        label: "Cancelar",
-        onClick: () => {},
-      },
-    });
-  }
-
-  function reabrirCaso() {
-    toast("¿Reabrir este caso?", {
+      confirmLabel: "Sí, cerrar caso",
+      onConfirm: cerrarCaso,
+      danger: true,
+    },
+    reopen: {
+      title: "¿Reabrir este caso?",
       description: "Vuelve a estar activo: la familia va a poder agregar propiedades y comentarios de nuevo.",
-      duration: 12000,
-      action: {
-        label: "Sí, reabrir",
-        onClick: async () => {
-          setLoading("reopen");
-          const res = await fetch(`/api/panel/cases/${kase.id}/reopen`, { method: "POST" });
-          setLoading(null);
-          if (!res.ok) {
-            toast.error(await apiErrorMessage(res, "No se pudo reabrir el caso."));
-            return;
-          }
-          setKase((await res.json()).case);
-          toast.success("Caso reabierto — vuelve a estar activo.");
-          router.refresh();
-        },
-      },
-      cancel: {
-        label: "Cancelar",
-        onClick: () => {},
-      },
-    });
-  }
+      confirmLabel: "Sí, reabrir",
+      onConfirm: reabrirCaso,
+    },
+  };
 
   async function entrarComoCaso() {
     setLoading("enter");
@@ -258,15 +249,15 @@ export default function CaseRow({
         </p>
         {!isArchivado && (
           <div className="mt-2 flex flex-wrap gap-4 text-xs">
-            <button type="button" onClick={regenerarClave} disabled={loading !== null} style={{ color: "var(--accent)" }}>
+            <button type="button" onClick={() => setConfirmAction("password")} disabled={loading !== null} style={{ color: "var(--accent)" }}>
               {loading === "password" ? "Regenerando…" : "Regenerar clave"}
             </button>
             {kase.estado === "activo" ? (
-              <button type="button" onClick={cerrarCaso} disabled={loading !== null} style={{ color: "var(--status-descartada)" }}>
+              <button type="button" onClick={() => setConfirmAction("close")} disabled={loading !== null} style={{ color: "var(--status-descartada)" }}>
                 {loading === "close" ? "Cerrando…" : "Cerrar caso"}
               </button>
             ) : (
-              <button type="button" onClick={reabrirCaso} disabled={loading !== null} style={{ color: "var(--status-gusto)" }}>
+              <button type="button" onClick={() => setConfirmAction("reopen")} disabled={loading !== null} style={{ color: "var(--status-gusto)" }}>
                 {loading === "reopen" ? "Reabriendo…" : "Reabrir caso"}
               </button>
             )}
@@ -321,6 +312,49 @@ export default function CaseRow({
           </button>
         </div>
       </div>
+
+      {confirmAction &&
+        createPortal(
+          <div
+            className="animate-overlay fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(18, 24, 31, 0.55)" }}
+            onClick={() => setConfirmAction(null)}
+          >
+            <div
+              className="animate-modal-pop w-full max-w-sm rounded-2xl border p-6"
+              style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg">{CONFIRM_CONFIG[confirmAction].title}</h3>
+              <p className="mt-1.5 text-sm" style={{ color: "var(--ink-muted)" }}>
+                {CONFIRM_CONFIG[confirmAction].description}
+              </p>
+              <div className="mt-6 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmAction(null)}
+                  className="rounded-full px-4 py-2 text-xs font-semibold"
+                  style={{ border: "1px solid var(--border)", color: "var(--ink-muted)" }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={CONFIRM_CONFIG[confirmAction].onConfirm}
+                  className="rounded-full px-4 py-2 text-xs font-semibold"
+                  style={
+                    CONFIRM_CONFIG[confirmAction].danger
+                      ? { background: "var(--status-descartada-bg)", color: "var(--status-descartada)" }
+                      : { background: "var(--accent)", color: "var(--accent-ink)" }
+                  }
+                >
+                  {CONFIRM_CONFIG[confirmAction].confirmLabel}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

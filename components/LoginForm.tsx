@@ -46,7 +46,10 @@ export default function LoginForm() {
 
   useEffect(() => {
     if (initialUser && initialPass) {
-      performLogin(initialUser, initialPass, true);
+      // setTimeout defiere el setState fuera del cuerpo síncrono del
+      // efecto — llamarlo directo acá dispara el error de lint
+      // react-hooks/set-state-in-effect (cascading renders).
+      setTimeout(() => performLogin(initialUser, initialPass, true), 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

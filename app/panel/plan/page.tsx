@@ -251,10 +251,6 @@ export default async function PanelPlanPage() {
               </div>
 
               <div className="flex flex-col sm:items-end gap-1">
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  Checkout online en desarrollo
-                </span>
                 <WhatsappLinkButton
                   message={buildWhatsappMessage(PLAN_LABEL[broker.plan])}
                   className="btn inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold"
@@ -337,13 +333,6 @@ export default async function PanelPlanPage() {
                       </button>
                     ) : (
                       <div className="flex flex-col gap-2">
-                        <div className="flex items-center justify-between text-[11px]" style={{ color: "var(--ink-faint)" }}>
-                          <span className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                            Pago online en desarrollo
-                          </span>
-                          <span>Coordinación manual</span>
-                        </div>
                         <WhatsappLinkButton
                           message={buildWhatsappMessage(p.name)}
                           className="btn w-full rounded-full py-2.5 text-center text-xs font-semibold transition-transform active:scale-95"

@@ -131,8 +131,10 @@ export default function AddHouseModal({
     }
   }
 
+  const canSave = draft.manual ? Boolean(draft.title.trim()) : Boolean(draft.url && draft.title.trim());
+
   async function save() {
-    if (draft.manual ? !draft.title.trim() : !draft.url) return;
+    if (!canSave) return;
     setSaving(true);
     const res = await fetch("/api/houses", {
       method: "POST",
@@ -275,10 +277,10 @@ export default function AddHouseModal({
           </div>
 
           <label className="flex flex-col gap-1">
-            <span className="eyebrow">Título{draft.manual ? " (obligatorio)" : ""}</span>
+            <span className="eyebrow">Título (obligatorio)</span>
             <input
               className="field"
-              placeholder={draft.manual ? "Ej: Casa 3 ambientes en Villa Ballester" : undefined}
+              placeholder={draft.manual ? "Ej: Casa 3 ambientes en Villa Ballester" : "Se completa solo al pegar el link, o escribilo a mano"}
               value={draft.title}
               onChange={(e) => setDraft({ ...draft, title: e.target.value })}
             />
@@ -368,7 +370,7 @@ export default function AddHouseModal({
           </button>
           <button
             onClick={save}
-            disabled={saving || (draft.manual ? !draft.title.trim() : !draft.url)}
+            disabled={saving || !canSave}
             className="rounded-full px-4 py-2 text-sm font-semibold"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >

@@ -45,10 +45,12 @@ export default async function SuperadminPage() {
               }}
             >
               <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />
-              {remoteDb ? "Redis" : "Almacenamiento local"}
+              <span className="hidden sm:inline">{remoteDb ? "Redis" : "Almacenamiento local"}</span>
+              <span className="sm:hidden">{remoteDb ? "Redis" : "Local"}</span>
             </span>
             <Link href="/panel" className="text-sm font-medium" style={{ color: "var(--ink-muted)" }}>
-              Ir a mi panel
+              <span className="hidden sm:inline">Ir a mi panel</span>
+              <span className="sm:hidden">Panel</span>
             </Link>
             <ThemeToggle />
             <PanelLogoutButton />

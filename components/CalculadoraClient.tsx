@@ -359,10 +359,14 @@ function NumberField({
       <span className="eyebrow">{label}</span>
       <input
         type="number"
+        min={0}
         step={step ?? 1}
         value={value}
         placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+        onChange={(e) => {
+          const n = Number(e.target.value);
+          onChange(e.target.value === "" || Number.isNaN(n) ? 0 : Math.max(0, n));
+        }}
         className="rounded-lg border px-3 py-2"
         style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
       />

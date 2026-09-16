@@ -45,12 +45,17 @@ export default function ClientOnboardingModal({
 
     const alreadyOnboarded = !forceOnboarding && localStorage.getItem(ONBOARDED_KEY_PREFIX + caseId);
     if (!alreadyOnboarded) {
-      // Revisar si ya tenía autor recordado
-      const savedAuthor = localStorage.getItem(AUTHOR_KEY);
-      if (savedAuthor && existingPeople.includes(savedAuthor)) {
-        setSelectedName(savedAuthor);
-      }
-      setOpen(true);
+      // setTimeout defiere el setState fuera del cuerpo síncrono del
+      // efecto — llamarlo directo acá dispara el error de lint
+      // react-hooks/set-state-in-effect (cascading renders).
+      setTimeout(() => {
+        // Revisar si ya tenía autor recordado
+        const savedAuthor = localStorage.getItem(AUTHOR_KEY);
+        if (savedAuthor && existingPeople.includes(savedAuthor)) {
+          setSelectedName(savedAuthor);
+        }
+        setOpen(true);
+      }, 0);
     }
   }, [caseId, viewingAsBroker, existingPeople]);
 

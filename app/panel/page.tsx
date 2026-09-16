@@ -12,6 +12,7 @@ import BrokerNameEditor from "@/components/BrokerNameEditor";
 import BrokerAvatarEditor from "@/components/BrokerAvatarEditor";
 import BrokerOnboarding from "@/components/BrokerOnboarding";
 import ThemeToggle from "@/components/ThemeToggle";
+import InstallAppButton from "@/components/InstallAppButton";
 
 export const dynamic = "force-dynamic";
 
@@ -115,6 +116,7 @@ export default async function PanelPage() {
                 />
               </span>
             )}
+            <InstallAppButton />
             <ThemeToggle />
             <PanelLogoutButton />
           </div>
