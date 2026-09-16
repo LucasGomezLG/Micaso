@@ -70,18 +70,48 @@ export function formatDateTime(iso: string): string {
   });
 }
 
+export function formatTime(iso: string): string {
+  return formatWith(iso, { hour: "2-digit", minute: "2-digit" });
+}
+
+/** Fecha larga con día de la semana ("miércoles, 17 sept") — para
+ * encabezados que agrupan por día, no para mostrar junto a cada item. */
+export function formatWeekdayDate(isoDate: string): string {
+  return new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "2-digit", month: "long", timeZone: "UTC" }).format(
+    parseNaive(isoDate)
+  );
+}
+
+/** Fecha de hoy en huso de Argentina, como "YYYY-MM-DD" — mismo criterio
+ * que ya usan isOverdue/daysUntil, expuesto para comparar contra
+ * `visitaFecha`/`proximaAccionFecha` sin repetir el Intl.DateTimeFormat
+ * inline en cada lugar que lo necesita. */
+export function todayAr(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: AR_TZ }).format(new Date());
+}
+
 export function isOverdue(isoDate: string): boolean {
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: AR_TZ }).format(new Date());
-  return isoDate.slice(0, 10) < today;
+  return isoDate.slice(0, 10) < todayAr();
 }
 
 /** Whole calendar days from today (Argentina-local) to a naive
  * "YYYY-MM-DD" date — negative if it's already past. */
 export function daysUntil(isoDate: string): number {
   const target = parseNaive(isoDate).getTime();
-  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: AR_TZ }).format(new Date());
-  const today = parseNaive(todayStr).getTime();
+  const today = parseNaive(todayAr()).getTime();
   return Math.round((target - today) / (1000 * 60 * 60 * 24));
+}
+
+/** "Hoy" / "Mañana" / día de la semana completo — para encabezados que
+ * agrupan una lista por día (ver app/caso/agenda). Se apoya en
+ * `daysUntil` para el offset en vez de reinventar la comparación de
+ * fechas en cada lugar que necesita esta etiqueta. */
+export function dayLabel(isoDate: string): string {
+  const offset = daysUntil(isoDate);
+  if (offset === 0) return "Hoy";
+  if (offset === 1) return "Mañana";
+  const label = formatWeekdayDate(isoDate);
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 /** "hoy" / "ayer" / "hace N días" a partir de una fecha o datetime ISO

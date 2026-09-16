@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Calendar,
   Car,
   ChevronLeft,
   ChevronRight,
+  ChevronsUpDown,
   Landmark,
   ListChecks,
   MapPin,
@@ -23,13 +23,15 @@ import {
   X,
 } from "lucide-react";
 import { AptoCredito, House, HouseStatus, LoanInfo, PIPELINE_STATUSES, STATUS_LABEL } from "@/lib/types";
-import { formatDate, formatDateTime, formatUsd, isOverdue, proxiedImage } from "@/lib/format";
+import { formatDate, formatUsd, isOverdue, proxiedImage } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/http";
+import { openWhatsapp } from "@/lib/whatsapp";
 import { cashNeededRange, pricePerM2 } from "@/lib/mortgage";
 import StatusBadge from "@/components/StatusBadge";
 import EditHouseModal from "@/components/EditHouseModal";
 import VisitReview from "@/components/VisitReview";
 import Select from "@/components/Select";
+import VisitaCoordinadaBadge from "@/components/VisitaCoordinadaBadge";
 
 // Global (no por caso) a propósito: el nombre en sí no identifica un
 // caso, y se valida contra `people` del caso actual antes de usarlo
@@ -206,7 +208,7 @@ export default function HouseCard({
     const precio = house.priceUsd !== null ? ` — ${formatUsd(house.priceUsd)}` : "";
     const link = house.url ? `\n${house.url}` : "";
     const mensaje = `Mirá esta casa que guardé en Micaso: ${house.title}${precio}${link}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(mensaje)}`, "_blank", "noopener,noreferrer");
+    openWhatsapp(mensaje);
   }
 
   return (
@@ -315,24 +317,23 @@ export default function HouseCard({
         </div>
 
         <button
+          type="button"
           onClick={() => onChange(house.id, { aptoCredito: APTO_CREDITO_NEXT[house.aptoCredito] })}
           title="Tocar para cambiar"
-          className="inline-flex w-fit items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold"
-          style={{ background: APTO_CREDITO_BG[house.aptoCredito], color: APTO_CREDITO_COLOR[house.aptoCredito] }}
+          className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-dashed px-2 py-1 text-xs font-semibold transition-colors hover:brightness-95"
+          style={{
+            background: APTO_CREDITO_BG[house.aptoCredito],
+            color: APTO_CREDITO_COLOR[house.aptoCredito],
+            borderColor: "color-mix(in srgb, currentColor 40%, transparent)",
+          }}
         >
           <Landmark size={13} /> {APTO_CREDITO_LABEL[house.aptoCredito]}
+          <ChevronsUpDown size={12} className="opacity-60" />
         </button>
 
         <h3 className="line-clamp-2 text-sm font-semibold">{house.title}</h3>
 
-        {house.visitaFecha && (
-          <div
-            className="inline-flex w-fit items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium"
-            style={{ background: "var(--status-coordinada-bg)", color: "var(--status-coordinada)" }}
-          >
-            <Calendar size={13} /> Visita: {formatDateTime(house.visitaFecha)}
-          </div>
-        )}
+        <VisitaCoordinadaBadge house={house} label="Visita: " />
 
         {house.proximaAccion && (
           <div

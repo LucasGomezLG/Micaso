@@ -8,6 +8,7 @@ import { formatDate, formatDateTime, formatUsd, proxiedImage } from "@/lib/forma
 import { cashNeededRange, pricePerM2 } from "@/lib/mortgage";
 import { apiErrorMessage } from "@/lib/http";
 import StatusBadge from "@/components/StatusBadge";
+import AddToCalendarButton from "@/components/AddToCalendarButton";
 
 function cell(className = ""): string {
   return `whitespace-nowrap border-b px-4 py-3 align-top text-sm ${className}`;
@@ -100,6 +101,12 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
           {h.visitaFecha && (
             <span className="inline-flex items-center gap-1">
               <Calendar size={12} /> {formatDateTime(h.visitaFecha)}
+              <AddToCalendarButton
+                house={h}
+                variant="pill"
+                title="Descargar evento para el calendario (.ics)"
+                className="rounded p-0.5 hover:bg-black/10 dark:hover:bg-white/10"
+              />
             </span>
           )}
           {h.proximaAccion && (

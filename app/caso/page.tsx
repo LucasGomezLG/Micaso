@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { Calendar, Check, Pin } from "lucide-react";
+import { Check, Pin } from "lucide-react";
 import { getCriteria, getHouses, countByStatus } from "@/lib/store";
 import { getCaseId } from "@/lib/session";
 import { getCase } from "@/lib/cases";
-import { daysUntil, formatArs, formatDate, formatDateTime, formatUsd, isOverdue } from "@/lib/format";
+import { daysUntil, formatArs, formatDate, formatUsd, isOverdue, todayAr } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
 import CriteriaEditor from "@/components/CriteriaEditor";
 import BriefEditor from "@/components/BriefEditor";
 import PeopleEditor from "@/components/PeopleEditor";
+import VisitaCoordinadaBadge from "@/components/VisitaCoordinadaBadge";
+import EmptyState from "@/components/EmptyState";
 import { House, HouseStatus, TipoCaso } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -29,8 +31,18 @@ const STAT_TILES: { status: HouseStatus; label: string }[] = [
   { status: "descartada", label: "Descartadas" },
 ];
 
-function upcomingSortKey(house: House): string {
-  return [house.visitaFecha, house.proximaAccionFecha].filter((d): d is string => !!d).sort()[0];
+/** Una visitaFecha ya pasada no es "próxima" — se excluye de este panel
+ * (a diferencia de proximaAccionFecha vencida, que sigue siendo un
+ * pendiente real y por eso se muestra en rojo en vez de ocultarse). */
+function hasUpcomingVisit(house: House, today: string): boolean {
+  return !!house.visitaFecha && house.visitaFecha.slice(0, 10) >= today;
+}
+
+function upcomingSortKey(house: House, today: string): string {
+  const dates = [hasUpcomingVisit(house, today) ? house.visitaFecha : null, house.proximaAccionFecha].filter(
+    (d): d is string => !!d
+  );
+  return dates.sort()[0] ?? "";
 }
 
 export default async function HomePage() {
@@ -45,9 +57,14 @@ export default async function HomePage() {
     .sort((a, b) => (a.addedAt < b.addedAt ? 1 : -1))
     .slice(0, 5);
   const remainingDays = daysUntil(loan.moveOutDeadline);
+  const today = todayAr();
   const upcoming = houses
-    .filter((h) => h.visitaFecha || h.proximaAccionFecha)
-    .sort((a, b) => (upcomingSortKey(a) < upcomingSortKey(b) ? -1 : 1));
+    .filter((h) => hasUpcomingVisit(h, today) || h.proximaAccionFecha)
+    .sort((a, b) => {
+      const keyA = upcomingSortKey(a, today);
+      const keyB = upcomingSortKey(b, today);
+      return keyA < keyB ? -1 : keyA > keyB ? 1 : 0;
+    });
 
   return (
     <div className="flex flex-col gap-10">
@@ -80,27 +97,18 @@ export default async function HomePage() {
             {upcoming.map((house) => {
               const vencida = house.proximaAccionFecha ? isOverdue(house.proximaAccionFecha) : false;
               return (
-                <Link
+                <div
                   key={house.id}
-                  href="/caso/casas"
                   className="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors hover:border-[var(--border-strong)]"
                   style={{ background: "var(--surface)", borderColor: "var(--border)" }}
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{house.title}</p>
-                    <p className="text-xs" style={{ color: "var(--ink-faint)" }}>
-                      {house.zone ?? house.source}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    {house.visitaFecha && (
-                      <span
-                        className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium"
-                        style={{ background: "var(--status-coordinada-bg)", color: "var(--status-coordinada)" }}
-                      >
-                        <Calendar size={13} /> {formatDateTime(house.visitaFecha)}
-                      </span>
-                    )}
+                  <Link href="/caso/casas" className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{house.title}</p>
+                      <p className="text-xs" style={{ color: "var(--ink-faint)" }}>
+                        {house.zone ?? house.source}
+                      </p>
+                    </div>
                     {house.proximaAccion && (
                       <span
                         className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium"
@@ -115,8 +123,9 @@ export default async function HomePage() {
                         )}
                       </span>
                     )}
-                  </div>
-                </Link>
+                  </Link>
+                  {hasUpcomingVisit(house, today) && <VisitaCoordinadaBadge house={house} />}
+                </div>
               );
             })}
           </div>
@@ -312,23 +321,7 @@ export default async function HomePage() {
           )}
         </div>
         {houses.length === 0 ? (
-          <div
-            className="flex flex-col items-center justify-center rounded-3xl border p-8 text-center sm:p-12"
-            style={{
-              background: "var(--surface)",
-              borderColor: "var(--border)",
-              boxShadow: "var(--shadow-card)",
-            }}
-          >
-            <span
-              className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl text-2xl shadow-sm"
-              style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-            >
-              🏡
-            </span>
-            <h3 className="text-xl font-semibold" style={{ fontFamily: "var(--font-display)" }}>
-              Todavía no hay propiedades cargadas
-            </h3>
+          <EmptyState icon="🏡" title="Todavía no hay propiedades cargadas">
             <p className="mt-2 max-w-md text-xs sm:text-sm leading-relaxed" style={{ color: "var(--ink-muted)" }}>
               Cuando encuentren una propiedad en ZonaProp, MercadoLibre o Argenprop que les llame la atención, péguenla acá para analizarla juntos y coordinar visitas.
             </p>
@@ -351,7 +344,7 @@ export default async function HomePage() {
                 Ver checklist de trámites
               </Link>
             </div>
-          </div>
+          </EmptyState>
         ) : (
           <div className="flex flex-col gap-2">
             {recent.map((house) => (

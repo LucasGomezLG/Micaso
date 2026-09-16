@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Building2, Calculator, CheckSquare, Sparkles } from "lucide-react";
+import { Home, Building2, Calculator, CalendarDays, CheckSquare, Sparkles } from "lucide-react";
 import { TipoCaso } from "@/lib/types";
 import { MicasoMark } from "@/components/MicasoMark";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -10,6 +10,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 const BASE_LINKS = [
   { href: "/caso", label: "Inicio", icon: Home },
   { href: "/caso/casas", label: "Casas", icon: Building2 },
+  { href: "/caso/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/caso/checklist", label: "Checklist", icon: CheckSquare },
 ];
 const CALCULADORA_LINK = { href: "/caso/calculadora", label: "Calculadora", icon: Calculator };
@@ -39,7 +40,10 @@ export default function Nav({
   isDemo?: boolean;
 }) {
   const pathname = usePathname();
-  const links = tipoCaso === "compra" ? [...BASE_LINKS.slice(0, 2), CALCULADORA_LINK, BASE_LINKS[2]] : BASE_LINKS;
+  const links =
+    tipoCaso === "compra"
+      ? BASE_LINKS.flatMap((link) => (link.href === "/caso/agenda" ? [CALCULADORA_LINK, link] : [link]))
+      : BASE_LINKS;
 
   return (
     <>
@@ -146,7 +150,7 @@ export default function Nav({
             <Link
               key={link.href}
               href={link.href}
-              className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1 text-[11px] font-medium transition-colors"
+              className="flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 py-1 text-[10px] font-medium tracking-tight transition-colors"
               style={{
                 color: active ? "var(--accent)" : "var(--ink-muted)",
               }}
@@ -157,9 +161,9 @@ export default function Nav({
                   background: active ? "var(--accent-soft)" : "transparent",
                 }}
               >
-                <Icon size={18} strokeWidth={active ? 2.3 : 1.8} />
+                <Icon size={17} strokeWidth={active ? 2.3 : 1.8} />
               </span>
-              <span>{link.label}</span>
+              <span className="truncate max-w-full px-0.5 text-center">{link.label}</span>
             </Link>
           );
         })}
