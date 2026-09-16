@@ -8,6 +8,7 @@ import { Case, CaseEstado, TipoCaso } from "@/lib/types";
 import type { CaseSummary } from "@/lib/store";
 import { daysAgoLabel } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/http";
+import { buildCaseShareMessage, getCanonicalLoginUrl, openWhatsapp } from "@/lib/whatsapp";
 
 const TIPO_LABEL: Record<TipoCaso, string> = {
   compra: "Compra",
@@ -171,9 +172,8 @@ export default function CaseRow({
   const [copiedCreds, setCopiedCreds] = useState(false);
 
   async function copiarCredenciales() {
-    const params = new URLSearchParams({ u: kase.username, p: kase.password });
-    const loginUrl = `${window.location.origin}/login?${params.toString()}`;
-    const texto = `Acceso Micaso para "${kase.titulo}":\nLink directo: ${loginUrl}\n\n🔒 Compartí este link solamente con las personas que te acompañen o ayuden en la búsqueda.\n\nUsuario: ${kase.username}\nContraseña: ${kase.password}`;
+    const loginUrl = getCanonicalLoginUrl(kase.username, kase.password);
+    const texto = `Acceso Micaso para "${kase.titulo}":\nLink directo: ${loginUrl}\n\n🛡 Compartí este link solamente con las personas que te acompañen o ayuden en la búsqueda.\n\nUsuario: ${kase.username}\nContraseña: ${kase.password}`;
     await navigator.clipboard.writeText(texto);
     setCopiedCreds(true);
     toast.success("Credenciales y link de acceso directo copiados");
@@ -181,10 +181,8 @@ export default function CaseRow({
   }
 
   function compartirPorWhatsapp() {
-    const params = new URLSearchParams({ u: kase.username, p: kase.password });
-    const loginUrl = `${window.location.origin}/login?${params.toString()}`;
-    const mensaje = `¡Hola! Ya podés seguir la búsqueda de "${kase.titulo}" en Micaso.\n\n👉 Entrá directo con 1 toque acá:\n${loginUrl}\n\n🔒 *Compartí este link solamente con las personas que te acompañen o ayuden en la búsqueda.*\n\n(Tus datos de acceso por si entrás desde otro dispositivo:\nUsuario: ${kase.username}\nContraseña: ${kase.password})\n\nAhí vas a ver el presupuesto, las propiedades que vamos viendo, las visitas coordinadas y todo lo que vaya haciendo falta — todo junto, en un solo lugar.`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(mensaje)}`, "_blank", "noopener,noreferrer");
+    const mensaje = buildCaseShareMessage(kase);
+    openWhatsapp(mensaje);
   }
 
   const estadoColor = ESTADO_COLOR[kase.estado];

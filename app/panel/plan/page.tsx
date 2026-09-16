@@ -15,6 +15,7 @@ import {
 import { MicasoMark } from "@/components/MicasoMark";
 import ThemeToggle from "@/components/ThemeToggle";
 import PanelLogoutButton from "@/components/PanelLogoutButton";
+import WhatsappLinkButton from "@/components/WhatsappLinkButton";
 
 export const dynamic = "force-dynamic";
 
@@ -109,9 +110,8 @@ export default async function PanelPlanPage() {
   const daysLeft = computeDaysLeft(broker.trialEndsAt);
   const isTrial = broker.subscriptionStatus === "prueba";
 
-  function buildWhatsappLink(planTarget: string) {
-    const msg = `¡Hola! Soy ${broker?.nombreMarca} (${broker?.email}). Estoy usando Micaso y me gustaría consultar por el plan "${planTarget}".`;
-    return `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  function buildWhatsappMessage(planTarget: string) {
+    return `¡Hola! Soy ${broker?.nombreMarca} (${broker?.email}). Estoy usando Micaso y me gustaría consultar por el plan "${planTarget}".`;
   }
 
   return (
@@ -272,15 +272,13 @@ export default async function PanelPlanPage() {
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
                   Checkout online en desarrollo
                 </span>
-                <a
-                  href={buildWhatsappLink(PLAN_LABEL[broker.plan])}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <WhatsappLinkButton
+                  message={buildWhatsappMessage(PLAN_LABEL[broker.plan])}
                   className="btn inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold"
                   style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
                 >
                   <MessageSquare size={13} /> Coordinar por WhatsApp
-                </a>
+                </WhatsappLinkButton>
               </div>
             </div>
           )}
@@ -363,10 +361,8 @@ export default async function PanelPlanPage() {
                           </span>
                           <span>Coordinación manual</span>
                         </div>
-                        <a
-                          href={buildWhatsappLink(p.name)}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <WhatsappLinkButton
+                          message={buildWhatsappMessage(p.name)}
                           className="btn w-full rounded-full py-2.5 text-center text-xs font-semibold transition-transform active:scale-95"
                           style={
                             p.highlight
@@ -379,7 +375,7 @@ export default async function PanelPlanPage() {
                         >
                           <MessageSquare size={13} className="inline mr-1" />
                           {p.ctaLabel} vía WhatsApp
-                        </a>
+                        </WhatsappLinkButton>
                       </div>
                     )}
                   </div>

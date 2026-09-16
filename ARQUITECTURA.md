@@ -1081,6 +1081,17 @@ Verificado sin conflictos con proptech existente. **Resuelto (verificado
 15 sept 2026):** el dominio ya está comprado y la landing está publicada
 en vivo en `micaso.com.ar` — el trámite que faltaba ya se hizo.
 
+> **Forma canónica del dominio — `www.micaso.com.ar`, no el apex (15 sept
+> 2026).** Vercel redirige `micaso.com.ar` hacia `www.micaso.com.ar` con
+> un 308, y el crawler de WhatsApp descarta la previsualización de
+> imagen (`og:image`) si la URL que declara la página no es ya la final
+> tras esa redirección — comparte una vez con WhatsApp mostraba el link
+> sin imagen. `lib/site.ts` centraliza el dominio con www para
+> `metadataBase`, el OG de `/login`, `sitemap.xml` y `robots.txt`;
+> `lib/whatsapp.ts` lo replica del lado del cliente (no puede importar
+> `lib/site.ts` directamente: esa lógica depende de `VERCEL_ENV`, una
+> variable de servidor que no llega al bundle del browser).
+
 ## 12. Camino de validación sugerido
 
 > **Actualización (14 sept 2026):** este camino de validación dejó de ser

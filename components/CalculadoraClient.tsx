@@ -6,6 +6,7 @@ import { Copy, Check, Share2 } from "lucide-react";
 import { LoanInfo } from "@/lib/types";
 import { formatArs, formatPercent, formatUsd } from "@/lib/format";
 import { frenchInstallment } from "@/lib/mortgage";
+import { openWhatsapp } from "@/lib/whatsapp";
 
 const STORAGE_KEY_PREFIX = "micaso-calculadora:";
 
@@ -107,7 +108,7 @@ export default function CalculadoraClient({ loan, caseId }: { loan: LoanInfo; ca
 
   function compartirWhatsApp() {
     const texto = buildResumenTexto();
-    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank", "noopener,noreferrer");
+    openWhatsapp(texto);
   }
 
   async function copiarResumen() {
