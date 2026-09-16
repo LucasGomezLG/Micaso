@@ -333,7 +333,7 @@ export default function HouseCard({
 
         <h3 className="line-clamp-2 text-sm font-semibold">{house.title}</h3>
 
-        <VisitaCoordinadaBadge house={house} label="Visita: " />
+        <VisitaCoordinadaBadge house={house} label="Visita: " linkToAgenda />
 
         {house.proximaAccion && (
           <div

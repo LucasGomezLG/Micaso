@@ -6,6 +6,7 @@ import { Home, Building2, Calculator, CalendarDays, CheckSquare, Sparkles } from
 import { TipoCaso } from "@/lib/types";
 import { MicasoMark } from "@/components/MicasoMark";
 import ThemeToggle from "@/components/ThemeToggle";
+import InstallAppButton from "@/components/InstallAppButton";
 
 const BASE_LINKS = [
   { href: "/caso", label: "Inicio", icon: Home },
@@ -128,6 +129,7 @@ export default function Nav({
                 );
               })}
             </nav>
+            <InstallAppButton />
             <ThemeToggle />
           </div>
         </div>
