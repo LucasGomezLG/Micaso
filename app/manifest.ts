@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
       "La búsqueda de casa de cada cliente, en un solo lugar - para corredores inmobiliarios y sus familias.",
     start_url: "/",
     display: "standalone",
-    background_color: "#ffffff",
+    background_color: "#14181d",
     theme_color: "#1d4e89",
     icons: [
       { src: "/icons/192", sizes: "192x192", type: "image/png" },

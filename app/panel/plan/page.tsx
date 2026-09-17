@@ -16,7 +16,7 @@ import {
 import { MicasoMark } from "@/components/MicasoMark";
 import ThemeToggle from "@/components/ThemeToggle";
 import PanelLogoutButton from "@/components/PanelLogoutButton";
-import WhatsappLinkButton from "@/components/WhatsappLinkButton";
+import ContactModal from "@/components/ContactModal";
 import PlanGatewayNotice from "@/components/PlanGatewayNotice";
 import SubscribeButton from "@/components/SubscribeButton";
 import CancelSubscriptionButton from "@/components/CancelSubscriptionButton";
@@ -414,14 +414,11 @@ export default async function PanelPlanPage() {
                     ) : (
                       <div className="flex flex-col gap-2">
                         {pKey === "volumen_alto" ? (
-                          <WhatsappLinkButton
-                            message={buildWhatsappMessage(p.name)}
+                          <ContactModal
+                            label={p.ctaLabel}
                             className="btn w-full rounded-full py-2.5 text-center text-xs font-semibold transition-transform active:scale-95"
                             style={{ border: "1px solid var(--border-strong)", color: "var(--ink)" }}
-                          >
-                            <MessageSquare size={13} className="inline mr-1" />
-                            {p.ctaLabel} vía WhatsApp
-                          </WhatsappLinkButton>
+                          />
                         ) : (
                           <SubscribeButton 
                             plan={pKey as "para_arrancar" | "para_tu_cartera"}

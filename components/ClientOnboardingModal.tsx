@@ -104,7 +104,7 @@ export default function ClientOnboardingModal({
       style={{ background: "rgba(18, 24, 31, 0.68)", backdropFilter: "blur(4px)" }}
     >
       <div
-        className="animate-modal-pop relative w-full max-w-lg overflow-hidden rounded-3xl border text-center shadow-2xl"
+        className="animate-modal-pop relative w-full max-w-lg max-h-[95dvh] overflow-y-auto rounded-3xl border text-center shadow-2xl"
         style={{
           background: "var(--surface)",
           borderColor: "var(--border)",
