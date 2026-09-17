@@ -968,9 +968,32 @@ borrar copias viejas).
 > **Entropía subida (15 sept 2026):** `randomCode` ahora genera 12
 > caracteres en vez de 8, tanto al crear un caso como al regenerar la
 > clave — sobre el mismo alfabeto de 32 caracteres sin ambiguos, pasa de
-> ~40 a ~60 bits. No cambia nada más (sigue en texto plano, sigue
-> comparándose con `===`): el resto de este punto sigue sin resolverse,
-> queda anotado para cuando haya varios corredores pagando.
+> ~40 a ~60 bits.
+
+> **Resuelto (17 sept 2026): encriptación reversible, no hash.** Un hash
+> de un solo sentido (bcrypt) no servía acá — el corredor necesita poder
+> *ver* la contraseña real para compartirla por WhatsApp (botón
+> "Compartir"/"Regenerar clave" en `CaseRow` y, desde hoy, "Ver
+> contraseña" en `AdminCaseCard`, ver sección 7), no solo verificarla.
+> `lib/crypto.ts` encripta con AES-256-GCM (`CASE_SECRET_KEY`, una
+> variable de entorno — nunca en la base) y desencripta de forma
+> transparente en el borde de `lib/cases.ts`: todo el resto de la app
+> (componentes, rutas) sigue leyendo `Case.password` como texto plano, sin
+> saber que existe encriptación. Ahora si se filtra la base o el JSON de
+> `/api/superadmin/backup`, lo que queda expuesto es texto cifrado, no la
+> contraseña real — con una excepción a propósito: `listAllCases()` (la
+> que alimenta el backup) nunca desencripta, así que ni siquiera un admin
+> mirando ese JSON ve las claves en limpio. El login de caso
+> (`getCaseByCredentials`) también pasa a comparar con
+> `timingSafeStringEqual` en vez de `===`, cerrando el timing attack de
+> paso. **Migración: perezosa, no un script aparte.** Las contraseñas ya
+> guardadas (de antes de este cambio) siguen en texto plano hasta la
+> próxima vez que se regeneren — `decryptSecret` reconoce el prefijo
+> `enc1:` y devuelve cualquier valor sin ese prefijo tal cual, así que
+> conviven los dos formatos sin romper nada. Probado de punta a punta con
+> el navegador real: regenerar una clave real, revelarla desde
+> `/superadmin`, loguearse con la nueva, confirmar que la vieja ya no
+> funciona, y que el backup descargado la muestra cifrada.
 
 **Barrido de "quedó pensado para un solo caso" (14 sept 2026) — dos
 bugs reales encontrados y resueltos**

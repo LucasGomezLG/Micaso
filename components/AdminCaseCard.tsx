@@ -28,12 +28,14 @@ const ESTADO_COLOR: Record<CaseEstado, { bg: string; fg: string }> = {
   archivado: { bg: "var(--status-borrada-bg)", fg: "var(--status-borrada)" },
 };
 
-/** Tarjeta de moderación de un caso desde /superadmin — a propósito NO
- * muestra la contraseña del caso ni tiene "Entrar al caso": el admin
- * puede cerrar/reabrir/regenerar clave y renombrar (todo lo operativo),
- * pero no puede ver ni entrar al contenido real de la familia (casas,
- * comentarios). Ver la conversación que originó esto: control total
- * sobre la cuenta del corredor, cero visibilidad sobre sus clientes. */
+/** Tarjeta de moderación de un caso desde /superadmin — la contraseña
+ * queda oculta por default (un click en "Ver contraseña" la trae vía
+ * /reveal-password) y no hay "Entrar al caso": el admin puede
+ * cerrar/reabrir/regenerar clave, renombrar y, si hace falta de verdad,
+ * ver la contraseña para ayudar al corredor — pero no puede ver ni
+ * entrar al contenido real de la familia (casas, comentarios). Control
+ * total sobre la cuenta del corredor, no visibilidad sobre lo que cargan
+ * sus clientes. */
 export default function AdminCaseCard({
   initialCase,
   summary,
@@ -47,6 +49,9 @@ export default function AdminCaseCard({
   const [titulo, setTitulo] = useState(kase.titulo);
   const [loading, setLoading] = useState<"rename" | "password" | "close" | "reopen" | null>(null);
   const [confirmAction, setConfirmAction] = useState<"password" | "close" | "reopen" | null>(null);
+  const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
+  const [revealing, setRevealing] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
 
   async function saveTitulo() {
     const next = titulo.trim();
@@ -80,7 +85,31 @@ export default function AdminCaseCard({
       return;
     }
     setKase((await res.json()).case);
+    setRevealedPassword(null);
     toast.success("Contraseña regenerada — la anterior dejó de funcionar.");
+  }
+
+  async function toggleVerContrasena() {
+    if (revealedPassword) {
+      setRevealedPassword(null);
+      return;
+    }
+    setRevealing(true);
+    const res = await fetch(`/api/superadmin/cases/${kase.id}/reveal-password`, { method: "POST" });
+    setRevealing(false);
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo obtener la contraseña."));
+      return;
+    }
+    setRevealedPassword((await res.json()).password);
+  }
+
+  async function copiarContrasena() {
+    if (!revealedPassword) return;
+    await navigator.clipboard.writeText(revealedPassword);
+    setCopiedPassword(true);
+    toast.success("Contraseña copiada");
+    setTimeout(() => setCopiedPassword(false), 2000);
   }
 
   async function cerrarCaso() {
@@ -192,8 +221,31 @@ export default function AdminCaseCard({
             <span>{summary.lastActivity ? `última actividad: ${daysAgoLabel(summary.lastActivity)}` : "sin propiedades cargadas"}</span>
           </p>
         )}
-        <p className="mt-1 text-xs" style={{ color: "var(--ink-faint)" }}>
-          Usuario <span className="mono">{kase.username}</span> · creado el {new Date(kase.createdAt).toLocaleDateString("es-AR")}
+        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs" style={{ color: "var(--ink-faint)" }}>
+          <span>
+            Usuario <span className="mono">{kase.username}</span> · creado el {new Date(kase.createdAt).toLocaleDateString("es-AR")}
+          </span>
+          {!isArchivado && (
+            <button
+              type="button"
+              onClick={toggleVerContrasena}
+              disabled={revealing}
+              className="font-medium underline underline-offset-2"
+              style={{ color: "var(--accent)" }}
+            >
+              {revealing ? "Cargando…" : revealedPassword ? "Ocultar contraseña" : "Ver contraseña"}
+            </button>
+          )}
+          {revealedPassword && (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="mono select-all font-medium" style={{ color: "var(--ink)" }}>
+                {revealedPassword}
+              </span>
+              <button type="button" onClick={copiarContrasena} className="font-medium underline underline-offset-2" style={{ color: "var(--accent)" }}>
+                {copiedPassword ? "¡Copiado!" : "Copiar"}
+              </button>
+            </span>
+          )}
         </p>
       </div>
 

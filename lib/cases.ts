@@ -1,8 +1,19 @@
 import { DEV_BROKER_ID } from "./auth";
 import { getBroker } from "./brokers";
+import { decryptSecret, encryptSecret, timingSafeStringEqual } from "./crypto";
 import { dbGet, dbUpdate } from "./db";
 import { DEMO_CASE_ID } from "./seed";
 import { Case, PLAN_CASE_LIMIT, TipoCaso } from "./types";
+
+/** La base guarda `Case.password` encriptada (ver lib/crypto.ts) — esto
+ * la vuelve a texto plano para cualquier caller fuera de este archivo
+ * (panel del corredor, super-admin, login de caso). Los mutadores
+ * internos (`updateCase`) nunca pasan por acá: leen y escriben directo
+ * contra el valor crudo de la base, así que un cierre/reapertura/cambio
+ * de título no vuelve a pisar la contraseña con texto plano. */
+function decryptCase(kase: Case): Case {
+  return { ...kase, password: decryptSecret(kase.password) };
+}
 
 const CASES_KEY = "cases";
 const brokerCasesKey = (brokerId: string) => `broker:${brokerId}:cases`;
@@ -85,6 +96,7 @@ export async function createCase(
   await assertUnderCaseLimit(brokerId);
   const now = new Date().toISOString();
   const cleanedPeople = Array.from(new Set(people.map((p) => p.trim()).filter(Boolean)));
+  const plainPassword = randomCode(12);
   const kase: Case = {
     id: crypto.randomUUID(),
     brokerId,
@@ -92,7 +104,7 @@ export async function createCase(
     tipoCaso,
     estado: "activo",
     username: randomCode(6).toLowerCase(),
-    password: randomCode(12),
+    password: encryptSecret(plainPassword),
     people: cleanedPeople,
     soloLecturaDesde: null,
     createdAt: now,
@@ -100,7 +112,7 @@ export async function createCase(
   };
   await dbUpdate<Record<string, Case>>(CASES_KEY, (current) => ({ ...(current ?? {}), [kase.id]: kase }));
   await addToBrokerIndex(brokerId, kase.id);
-  return kase;
+  return { ...kase, password: plainPassword };
 }
 
 export async function listCasesForBroker(brokerId: string): Promise<Case[]> {
@@ -108,7 +120,8 @@ export async function listCasesForBroker(brokerId: string): Promise<Case[]> {
   return (ids ?? [])
     .map((id) => cases[id])
     .filter((c): c is Case => Boolean(c))
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .map(decryptCase);
 }
 
 export async function getCase(caseId: string): Promise<Case | null> {
@@ -117,7 +130,8 @@ export async function getCase(caseId: string): Promise<Case | null> {
   // directo desde path params de rutas de superadmin (ver
   // app/api/superadmin/cases/[id]/*) — con caseId === "__proto__" el
   // acceso por corchetes devuelve Object.prototype heredado, no undefined.
-  return Object.prototype.hasOwnProperty.call(cases, caseId) ? cases[caseId] : null;
+  const kase = Object.prototype.hasOwnProperty.call(cases, caseId) ? cases[caseId] : null;
+  return kase ? decryptCase(kase) : null;
 }
 
 /** Único punto donde se verifica que un caso pertenezca a un corredor
@@ -133,15 +147,28 @@ export async function getCaseForBroker(caseId: string, brokerId: string): Promis
 
 /** Todos los casos de todos los corredores — usado por el backup
  * completo de /superadmin (ver lib/backup.ts), no por ninguna pantalla
- * de corredor (esos siempre pasan por listCasesForBroker). */
+ * de corredor (esos siempre pasan por listCasesForBroker). A propósito
+ * NO desencripta `password` (a diferencia del resto de las funciones de
+ * este archivo) — el backup es exactamente el escenario que la
+ * encriptación defiende (ver lib/crypto.ts y ARQUITECTURA.md sección 9):
+ * si el JSON descargado se filtra, lo que queda expuesto es texto
+ * cifrado, no la contraseña real de cada caso. */
 export async function listAllCases(): Promise<Case[]> {
   const cases = await getAllCases();
   return Object.values(cases);
 }
 
+/** Compara la contraseña ingresada contra la del caso encontrado por
+ * username, ya desencriptada, con `timingSafeStringEqual` (ver
+ * lib/crypto.ts) en vez de `===` — evita filtrar por cuánto tarda la
+ * respuesta si el ingresado coincide con el principio de la clave real. */
 export async function getCaseByCredentials(username: string, password: string): Promise<Case | null> {
   const cases = await getAllCases();
-  return Object.values(cases).find((c) => c.username === username && c.password === password) ?? null;
+  const candidate = Object.values(cases).find((c) => c.username === username);
+  if (!candidate) return null;
+  const storedPassword = decryptSecret(candidate.password);
+  if (!timingSafeStringEqual(storedPassword, password)) return null;
+  return { ...candidate, password: storedPassword };
 }
 
 async function updateCase(caseId: string, patch: Partial<Case>): Promise<Case | null> {
@@ -166,7 +193,8 @@ async function updateCase(caseId: string, patch: Partial<Case>): Promise<Case | 
 export async function renameCase(caseId: string, brokerId: string, titulo: string): Promise<Case | null> {
   const kase = await getCaseForBroker(caseId, brokerId);
   if (!kase) return null;
-  return updateCase(caseId, { titulo });
+  const updated = await updateCase(caseId, { titulo });
+  return updated ? decryptCase(updated) : null;
 }
 
 /** Editable desde adentro del caso (no desde el panel del corredor) —
@@ -174,13 +202,16 @@ export async function renameCase(caseId: string, brokerId: string, titulo: strin
  * strings vacíos. */
 export async function updatePeople(caseId: string, people: string[]): Promise<Case | null> {
   const cleaned = Array.from(new Set(people.map((p) => p.trim()).filter(Boolean)));
-  return updateCase(caseId, { people: cleaned });
+  const updated = await updateCase(caseId, { people: cleaned });
+  return updated ? decryptCase(updated) : null;
 }
 
 export async function regeneratePassword(caseId: string, brokerId: string): Promise<Case | null> {
   const kase = await getCaseForBroker(caseId, brokerId);
   if (!kase) return null;
-  return updateCase(caseId, { password: randomCode(12) });
+  const plainPassword = randomCode(12);
+  const updated = await updateCase(caseId, { password: encryptSecret(plainPassword) });
+  return updated ? { ...updated, password: plainPassword } : null;
 }
 
 /** Cierre manual: pasa a `solo_lectura`, no directo a `archivado` — la
@@ -194,7 +225,8 @@ export async function regeneratePassword(caseId: string, brokerId: string): Prom
 export async function closeCase(caseId: string, brokerId: string): Promise<Case | null> {
   const kase = await getCaseForBroker(caseId, brokerId);
   if (!kase) return null;
-  return updateCase(caseId, { estado: "solo_lectura", soloLecturaDesde: new Date().toISOString() });
+  const updated = await updateCase(caseId, { estado: "solo_lectura", soloLecturaDesde: new Date().toISOString() });
+  return updated ? decryptCase(updated) : null;
 }
 
 /** Vuelve un caso de `solo_lectura` a `activo` — no aplica a `archivado`
@@ -206,7 +238,8 @@ export async function reopenCase(caseId: string, brokerId: string): Promise<Case
   const kase = await getCaseForBroker(caseId, brokerId);
   if (!kase) return null;
   await assertUnderCaseLimit(kase.brokerId);
-  return updateCase(caseId, { estado: "activo", soloLecturaDesde: null });
+  const updated = await updateCase(caseId, { estado: "activo", soloLecturaDesde: null });
+  return updated ? decryptCase(updated) : null;
 }
 
 const GRACE_PERIOD_DAYS = 90;
