@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Download, Share } from "lucide-react";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -82,40 +83,42 @@ export default function InstallAppButton() {
         <Download size={15} />
       </button>
 
-      {showIosHelp && (
-        <div
-          className="animate-overlay fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(18, 24, 31, 0.55)" }}
-          onClick={() => setShowIosHelp(false)}
-        >
+      {showIosHelp &&
+        createPortal(
           <div
-            className="animate-modal-pop w-full max-w-sm rounded-2xl border p-6"
-            style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
-            onClick={(e) => e.stopPropagation()}
+            className="animate-overlay fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(18, 24, 31, 0.55)" }}
+            onClick={() => setShowIosHelp(false)}
           >
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg">Instalar Micaso</h3>
-              <button
-                type="button"
-                onClick={() => setShowIosHelp(false)}
-                aria-label="Cerrar"
-                className="text-2xl leading-none"
-                style={{ color: "var(--ink-faint)" }}
-              >
-                ×
-              </button>
+            <div
+              className="animate-modal-pop w-full max-w-sm rounded-2xl border p-6"
+              style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg">Instalar Micaso</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowIosHelp(false)}
+                  aria-label="Cerrar"
+                  className="text-2xl leading-none"
+                  style={{ color: "var(--ink-faint)" }}
+                >
+                  ×
+                </button>
+              </div>
+              <ol className="mt-3 flex flex-col gap-2.5 text-sm" style={{ color: "var(--ink-muted)" }}>
+                <li className="flex items-center gap-2">
+                  <Share size={16} className="shrink-0" style={{ color: "var(--accent)" }} />
+                  Tocá el ícono de Compartir en Safari
+                </li>
+                <li>Elegí &ldquo;Agregar a inicio&rdquo;</li>
+                <li>Listo — Micaso queda como una app más, a pantalla completa</li>
+              </ol>
             </div>
-            <ol className="mt-3 flex flex-col gap-2.5 text-sm" style={{ color: "var(--ink-muted)" }}>
-              <li className="flex items-center gap-2">
-                <Share size={16} className="shrink-0" style={{ color: "var(--accent)" }} />
-                Tocá el ícono de Compartir en Safari
-              </li>
-              <li>Elegí &ldquo;Agregar a inicio&rdquo;</li>
-              <li>Listo — Micaso queda como una app más, a pantalla completa</li>
-            </ol>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </>
   );
 }
