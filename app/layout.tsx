@@ -1,8 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
 import GlobalErrorToasts from "@/components/GlobalErrorToasts";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#14181d" },
+  ],
+};
 
 const TITLE = "Micaso — la búsqueda de casa de cada cliente, en un solo lugar";
 const DESCRIPTION =

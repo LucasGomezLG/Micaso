@@ -1,9 +1,10 @@
 import { ImageResponse } from "next/og";
 import { renderAppIconArt } from "@/lib/appIconArt";
 
-export const size = { width: 180, height: 180 };
-export const contentType = "image/png";
+const size = { width: 512, height: 512 };
 
-export default function AppleIcon() {
+export const dynamic = "force-static";
+
+export async function GET() {
   return new ImageResponse(renderAppIconArt(size.width, { variant: "full" }), { ...size });
 }
