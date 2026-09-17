@@ -381,17 +381,15 @@ análisis de costos y el razonamiento completo. Los tres planes:
 
 | Plan | Tope de casos activos | Precio |
 |---|---|---|
-| Para arrancar | 5 | USD 13/mes (referencia; cobro en pesos) |
-| Para tu cartera | 20 | USD 29/mes (referencia; cobro en pesos) |
-| Volumen alto | a medida | a convenir, sin número fijo |
+| Inicial | 5 | USD 13/mes (o $ 18.000 ARS) |
+| Profesional | 20 | USD 29/mes (o $ 39.000 ARS) |
+| A medida | a medida | a convenir, sin número fijo |
 
 Esto es la razón concreta por la que **cerrar un caso** deja de ser solo
 prolijidad — ver "Ciclo de vida de un caso" abajo.
 
 Al terminar la prueba (o antes, si el corredor decide pagar de una), se
-inicia una suscripción con **Mercado Pago** (API de Preapproval) — Stripe
-quedó descartado como procesador porque no habilita cuentas para recibir
-pagos a un negocio radicado en Argentina (ver sección 9). A diferencia de
+inicia una suscripción. **Decisión sobre pasarelas:** hoy está implementado **Mercado Pago** (API de Preapproval) para cobrar en pesos. La interfaz detecta si el usuario está en Argentina (usando headers de Vercel `x-vercel-ip-country`) y muestra $ 18.000 / $ 39.000 ARS. Si está en otro país, muestra USD 13 / USD 29, y más adelante se sumará **Stripe** (o similar) para poder procesar esos pagos internacionales en dólares, ya que Mercado Pago no permite cobrar desde fuera hacia una cuenta local. A diferencia de
 lo pensado originalmente con Stripe, Mercado Pago no ofrece un portal
 alojado equivalente al Customer Portal: cambiar de plan o cancelar
 necesita una pantalla propia mínima dentro del panel (ver sección 8), en
@@ -1286,15 +1284,13 @@ de esos rangos — como herramienta complementaria, no reemplazo de CRM:
 
 | Plan | Tope de casos activos | Precio |
 |---|---|---|
-| Para arrancar | 5 | USD 13/mes |
-| Para tu cartera | 20 | USD 29/mes |
-| Volumen alto | a medida | a convenir (botón "Hablar con nosotros", no cobro automático) |
+| Inicial | 5 | USD 13/mes (o $ 18.000 ARS) |
+| Profesional | 20 | USD 29/mes (o $ 39.000 ARS) |
+| A medida | a medida | a convenir (botón "Hablar con nosotros", no cobro automático) |
 
 Los topes de casos (5 y 20) son una suposición de partida, no un dato
 medido — ningún corredor real todavía maneja múltiples casos simultáneos
-en Micaso. Precio mostrado en USD como referencia en la landing; el cobro
-real vía Mercado Pago es en pesos al tipo de cambio del día (Argentina
-tiene inflación alta, un ARS fijo se desactualizaría rápido). Todo esto
+en Micaso. Precio mostrado en USD como referencia o en ARS si se detecta IP de Argentina. Por el momento el cobro real se hace en pesos vía Mercado Pago, previendo incorporar Stripe para pagos internacionales en USD. Todo esto
 es precio de lanzamiento, no un número grabado en piedra — se revisa en
 cuanto haya uso real o la respuesta de Carolina de la sección 12.
 
