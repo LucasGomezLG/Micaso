@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { auth } from "@/auth";
 import { ADMIN_EMAILS, DEV_BROKER_ID, FOUNDER_EMAIL } from "./auth";
 import { dbGet, dbUpdate } from "./db";
@@ -81,14 +82,14 @@ export async function getOrCreateBroker(
   return normalizeBroker(brokers[id]);
 }
 
-export async function getBroker(id: string): Promise<Broker | null> {
+export const getBroker = cache(async function getBroker(id: string): Promise<Broker | null> {
   const brokers = await getAllBrokers();
   // hasOwnProperty en vez de brokers[id]: `id` puede venir directo de un
   // path param (ver app/superadmin/brokers/[id]/page.tsx) — con
   // id === "__proto__", el acceso por corchetes devuelve Object.prototype
   // (heredado, no undefined) en vez de "no existe".
   return Object.prototype.hasOwnProperty.call(brokers, id) ? brokers[id] : null;
-}
+});
 
 /** Edita a mano lo que `getOrCreateBroker` trajo de Google —
  * `nombreMarca`/`imagenUrl` los cambia el propio corredor desde su

@@ -22,6 +22,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import { AptoCredito, House, HouseStatus, LoanInfo, PIPELINE_STATUSES, STATUS_LABEL } from "@/lib/types";
 import { formatDate, formatUsd, isOverdue, proxiedImage } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/http";
@@ -230,12 +231,13 @@ export default function HouseCard({
         >
           {showImage ? (
             <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={proxiedImage(currentImage)!}
                 alt={house.title}
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 onError={() => setImgFailed(true)}
-                className="h-full w-full object-cover"
+                className="object-cover"
               />
               {house.images.length > 1 && (
                 <>

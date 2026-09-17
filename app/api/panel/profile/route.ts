@@ -35,7 +35,11 @@ export async function PATCH(request: NextRequest) {
   if ("imagenUrl" in body) {
     if (body.imagenUrl === null) {
       patch.imagenUrl = null;
-    } else if (typeof body.imagenUrl === "string" && IMAGE_DATA_URL.test(body.imagenUrl) && body.imagenUrl.length <= MAX_IMAGE_LENGTH) {
+    } else if (
+      typeof body.imagenUrl === "string" && 
+      (IMAGE_DATA_URL.test(body.imagenUrl) || body.imagenUrl.startsWith("https://")) && 
+      body.imagenUrl.length <= MAX_IMAGE_LENGTH
+    ) {
       patch.imagenUrl = body.imagenUrl;
     } else {
       return NextResponse.json({ error: "La imagen no es válida o es demasiado grande" }, { status: 400 });

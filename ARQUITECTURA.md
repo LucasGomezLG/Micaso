@@ -1373,6 +1373,18 @@ de visita en cada propiedad o si eso termina siendo fricción.
 > Vercel, base de datos vacía), sin escribir una sola línea de código
 > nueva. Y preguntarle directo si pagaría algo mensual por esto, aunque
 > sea un monto simbólico de "primera corredora". "Me gusta" y "pagaría $X
-> por mes" son respuestas distintas — la segunda es la que de verdad
 > valida el negocio, y recién ahí tiene sentido arrancar con la
 > construcción real.
+
+---
+
+## 12. Hacia la expansión internacional (Plan a futuro)
+
+Micaso se construyó inicialmente enfocado en Argentina (Mercado Pago en ARS, copys "apto crédito", "cochera", "ambientes", zona horaria local). Sin embargo, el objetivo a largo plazo es llevarlo al exterior. Cuando se valide este modelo y se decida dar el salto, se deberán contemplar los siguientes frentes:
+
+1. **Pasarela de pagos global:**
+   Se reemplazará Mercado Pago (Checkout Pro y Suscripciones) por Stripe para procesar pagos internacionales, probablemente facturados en USD (dólares). Esto implicará un rediseño del webhook actual en `app/api/mercadopago/webhook` para adaptarlo a los eventos de Stripe.
+2. **Internacionalización de idioma y glosario (i18n):**
+   Actualmente hay vocabulario muy porteño ("ambientes", "cochera", "expensas"). Se deberá abstraer la UI para soportar múltiples idiomas o, al menos, un español más neutro (ej: "habitaciones", "estacionamiento", "gastos comunes"). Las fechas y la moneda (`es-AR` y formato pesos) también deberán adaptarse dinámicamente según la región o broker.
+3. **Migración de Dominio y Branding:**
+   Actualmente el dominio base está en `.com.ar`. Se preverá la transición a un dominio `.com` u otro TLD global una vez validado fuera de Argentina, configurando redirecciones limpias (301) para no perder los enlaces de casos ya activos por las familias.

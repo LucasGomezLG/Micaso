@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentBroker, updateBroker } from "@/lib/brokers";
 import { cancelSubscription, createSubscriptionCheckout } from "@/lib/mercadopago";
-import { Plan } from "@/lib/types";
 
 export async function POST(request: Request) {
   const broker = await getCurrentBroker();
@@ -22,7 +21,7 @@ export async function POST(request: Request) {
     const safeOrigin = origin.includes("localhost") ? "https://www.micaso.com.ar" : origin;
     const backUrl = `${safeOrigin}/panel/plan?payment=success`;
 
-    const { id, initPoint } = await createSubscriptionCheckout({
+    const { initPoint } = await createSubscriptionCheckout({
       brokerId: broker.id,
       email: broker.email,
       plan: plan as "para_arrancar" | "para_tu_cartera",
@@ -30,7 +29,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ initPoint });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Error creating subscription:", err);
     return NextResponse.json(
       { error: "Error al generar la suscripción" },
@@ -39,7 +38,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE() {
   const broker = await getCurrentBroker();
   if (!broker) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -64,7 +63,7 @@ export async function DELETE(request: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Error cancelling subscription:", err);
     return NextResponse.json(
       { error: "Error al cancelar la suscripción" },

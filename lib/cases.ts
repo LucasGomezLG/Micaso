@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { DEV_BROKER_ID } from "./auth";
 import { getBroker } from "./brokers";
 import { decryptSecret, encryptSecret, timingSafeStringEqual } from "./crypto";
@@ -136,7 +137,7 @@ export async function listCasesForBroker(brokerId: string): Promise<Case[]> {
     .map(decryptCase);
 }
 
-export async function getCase(caseId: string): Promise<Case | null> {
+export const getCase = cache(async function getCase(caseId: string): Promise<Case | null> {
   const cases = await getAllCases();
   // hasOwnProperty en vez de cases[caseId]: caseId ahora también llega
   // directo desde path params de rutas de superadmin (ver
@@ -144,7 +145,7 @@ export async function getCase(caseId: string): Promise<Case | null> {
   // acceso por corchetes devuelve Object.prototype heredado, no undefined.
   const kase = Object.prototype.hasOwnProperty.call(cases, caseId) ? cases[caseId] : null;
   return kase ? decryptCase(kase) : null;
-}
+});
 
 /** Único punto donde se verifica que un caso pertenezca a un corredor
  * dado — usado tanto por las rutas del panel (para el 404 si no es

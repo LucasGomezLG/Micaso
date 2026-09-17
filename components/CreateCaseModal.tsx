@@ -43,8 +43,14 @@ export default function CreateCaseModal({ label = "+ Nuevo caso", disabledReason
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        className="btn btn-primary rounded-full px-4 py-2 text-sm font-semibold"
+        onClick={() => {
+          if (disabledReason) {
+            toast.error(disabledReason);
+          } else {
+            setOpen(true);
+          }
+        }}
+        className={`btn btn-primary rounded-full px-4 py-2 text-sm font-semibold ${disabledReason ? "opacity-50 cursor-not-allowed" : ""}`}
         style={{ background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, var(--gold)))", color: "var(--accent-ink)" }}
       >
         {label}

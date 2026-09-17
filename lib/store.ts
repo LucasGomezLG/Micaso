@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { dbDelete, dbGet, dbUpdate } from "./db";
 import { DEMO_CASE_ID, SEED_CHECKLIST, SEED_CRITERIA, SEED_HOUSES } from "./seed";
 import { buildChecklistTemplate } from "./checklistTemplates";
@@ -97,7 +98,7 @@ function normalizeHouse(house: House & { notes?: string; image?: string | null }
   };
 }
 
-export async function getHouses(caseId: string): Promise<House[]> {
+export const getHouses = cache(async function getHouses(caseId: string): Promise<House[]> {
   const houses = await dbGet<House[]>(housesKey(caseId));
   if (houses !== null) return houses.map(normalizeHouse);
   // Caso nuevo: nadie inicializó esta clave todavía. Un dbGet+dbSet
@@ -108,7 +109,7 @@ export async function getHouses(caseId: string): Promise<House[]> {
   const initial = caseId === DEMO_CASE_ID ? SEED_HOUSES : [];
   const result = await dbUpdate<House[]>(housesKey(caseId), (current) => current ?? initial);
   return result.map(normalizeHouse);
-}
+});
 
 /** Todas las mutaciones (agregar, editar, comentar, borrar) pasan por
  * acá en vez de hacer su propio getHouses()+dbSet(): dbUpdate lee,
@@ -303,7 +304,7 @@ export interface CaseSummary {
 /** Resumen de un caso para el panel del corredor (lista de casos y
  * dashboard, ver app/panel/page.tsx) — pensado para leerse una vez por
  * carga de página, no para reaccionar en vivo a cambios de otro caso. */
-export async function getCaseSummary(caseId: string, brokerLastSeenAt?: string | null): Promise<CaseSummary> {
+export const getCaseSummary = cache(async function getCaseSummary(caseId: string, brokerLastSeenAt?: string | null): Promise<CaseSummary> {
   const houses = (await getHouses(caseId)).filter((h) => h.status !== "borrada");
   const pendientes = houses.filter((h) => h.status === "pendiente").length;
   const destacadas = houses.filter((h) => h.highlighted).length;
@@ -374,7 +375,7 @@ export async function getCaseSummary(caseId: string, brokerLastSeenAt?: string |
     unreadCount,
     unreadSummary,
   };
-}
+});
 
 /** Plantilla por default si el checklist de un caso nunca se inicializó
  * — pasa por acá tanto getChecklist como el fallback de updateChecklistItem
@@ -387,7 +388,7 @@ async function defaultChecklist(caseId: string): Promise<ChecklistItem[]> {
   return buildChecklistTemplate(kase?.tipoCaso ?? "compra", criteria.loan.hasCredit);
 }
 
-export async function getChecklist(caseId: string): Promise<ChecklistItem[]> {
+export const getChecklist = cache(async function getChecklist(caseId: string): Promise<ChecklistItem[]> {
   const items = await dbGet<ChecklistItem[]>(checklistKey(caseId));
   if (items !== null) return items;
   // Mismo riesgo de carrera que getHouses (ver ese comentario) - se
@@ -395,7 +396,7 @@ export async function getChecklist(caseId: string): Promise<ChecklistItem[]> {
   // lock en vez de un dbSet ciego.
   const fallback = await defaultChecklist(caseId);
   return dbUpdate<ChecklistItem[]>(checklistKey(caseId), (current) => current ?? fallback);
-}
+});
 
 export async function updateChecklistItem(
   caseId: string,
@@ -438,13 +439,13 @@ export async function deleteChecklistItem(caseId: string, id: string): Promise<b
   return deleted;
 }
 
-export async function getCriteria(caseId: string): Promise<Criteria> {
+export const getCriteria = cache(async function getCriteria(caseId: string): Promise<Criteria> {
   const criteria = await dbGet<Criteria>(criteriaKey(caseId));
   if (criteria !== null) return criteria;
   // Mismo riesgo de carrera que getHouses (ver ese comentario).
   const fallback = caseId === DEMO_CASE_ID ? SEED_CRITERIA : EMPTY_CRITERIA;
   return dbUpdate<Criteria>(criteriaKey(caseId), (current) => current ?? fallback);
-}
+});
 
 export async function updateCriteria(
   caseId: string,
