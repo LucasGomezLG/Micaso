@@ -194,13 +194,10 @@ entre familias.
   > de consentimiento de Google ("Sign in with Google — to continue to
   > Micaso"), con `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` ya cargados — no
   > es solo la decisión de diseño de este párrafo, el flujo de OAuth ya
-  > está en pie. **Pendiente, del lado de Google Cloud Console (no es
-  > código):** el redirect URI registrado hoy es solo
-  > `http://localhost:3000/api/auth/callback/google` (ver el comentario en
-  > `auth.ts`) — para que el login con Google funcione en
-  > `www.micaso.com.ar` (no solo en local) falta sumar
-  > `https://www.micaso.com.ar/api/auth/callback/google` a la lista de
-  > redirect URIs autorizados del proyecto en Google Cloud Console.
+  > está en pie. **Resuelto (17 sept 2026):** `https://www.micaso.com.ar/api/auth/callback/google`
+  > ya está sumado a los redirect URIs autorizados del proyecto en Google
+  > Cloud Console — login con Google funcionando tanto en local como en
+  > producción.
 - **Caso → familia:** usuario/contraseña simple generados al crear el
   caso (no elegidos a mano por el corredor). Cortos está bien — no se
   comparte información bancaria — pero siguen siendo generados al azar y
@@ -538,10 +535,22 @@ Lo mínimo que necesita el panel para ser útil desde el primer día:
 > disparar el prompt nativo con un toque; en iOS Safari (sin esa API)
 > muestra instrucciones manuales ("Compartir → Agregar a inicio"). Vive
 > en `Nav.tsx` (familia) y, desde el 17 sept 2026, también en el header
-> de `/panel` (corredor). **Límite real, sin resolver:** el proyecto no
-> tiene service worker — Chrome puede no ofrecer nunca el prompt si no
-> considera el sitio "instalable" de forma confiable. Sumar uno es una
-> decisión de alcance todavía sin tomar, no algo pedido.
+> de `/panel` (corredor).
+>
+> **Revisado (17 sept 2026): funciona sin service worker.** El proyecto
+> no tiene uno — el criterio de instalabilidad de Chrome ya no lo exige
+> de forma estricta, y en la práctica el prompt apareció en producción
+> sin él. Revisión de código: `manifest.ts` trae los campos que Chrome
+> chequea (`name`, `short_name`, `icons` 192/512, `start_url`, `display:
+> "standalone"`); `app/icons/192` y `app/icons/512` (`next/og`) generan
+> esos íconos, y `app/apple-icon.tsx` cubre el ícono de iOS vía la
+> convención de archivo de Next.js (`appleWebApp` en `layout.tsx` agrega
+> los meta tags de Safari). `InstallAppButton` no muestra el botón si
+> `matchMedia("(display-mode: standalone)")` ya es true (evita ofrecer
+> instalar algo ya instalado). Sin service worker la app no funciona
+> offline ni cachea nada — no es un problema hoy porque cada pantalla
+> depende de datos en vivo, pero si más adelante se quiere soporte
+> offline, ahí sí hace falta sumar uno.
 
 > **Implementado (16 sept 2026): panel usable en mobile de punta a
 > punta.** El header con el email del corredor, las tabs de `CaseList` y
@@ -698,6 +707,33 @@ demasiados corredores para tocarlos a mano de a uno.
 > `/superadmin/brokers/[id]` con `<Link>` — sin `decodeURIComponent`,
 > "Gestionar" no funcionaba para ningún corredor cuyo `id` fuera un email
 > (o sea, todos salvo `dev-broker`).
+
+> **Implementado (17 sept 2026): borrado definitivo, para limpiar cuentas
+> de prueba.** Hasta ahora la única acción destructiva era "Cerrar caso"
+> (soft, reversible con "Reabrir"). Se suma "Eliminar caso" en
+> `AdminCaseCard` y "Eliminar corredor" en `AdminBrokerEditor`, cada uno
+> con el mismo modal de confirmación centrado (`createPortal`) que ya
+> usaba el resto del panel — irreversible a propósito, sin soft-delete.
+> Eliminar un caso saca el registro de `cases` y del índice del corredor
+> (`deleteCase`, `lib/cases.ts`) y borra sus casas/checklist/criterios
+> (`deleteCaseData`, `lib/store.ts`, claves separadas). Eliminar un
+> corredor hace lo mismo con **todos** sus casos en cascada antes de
+> borrar al corredor — el modal avisa cuántos casos se van a borrar.
+> Nuevo primitivo genérico en la capa de datos: `dbDelete` (ya existía
+> para el rate-limit; se reutilizó en vez de duplicarlo). Si el caso
+> tiene usuario `"casa"` (el demo público de la landing), el modal de
+> confirmación lo advierte explícitamente antes de dejar borrarlo.
+>
+> **Lección de esta misma sesión, no del código sino del entorno:**
+> verificar contra el dev server en caliente no alcanza si el propio
+> server está sirviendo una compilación vieja — Turbopack, en este
+> entorno, no siempre recompiló una ruta tras guardarla, así que una
+> primera ronda de pruebas "pasó" contra código stale (una clave
+> `broker:{id}:cases` quedaba huérfana en vez de borrarse). Se detectó
+> agregando un log de debug dentro de la función y viendo que nunca se
+> escribía; un restart del proceso de `next dev` lo resolvió. Ante un
+> cambio que "no hace nada" a pesar de leerse bien, restart antes de
+> seguir buscando el bug en el código.
 
 ## 8. Qué cambia respecto al código de Casa
 

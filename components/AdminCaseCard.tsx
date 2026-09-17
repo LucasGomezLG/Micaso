@@ -31,11 +31,12 @@ const ESTADO_COLOR: Record<CaseEstado, { bg: string; fg: string }> = {
 /** Tarjeta de moderación de un caso desde /superadmin — la contraseña
  * queda oculta por default (un click en "Ver contraseña" la trae vía
  * /reveal-password) y no hay "Entrar al caso": el admin puede
- * cerrar/reabrir/regenerar clave, renombrar y, si hace falta de verdad,
- * ver la contraseña para ayudar al corredor — pero no puede ver ni
- * entrar al contenido real de la familia (casas, comentarios). Control
- * total sobre la cuenta del corredor, no visibilidad sobre lo que cargan
- * sus clientes. */
+ * cerrar/reabrir/regenerar clave, renombrar, eliminar para siempre (con
+ * confirmación — pensado para limpiar casos de prueba) y, si hace falta
+ * de verdad, ver la contraseña para ayudar al corredor — pero no puede
+ * ver ni entrar al contenido real de la familia (casas, comentarios).
+ * Control total sobre la cuenta del corredor, no visibilidad sobre lo
+ * que cargan sus clientes. */
 export default function AdminCaseCard({
   initialCase,
   summary,
@@ -47,11 +48,12 @@ export default function AdminCaseCard({
   const [kase, setKase] = useState(initialCase);
   const [editing, setEditing] = useState(false);
   const [titulo, setTitulo] = useState(kase.titulo);
-  const [loading, setLoading] = useState<"rename" | "password" | "close" | "reopen" | null>(null);
-  const [confirmAction, setConfirmAction] = useState<"password" | "close" | "reopen" | null>(null);
+  const [loading, setLoading] = useState<"rename" | "password" | "close" | "reopen" | "delete" | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"password" | "close" | "reopen" | "delete" | null>(null);
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
   const [revealing, setRevealing] = useState(false);
   const [copiedPassword, setCopiedPassword] = useState(false);
+  const [deleted, setDeleted] = useState(false);
 
   async function saveTitulo() {
     const next = titulo.trim();
@@ -140,8 +142,24 @@ export default function AdminCaseCard({
     router.refresh();
   }
 
+  async function eliminarCaso() {
+    setConfirmAction(null);
+    setLoading("delete");
+    const res = await fetch(`/api/superadmin/cases/${kase.id}`, { method: "DELETE" });
+    setLoading(null);
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo eliminar el caso."));
+      return;
+    }
+    setDeleted(true);
+    toast.success("Caso eliminado para siempre.");
+    router.refresh();
+  }
+
+  const esDemo = kase.username === "casa";
+
   const CONFIRM_CONFIG: Record<
-    "password" | "close" | "reopen",
+    "password" | "close" | "reopen" | "delete",
     { title: string; description: string; confirmLabel: string; onConfirm: () => void; danger?: boolean }
   > = {
     password: {
@@ -163,7 +181,18 @@ export default function AdminCaseCard({
       confirmLabel: "Sí, reabrir",
       onConfirm: reabrirCaso,
     },
+    delete: {
+      title: esDemo ? "¿Eliminar el caso demo público?" : "¿Eliminar este caso para siempre?",
+      description: esDemo
+        ? 'Este es el caso demo público (usuario "casa", el que se ve en la landing). Se borran sus casas, checklist y criterios sin poder recuperarlos.'
+        : "Se borran para siempre el caso, sus casas, checklist y criterios. No hay forma de deshacer esto.",
+      confirmLabel: "Sí, eliminar para siempre",
+      onConfirm: eliminarCaso,
+      danger: true,
+    },
   };
+
+  if (deleted) return null;
 
   const estadoColor = ESTADO_COLOR[kase.estado];
   const isArchivado = kase.estado === "archivado";
@@ -249,22 +278,27 @@ export default function AdminCaseCard({
         </p>
       </div>
 
-      {!isArchivado && (
-        <div className="flex shrink-0 flex-wrap gap-4 text-xs sm:justify-end">
-          <button type="button" onClick={() => setConfirmAction("password")} disabled={loading !== null} style={{ color: "var(--accent)" }}>
-            {loading === "password" ? "Regenerando…" : "Regenerar clave"}
-          </button>
-          {kase.estado === "activo" ? (
-            <button type="button" onClick={() => setConfirmAction("close")} disabled={loading !== null} style={{ color: "var(--status-descartada)" }}>
-              {loading === "close" ? "Cerrando…" : "Cerrar caso"}
+      <div className="flex shrink-0 flex-wrap gap-4 text-xs sm:justify-end">
+        {!isArchivado && (
+          <>
+            <button type="button" onClick={() => setConfirmAction("password")} disabled={loading !== null} style={{ color: "var(--accent)" }}>
+              {loading === "password" ? "Regenerando…" : "Regenerar clave"}
             </button>
-          ) : (
-            <button type="button" onClick={() => setConfirmAction("reopen")} disabled={loading !== null} style={{ color: "var(--status-gusto)" }}>
-              {loading === "reopen" ? "Reabriendo…" : "Reabrir caso"}
-            </button>
-          )}
-        </div>
-      )}
+            {kase.estado === "activo" ? (
+              <button type="button" onClick={() => setConfirmAction("close")} disabled={loading !== null} style={{ color: "var(--status-descartada)" }}>
+                {loading === "close" ? "Cerrando…" : "Cerrar caso"}
+              </button>
+            ) : (
+              <button type="button" onClick={() => setConfirmAction("reopen")} disabled={loading !== null} style={{ color: "var(--status-gusto)" }}>
+                {loading === "reopen" ? "Reabriendo…" : "Reabrir caso"}
+              </button>
+            )}
+          </>
+        )}
+        <button type="button" onClick={() => setConfirmAction("delete")} disabled={loading !== null} style={{ color: "var(--status-descartada)" }}>
+          {loading === "delete" ? "Eliminando…" : "Eliminar caso"}
+        </button>
+      </div>
 
       {confirmAction &&
         createPortal(

@@ -90,7 +90,7 @@ export default async function AdminBrokerDetailPage({
         </Link>
 
         <div className="mt-4">
-          <AdminBrokerEditor broker={broker} />
+          <AdminBrokerEditor broker={broker} caseCount={cases.length} />
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">

@@ -1,7 +1,7 @@
 import { DEV_BROKER_ID } from "./auth";
 import { getBroker } from "./brokers";
 import { decryptSecret, encryptSecret, timingSafeStringEqual } from "./crypto";
-import { dbGet, dbUpdate } from "./db";
+import { dbDelete, dbGet, dbUpdate } from "./db";
 import { DEMO_CASE_ID } from "./seed";
 import { Case, PLAN_CASE_LIMIT, TipoCaso } from "./types";
 
@@ -240,6 +240,35 @@ export async function reopenCase(caseId: string, brokerId: string): Promise<Case
   await assertUnderCaseLimit(kase.brokerId);
   const updated = await updateCase(caseId, { estado: "activo", soloLecturaDesde: null });
   return updated ? decryptCase(updated) : null;
+}
+
+/** Borrado definitivo de un caso — a diferencia de closeCase (que solo
+ * cambia el estado a solo_lectura), esto saca al caso de "cases" y del
+ * índice del corredor. Pensado para limpiar casos de prueba desde
+ * /superadmin (ver app/api/superadmin/cases/[id]/route.ts, DELETE).
+ * Irreversible a propósito, no hay soft-delete. No borra las casas,
+ * checklist ni criterios del caso — eso vive en lib/store.ts
+ * (deleteCaseData), el caller llama a las dos. */
+export async function deleteCase(caseId: string, brokerId: string): Promise<boolean> {
+  const kase = await getCaseForBroker(caseId, brokerId);
+  if (!kase) return false;
+  await dbUpdate<Record<string, Case>>(CASES_KEY, (current) => {
+    const cases = current ?? {};
+    if (!Object.prototype.hasOwnProperty.call(cases, caseId)) return cases;
+    const next = { ...cases };
+    delete next[caseId];
+    return next;
+  });
+  await dbUpdate<string[]>(brokerCasesKey(brokerId), (current) => (current ?? []).filter((id) => id !== caseId));
+  return true;
+}
+
+/** Borra el índice de casos de un corredor (queda vacío una vez que
+ * deleteCase() sacó todos sus casos uno por uno) — llamado junto con
+ * deleteBroker() para no dejar una clave `broker:{id}:cases: []`
+ * huérfana en la base. */
+export async function deleteBrokerCaseIndex(brokerId: string): Promise<void> {
+  await dbDelete(brokerCasesKey(brokerId));
 }
 
 const GRACE_PERIOD_DAYS = 90;

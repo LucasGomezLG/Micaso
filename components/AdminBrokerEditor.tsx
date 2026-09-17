@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Pencil } from "lucide-react";
@@ -18,11 +19,13 @@ const STATUS_COLOR: Record<SubscriptionStatus, string> = {
   cancelada: "var(--status-descartada)",
 };
 
-export default function AdminBrokerEditor({ broker }: { broker: Broker }) {
+export default function AdminBrokerEditor({ broker, caseCount }: { broker: Broker; caseCount: number }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nombreMarca, setNombreMarca] = useState(broker.nombreMarca);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function patch(body: Record<string, string>) {
     setSaving(true);
@@ -49,6 +52,19 @@ export default function AdminBrokerEditor({ broker }: { broker: Broker }) {
     }
     const ok = await patch({ nombreMarca: next });
     if (!ok) setNombreMarca(broker.nombreMarca);
+  }
+
+  async function eliminarCorredor() {
+    setConfirmDelete(false);
+    setDeleting(true);
+    const res = await fetch(`/api/superadmin/brokers/${broker.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      setDeleting(false);
+      toast.error(await apiErrorMessage(res, "No se pudo eliminar el corredor."));
+      return;
+    }
+    toast.success("Corredor eliminado junto con todos sus casos.");
+    router.push("/superadmin");
   }
 
   return (
@@ -153,6 +169,60 @@ export default function AdminBrokerEditor({ broker }: { broker: Broker }) {
           />
         </label>
       </div>
+
+      <div className="flex justify-end border-t pt-3" style={{ borderColor: "var(--border)" }}>
+        <button
+          type="button"
+          onClick={() => setConfirmDelete(true)}
+          disabled={deleting}
+          className="text-xs font-medium"
+          style={{ color: "var(--status-descartada)" }}
+        >
+          {deleting ? "Eliminando…" : "Eliminar corredor"}
+        </button>
+      </div>
+
+      {confirmDelete &&
+        createPortal(
+          <div
+            className="animate-overlay fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(18, 24, 31, 0.55)" }}
+            onClick={() => setConfirmDelete(false)}
+          >
+            <div
+              className="animate-modal-pop w-full max-w-sm rounded-2xl border p-6"
+              style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg">¿Eliminar a {broker.nombreMarca} para siempre?</h3>
+              <p className="mt-1.5 text-sm" style={{ color: "var(--ink-muted)" }}>
+                {caseCount > 0
+                  ? `Se borran también sus ${caseCount} caso${caseCount === 1 ? "" : "s"} — con casas, checklist y criterios. `
+                  : "Este corredor no tiene casos cargados. "}
+                No hay forma de deshacer esto.
+              </p>
+              <div className="mt-6 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="rounded-full px-4 py-2 text-xs font-semibold"
+                  style={{ border: "1px solid var(--border)", color: "var(--ink-muted)" }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={eliminarCorredor}
+                  className="rounded-full px-4 py-2 text-xs font-semibold"
+                  style={{ background: "var(--status-descartada-bg)", color: "var(--status-descartada)" }}
+                >
+                  Sí, eliminar para siempre
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

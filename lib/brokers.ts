@@ -143,6 +143,23 @@ export async function getCurrentAdminEmail(): Promise<string | null> {
   return email && ADMIN_EMAILS.has(email) ? email : null;
 }
 
+/** Borrado definitivo de un corredor — sin cascada acá a propósito: el
+ * caller (ver app/api/superadmin/brokers/[id]/route.ts, DELETE) borra
+ * antes cada uno de sus casos con deleteCase + deleteCaseData, para no
+ * acoplar este archivo a lib/cases.ts (que ya importa de este). */
+export async function deleteBroker(id: string): Promise<boolean> {
+  let existed = false;
+  await dbUpdate<Record<string, Broker>>(BROKERS_KEY, (current) => {
+    const brokers = current ?? {};
+    if (!Object.prototype.hasOwnProperty.call(brokers, id)) return brokers;
+    existed = true;
+    const next = { ...brokers };
+    delete next[id];
+    return next;
+  });
+  return existed;
+}
+
 /** Todos los corredores, más recientes primero — para /superadmin. */
 export async function listAllBrokers(): Promise<Broker[]> {
   const brokers = await getAllBrokers();

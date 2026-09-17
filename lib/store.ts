@@ -1,4 +1,4 @@
-import { dbGet, dbUpdate } from "./db";
+import { dbDelete, dbGet, dbUpdate } from "./db";
 import { DEMO_CASE_ID, SEED_CHECKLIST, SEED_CRITERIA, SEED_HOUSES } from "./seed";
 import { buildChecklistTemplate } from "./checklistTemplates";
 import { getCase } from "./cases";
@@ -8,6 +8,14 @@ import { ChecklistItem, Criteria, House, HouseChecklistItem, HouseComment, House
 const housesKey = (caseId: string) => `case:${caseId}:houses`;
 const checklistKey = (caseId: string) => `case:${caseId}:checklist`;
 const criteriaKey = (caseId: string) => `case:${caseId}:criteria`;
+
+/** Borra las casas, el checklist y los criterios de un caso — usado por
+ * el borrado definitivo desde /superadmin (ver lib/cases.ts deleteCase,
+ * que borra el caso en sí; el caller llama a las dos). Irreversible a
+ * propósito, no hay soft-delete acá. */
+export async function deleteCaseData(caseId: string): Promise<void> {
+  await Promise.all([dbDelete(housesKey(caseId)), dbDelete(checklistKey(caseId)), dbDelete(criteriaKey(caseId))]);
+}
 
 /** Un caso nuevo arranca sin criterios cargados — el corredor o la
  * familia los completa desde la misma pantalla de Criterios que ya
