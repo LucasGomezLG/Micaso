@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Check, ArrowRight, User, Building2, Star, CheckSquare, X } from "lucide-react";
 import { MicasoMark } from "@/components/MicasoMark";
@@ -28,12 +29,26 @@ export default function ClientOnboardingModal({
 }: ClientOnboardingModalProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedName, setSelectedName] = useState<string>("");
   const [customName, setCustomName] = useState("");
   const [savingName, setSavingName] = useState(false);
 
   const effectiveBrokerName = brokerName?.trim() || "Tu corredor inmobiliario";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
 
   useEffect(() => {
     // Si quien mira es el corredor o ya completó el onboarding en este dispositivo, no mostrar
@@ -96,11 +111,11 @@ export default function ClientOnboardingModal({
     setStep(3);
   }
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  return createPortal(
     <div
-      className="animate-overlay fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+      className="animate-overlay fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto overscroll-contain"
       style={{ background: "rgba(18, 24, 31, 0.68)", backdropFilter: "blur(4px)" }}
     >
       <div
@@ -401,6 +416,7 @@ export default function ClientOnboardingModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
