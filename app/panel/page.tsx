@@ -10,6 +10,7 @@ import PanelDashboard, { AttentionItem } from "@/components/PanelDashboard";
 import { MicasoMark } from "@/components/MicasoMark";
 import BrokerNameEditor from "@/components/BrokerNameEditor";
 import BrokerAvatarEditor from "@/components/BrokerAvatarEditor";
+import BrokerProfileModal from "@/components/BrokerProfileModal";
 import BrokerOnboarding from "@/components/BrokerOnboarding";
 import ThemeToggle from "@/components/ThemeToggle";
 import InstallAppButton from "@/components/InstallAppButton";
@@ -103,16 +104,24 @@ export default async function PanelPage() {
             )}
             {broker && (
               <span className="flex min-w-0 items-center gap-1.5 text-sm sm:gap-2" style={{ color: "var(--ink-muted)" }}>
-                <BrokerAvatarEditor
-                  key={broker.imagenUrl}
+                <span className="hidden items-center gap-1.5 sm:flex sm:gap-2">
+                  <BrokerAvatarEditor
+                    key={broker.imagenUrl}
+                    initialImagenUrl={broker.imagenUrl}
+                    nombreMarca={broker.nombreMarca}
+                    size={24}
+                  />
+                  <BrokerNameEditor
+                    key={broker.nombreMarca}
+                    initialName={broker.nombreMarca}
+                    className="inline-flex max-w-[150px] truncate"
+                  />
+                </span>
+                <BrokerProfileModal
+                  key={`${broker.imagenUrl}-${broker.nombreMarca}`}
                   initialImagenUrl={broker.imagenUrl}
-                  nombreMarca={broker.nombreMarca}
-                  size={24}
-                />
-                <BrokerNameEditor
-                  key={broker.nombreMarca}
                   initialName={broker.nombreMarca}
-                  className="hidden sm:inline-flex max-w-[150px] truncate"
+                  className="sm:hidden"
                 />
               </span>
             )}

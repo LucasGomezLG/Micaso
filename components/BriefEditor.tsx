@@ -44,7 +44,7 @@ export default function BriefEditor({ brief }: { brief: SearchBrief }) {
 
   return (
     <div
-      className="animate-overlay fixed inset-0 z-20 flex items-end justify-center bg-black/30 p-4 sm:items-center"
+      className="animate-overlay fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-4 sm:items-center"
       onClick={() => setOpen(false)}
     >
       <div

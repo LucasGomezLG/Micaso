@@ -79,7 +79,7 @@ export default function EditHouseModal({
 
   return (
     <div
-      className="animate-overlay fixed inset-0 z-20 flex items-end justify-center bg-black/30 p-4 sm:items-center"
+      className="animate-overlay fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-4 sm:items-center"
       onClick={onClose}
     >
       <div
