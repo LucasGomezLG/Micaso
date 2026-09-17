@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { TipoCaso } from "@/lib/types";
 import Select from "@/components/Select";
 
-export default function CreateCaseModal({ label = "+ Nuevo caso" }: { label?: string }) {
+export default function CreateCaseModal({ label = "+ Nuevo caso", disabledReason }: { label?: string; disabledReason?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [titulo, setTitulo] = useState("");

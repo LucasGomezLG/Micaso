@@ -79,6 +79,17 @@ async function getAllCases(): Promise<Record<string, Case>> {
 async function assertUnderCaseLimit(brokerId: string): Promise<void> {
   const broker = await getBroker(brokerId);
   if (!broker) return;
+
+  if (broker.subscriptionStatus === "atrasada") {
+    throw new Error("Suscripción atrasada. Por favor, regularizá tu plan para seguir creando casos.");
+  }
+  if (broker.subscriptionStatus === "cancelada") {
+    throw new Error("Tu suscripción fue cancelada. Suscribite a un plan para seguir creando casos.");
+  }
+  if (broker.subscriptionStatus === "prueba" && new Date() > new Date(broker.trialEndsAt)) {
+    throw new Error("Tu período de prueba finalizó. Elegí un plan para seguir creando casos.");
+  }
+
   const limit = PLAN_CASE_LIMIT[broker.plan];
   if (limit === null) return;
   const activos = (await listCasesForBroker(brokerId)).filter((c) => c.estado === "activo").length;

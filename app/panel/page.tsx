@@ -75,6 +75,17 @@ export default async function PanelPage() {
 
   const { attentionItems, totalPropiedades, nextVisita } = buildAttentionData(activeCases, summaries);
 
+  let createCaseDisabledReason: string | undefined = undefined;
+  if (broker) {
+    if (broker.subscriptionStatus === "atrasada") {
+      createCaseDisabledReason = "Suscripción atrasada. Por favor, regularizá tu plan para seguir creando casos.";
+    } else if (broker.subscriptionStatus === "cancelada") {
+      createCaseDisabledReason = "Tu suscripción fue cancelada. Suscribite a un plan para seguir creando casos.";
+    } else if (broker.subscriptionStatus === "prueba" && new Date() > new Date(broker.trialEndsAt)) {
+      createCaseDisabledReason = "Tu período de prueba finalizó. Elegí un plan para seguir creando casos.";
+    }
+  }
+
   return (
     <div className="min-h-full overflow-x-clip" style={{ background: "var(--paper)", color: "var(--ink)" }}>
       <header
@@ -155,7 +166,7 @@ export default async function PanelPage() {
               <span style={{ color: "var(--ink-faint)" }}>de {cases.length} en total</span>
             </div>
           </div>
-          {cases.length > 0 && <CreateCaseModal />}
+          {cases.length > 0 && <CreateCaseModal disabledReason={createCaseDisabledReason} />}
         </div>
 
         {broker && cases.length > 0 && (

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "mercadopago": {
+      "command": "node",
+      "args": [
+        "d:/Micaso/.agents/run_mp_mcp.js"
+      ]
+    }
+  }
+}

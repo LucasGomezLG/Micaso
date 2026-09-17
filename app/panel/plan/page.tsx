@@ -17,6 +17,8 @@ import ThemeToggle from "@/components/ThemeToggle";
 import PanelLogoutButton from "@/components/PanelLogoutButton";
 import WhatsappLinkButton from "@/components/WhatsappLinkButton";
 import PlanGatewayNotice from "@/components/PlanGatewayNotice";
+import SubscribeButton from "@/components/SubscribeButton";
+import CancelSubscriptionButton from "@/components/CancelSubscriptionButton";
 
 export const dynamic = "force-dynamic";
 
@@ -227,8 +229,8 @@ export default async function PanelPlanPage() {
             </div>
           </div>
 
-          {/* Banner de días restantes si está en prueba */}
-          {isTrial && (
+          {/* Banner de suscripción / prueba */}
+          {isTrial ? (
             <div
               className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4"
               style={{
@@ -249,18 +251,34 @@ export default async function PanelPlanPage() {
                   </p>
                 </div>
               </div>
+            </div>
+          ) : broker.subscriptionStatus === "activa" ? (
+            <div
+              className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4"
+              style={{
+                borderColor: "var(--border)",
+                background: "var(--paper)",
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm text-green-600">
+                  <Check size={18} />
+                </span>
+                <div>
+                  <p className="text-xs sm:text-sm font-semibold text-green-700 dark:text-green-400">
+                    Suscripción activa y al día
+                  </p>
+                  <p className="text-[11px]" style={{ color: "var(--ink-muted)" }}>
+                    Tu plan se renueva automáticamente cada mes mediante Mercado Pago.
+                  </p>
+                </div>
+              </div>
 
               <div className="flex flex-col sm:items-end gap-1">
-                <WhatsappLinkButton
-                  message={buildWhatsappMessage(PLAN_LABEL[broker.plan])}
-                  className="btn inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold"
-                  style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-                >
-                  <MessageSquare size={13} /> Coordinar por WhatsApp
-                </WhatsappLinkButton>
+                <CancelSubscriptionButton />
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Comparativa de Planes */}
@@ -333,21 +351,22 @@ export default async function PanelPlanPage() {
                       </button>
                     ) : (
                       <div className="flex flex-col gap-2">
-                        <WhatsappLinkButton
-                          message={buildWhatsappMessage(p.name)}
-                          className="btn w-full rounded-full py-2.5 text-center text-xs font-semibold transition-transform active:scale-95"
-                          style={
-                            p.highlight
-                              ? {
-                                  background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, var(--gold)))",
-                                  color: "var(--accent-ink)",
-                                }
-                              : { border: "1px solid var(--border-strong)", color: "var(--ink)" }
-                          }
-                        >
-                          <MessageSquare size={13} className="inline mr-1" />
-                          {p.ctaLabel} vía WhatsApp
-                        </WhatsappLinkButton>
+                        {pKey === "volumen_alto" ? (
+                          <WhatsappLinkButton
+                            message={buildWhatsappMessage(p.name)}
+                            className="btn w-full rounded-full py-2.5 text-center text-xs font-semibold transition-transform active:scale-95"
+                            style={{ border: "1px solid var(--border-strong)", color: "var(--ink)" }}
+                          >
+                            <MessageSquare size={13} className="inline mr-1" />
+                            {p.ctaLabel} vía WhatsApp
+                          </WhatsappLinkButton>
+                        ) : (
+                          <SubscribeButton 
+                            plan={pKey as "para_arrancar" | "para_tu_cartera"}
+                            label={p.ctaLabel}
+                            highlight={p.highlight}
+                          />
+                        )}
                       </div>
                     )}
                   </div>

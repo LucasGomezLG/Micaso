@@ -97,7 +97,7 @@ export async function getBroker(id: string): Promise<Broker | null> {
  * ARQUITECTURA.md sección 7). */
 export async function updateBroker(
   id: string,
-  patch: Partial<Pick<Broker, "nombreMarca" | "imagenUrl" | "plan" | "subscriptionStatus" | "trialEndsAt">>
+  patch: Partial<Pick<Broker, "nombreMarca" | "imagenUrl" | "plan" | "subscriptionStatus" | "trialEndsAt" | "mpPreapprovalId">>
 ): Promise<Broker | null> {
   const brokers = await dbUpdate<Record<string, Broker>>(BROKERS_KEY, (current) => {
     const brokers = current ?? {};

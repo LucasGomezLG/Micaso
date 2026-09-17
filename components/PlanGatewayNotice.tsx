@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { Clock, X } from "lucide-react";
+import { Shield, X } from "lucide-react";
 
 const STORAGE_KEY = "micaso_plan_gateway_notice_dismissed";
 
@@ -45,15 +45,15 @@ export default function PlanGatewayNotice() {
       }}
     >
       <div className="flex items-start gap-3">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-          <Clock size={16} />
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+          <Shield size={16} />
         </span>
         <div className="leading-relaxed">
-          <p className="font-semibold text-amber-700 dark:text-amber-300">
-            Pasarela de cobro automático con tarjeta en desarrollo
+          <p className="font-semibold text-blue-700 dark:text-blue-300">
+            Suscripción segura con Mercado Pago
           </p>
           <p className="mt-0.5 text-xs" style={{ color: "var(--ink-muted)" }}>
-            Estamos finalizando la integración directa con Mercado Pago. Mientras tanto, tu prueba gratuita de 14 días está 100% activa sin costo y cualquier cambio o activación de plan se coordina de manera personalizada y directa por WhatsApp.
+            El cobro de tu plan se realiza de forma automática y segura mediante Mercado Pago. Podés cancelar en cualquier momento desde este panel. Si estás en período de prueba, elegí tu plan para no perder acceso cuando finalice.
           </p>
         </div>
       </div>
