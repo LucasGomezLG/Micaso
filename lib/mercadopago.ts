@@ -1,4 +1,4 @@
-import { Plan } from "./types";
+
 
 const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
 
@@ -24,7 +24,8 @@ export async function createSubscriptionCheckout({
     throw new Error("MP_ACCESS_TOKEN is not configured");
   }
 
-    const payload: any = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const payload: Record<string, any> = {
       reason: `Micaso — Plan ${plan === "para_arrancar" ? "Inicial" : "Profesional"}`,
       auto_recurring: {
         frequency: 1,
@@ -64,6 +65,7 @@ export async function createSubscriptionCheckout({
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getSubscription(preapprovalId: string): Promise<any> {
   if (!MP_ACCESS_TOKEN) return null;
 
@@ -93,4 +95,21 @@ export async function cancelSubscription(preapprovalId: string): Promise<boolean
   });
 
   return res.ok;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getPayment(paymentId: string): Promise<any> {
+  if (!MP_ACCESS_TOKEN) return null;
+
+  const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+    headers: {
+      Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
+    },
+  });
+
+  if (!res.ok) {
+    return null;
+  }
+
+  return res.json();
 }

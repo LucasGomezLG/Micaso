@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { ADMIN_EMAILS, DEV_BROKER_ID, FOUNDER_EMAIL } from "./auth";
 import { dbGet, dbUpdate } from "./db";
-import { Broker } from "./types";
+import { Broker, PaymentRecord } from "./types";
 
 const BROKERS_KEY = "brokers";
 const TRIAL_DAYS = 14;
@@ -164,4 +164,22 @@ export async function deleteBroker(id: string): Promise<boolean> {
 export async function listAllBrokers(): Promise<Broker[]> {
   const brokers = await getAllBrokers();
   return Object.values(brokers).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+}
+
+const brokerPaymentsKey = (brokerId: string) => `broker:${brokerId}:payments`;
+
+/** Registra un nuevo pago recibido por Mercado Pago */
+export async function addBrokerPayment(brokerId: string, payment: PaymentRecord): Promise<void> {
+  await dbUpdate<PaymentRecord[]>(brokerPaymentsKey(brokerId), (current) => {
+    const list = current ?? [];
+    // Evitar registrar pagos duplicados por ID de Mercado Pago
+    if (list.some((p) => p.id === payment.id)) return list;
+    return [payment, ...list];
+  });
+}
+
+/** Devuelve el historial de pagos de un corredor, los más recientes primero */
+export async function getBrokerPayments(brokerId: string): Promise<PaymentRecord[]> {
+  const payments = await dbGet<PaymentRecord[]>(brokerPaymentsKey(brokerId));
+  return (payments ?? []).sort((a, b) => (a.date < b.date ? 1 : -1));
 }

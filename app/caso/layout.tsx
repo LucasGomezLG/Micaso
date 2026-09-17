@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import ClientOnboardingModal from "@/components/ClientOnboardingModal";
+import FamilyPing from "@/components/FamilyPing";
 import { getCaseId } from "@/lib/session";
 import { getCase } from "@/lib/cases";
 import { getBroker, getCurrentBroker } from "@/lib/brokers";
@@ -30,6 +31,7 @@ export default async function CasoLayout({ children }: LayoutProps<"/caso">) {
 
   return (
     <div className="flex min-h-full flex-col">
+      {!viewingAsBroker && !isDemo && <FamilyPing />}
       <Nav
         caseTitle={kase?.titulo ?? "Tu caso"}
         tipoCaso={kase?.tipoCaso ?? "compra"}

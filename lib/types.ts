@@ -8,6 +8,15 @@ export const PLAN_LABEL: Record<Plan, string> = {
   volumen_alto: "A medida",
 };
 
+export interface PaymentRecord {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  date: string;
+}
+
+
 /** Tope de casos activos simultáneos por plan — ver ARQUITECTURA.md
  * sección 6. `null` en "volumen_alto" es a medida, sin número fijo, así
  * que no bloquea la creación de casos. */
@@ -205,6 +214,9 @@ export interface Case {
   /** Cuándo inspeccionó el corredor este caso por última vez — para calcular
    * novedades y apagar el badge de cambios no leídos en el panel. */
   brokerLastSeenAt?: string | null;
+  /** Cuándo fue la última vez que la familia ingresó o interactuó
+   * con este caso. Se actualiza mediante un ping background. */
+  familyLastSeenAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

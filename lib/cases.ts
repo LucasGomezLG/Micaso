@@ -222,6 +222,14 @@ export async function markCaseSeenByBroker(caseId: string, brokerId?: string): P
   return updated ? decryptCase(updated) : null;
 }
 
+/** Marca el caso como visitado por la familia — actualiza `familyLastSeenAt`.
+ * Llamado desde un endpoint silencioso (ping) en el layout del caso. */
+export async function markCaseSeenByFamily(caseId: string): Promise<Case | null> {
+  const now = new Date().toISOString();
+  const updated = await updateCase(caseId, { familyLastSeenAt: now });
+  return updated ? decryptCase(updated) : null;
+}
+
 /** Editable desde adentro del caso (no desde el panel del corredor) —
  * la familia es quien sabe sus propios nombres. Sin duplicados ni
  * strings vacíos. */

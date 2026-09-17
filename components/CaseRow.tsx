@@ -270,8 +270,16 @@ export default function CaseRow({
             <span className="truncate">🔔 {summary.unreadSummary}</span>
           </div>
         )}
-        <p className="mt-1 text-xs" style={{ color: "var(--ink-faint)" }}>
-          Creado el {new Date(kase.createdAt).toLocaleDateString("es-AR")}
+        <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs" style={{ color: "var(--ink-faint)" }}>
+          <span>Creado el {new Date(kase.createdAt).toLocaleDateString("es-AR")}</span>
+          {kase.familyLastSeenAt && (
+            <>
+              <span className="opacity-50">·</span>
+              <span title={new Date(kase.familyLastSeenAt).toLocaleString("es-AR")}>
+                Familia interactuó {daysAgoLabel(kase.familyLastSeenAt)}
+              </span>
+            </>
+          )}
         </p>
         {!isArchivado && (
           <div className="mt-2 flex flex-wrap gap-4 text-xs">

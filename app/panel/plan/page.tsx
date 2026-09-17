@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Check, ArrowLeft, MessageSquare, Shield, Clock } from "lucide-react";
 import { headers } from "next/headers";
-import { getCurrentBroker } from "@/lib/brokers";
+import { getCurrentBroker, getBrokerPayments } from "@/lib/brokers";
 import { listCasesForBroker } from "@/lib/cases";
 import { formatDate } from "@/lib/format";
 import {
@@ -108,6 +108,8 @@ export default async function PanelPlanPage() {
   if (!broker) {
     redirect("/panel/login");
   }
+
+  const payments = await getBrokerPayments(broker.id);
 
   // Next.js 16 uses await headers()
   const headersList = await headers();
@@ -290,6 +292,56 @@ export default async function PanelPlanPage() {
             </div>
           ) : null}
         </div>
+
+        {/* Historial de Pagos */}
+        {payments.length > 0 && (
+          <div className="mb-12">
+            <div className="mb-4">
+              <span className="eyebrow">Facturación</span>
+              <h2 className="text-xl font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+                Historial de Pagos
+              </h2>
+            </div>
+            <div className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b text-xs" style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink-muted)" }}>
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Fecha</th>
+                      <th className="px-4 py-3 font-medium">Monto</th>
+                      <th className="px-4 py-3 font-medium">Estado</th>
+                      <th className="px-4 py-3 font-medium text-right">Comprobante</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: "var(--border)" }}>
+                    {payments.map((p) => (
+                      <tr key={p.id}>
+                        <td className="px-4 py-3">{formatDate(p.date)}</td>
+                        <td className="px-4 py-3 font-medium">
+                          {p.currency === "ARS" ? "$ " : "USD "}{p.amount.toLocaleString("es-AR")}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+                            style={{
+                              background: p.status === "approved" ? "var(--status-gusto-bg)" : "var(--status-descartada-bg)",
+                              color: p.status === "approved" ? "var(--status-gusto)" : "var(--status-descartada)",
+                            }}
+                          >
+                            {p.status === "approved" ? "Aprobado" : p.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-xs" style={{ color: "var(--ink-faint)" }}>#{p.id}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Comparativa de Planes */}
         <div className="mb-12">

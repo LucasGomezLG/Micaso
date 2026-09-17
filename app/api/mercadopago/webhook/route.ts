@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { updateBroker } from "@/lib/brokers";
-import { getSubscription } from "@/lib/mercadopago";
-import { Plan } from "@/lib/types";
+import { addBrokerPayment, updateBroker } from "@/lib/brokers";
+import { getPayment, getSubscription } from "@/lib/mercadopago";
+import { PaymentRecord, Plan } from "@/lib/types";
 
 const MP_WEBHOOK_SECRET = process.env.MP_WEBHOOK_SECRET;
 
@@ -82,10 +82,35 @@ export async function POST(request: Request) {
           });
         }
       }
+    } else if (topic === "payment") {
+      if (!resourceId) return NextResponse.json({ success: true });
+
+      const payment = await getPayment(resourceId);
+      if (!payment) {
+        console.error("Pago no encontrado en MP:", resourceId);
+        return NextResponse.json({ error: "Pago no encontrado" }, { status: 404 });
+      }
+
+      // Si el pago pertenece a una preaprobación de Micaso, guardarlo
+      const externalReference = payment.external_reference;
+      if (externalReference && externalReference.includes(":")) {
+        const [brokerId] = externalReference.split(":");
+        
+        const record: PaymentRecord = {
+          id: payment.id.toString(),
+          amount: payment.transaction_amount,
+          currency: payment.currency_id,
+          status: payment.status,
+          date: payment.date_created,
+        };
+        
+        await addBrokerPayment(brokerId, record);
+      }
     }
 
+
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error procesando webhook de MP:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
