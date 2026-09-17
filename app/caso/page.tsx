@@ -91,7 +91,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <PushNotificationPrompt />
+      {caseId !== "demo" && <PushNotificationPrompt />}
 
       {upcoming.length > 0 && (
         <section>

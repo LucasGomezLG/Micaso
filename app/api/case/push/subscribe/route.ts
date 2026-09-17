@@ -21,6 +21,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  if (caseId === "demo") {
+    return NextResponse.json(
+      { error: "Las notificaciones no están disponibles en el caso de demostración" },
+      { status: 403 }
+    );
+  }
+
   let body: { subscription?: unknown };
   try {
     body = await request.json();
@@ -47,6 +54,10 @@ export async function DELETE(request: NextRequest) {
     caseId = getCaseIdFromRequest(request);
   } catch {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  if (caseId === "demo") {
+    return NextResponse.json({ ok: true });
   }
 
   let body: { endpoint?: string };

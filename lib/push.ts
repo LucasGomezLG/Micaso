@@ -51,6 +51,8 @@ export async function saveCaseSubscription(
   caseId: string,
   subscription: webpush.PushSubscription | { endpoint: string; keys: { p256dh: string; auth: string } }
 ): Promise<void> {
+  if (caseId === "demo") return;
+
   if (!subscription.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
     return;
   }
@@ -93,6 +95,8 @@ export async function notifyCaseClients(
   caseId: string,
   payload: { title: string; body: string; url?: string }
 ): Promise<number> {
+  if (caseId === "demo") return 0;
+
   const subscriptions = (await dbGet<StoredPushSubscription[]>(pushKey(caseId))) ?? [];
   if (subscriptions.length === 0) return 0;
 

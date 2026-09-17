@@ -71,3 +71,23 @@ test("las suscripciones Web Push se aíslan estrictamente por caseId", async () 
   assert.deepEqual(await getCaseSubscriptions(caseA.id), []);
   assert.deepEqual((await getCaseSubscriptions(caseB.id)).map((s) => s.endpoint), [subB.endpoint]);
 });
+
+test("el caso demo bloquea y rechaza suscripciones Web Push y no emite notificaciones", async () => {
+  const { notifyCaseClients } = await import("../lib/push");
+  const subDemo = {
+    endpoint: "https://fcm.googleapis.com/fcm/send/fake-endpoint-demo",
+    keys: { p256dh: "key-demo", auth: "auth-demo" },
+  };
+
+  // Intentar guardar suscripción en demo debe ser ignorado silenciosamente
+  await saveCaseSubscription("demo", subDemo);
+  const demoSubs = await getCaseSubscriptions("demo");
+  assert.deepEqual(demoSubs, [], "el caso demo nunca debe registrar suscripciones push");
+
+  // Intentar notificar a demo siempre retorna 0 sin enviar nada
+  const sent = await notifyCaseClients("demo", {
+    title: "Propiedad agregada",
+    body: "Test en demo",
+  });
+  assert.equal(sent, 0);
+});
