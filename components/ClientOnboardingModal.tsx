@@ -29,17 +29,12 @@ export default function ClientOnboardingModal({
 }: ClientOnboardingModalProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedName, setSelectedName] = useState<string>("");
   const [customName, setCustomName] = useState("");
   const [savingName, setSavingName] = useState(false);
 
   const effectiveBrokerName = brokerName?.trim() || "Tu corredor inmobiliario";
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -111,7 +106,7 @@ export default function ClientOnboardingModal({
     setStep(3);
   }
 
-  if (!open || !mounted) return null;
+  if (!open) return null;
 
   return createPortal(
     <div

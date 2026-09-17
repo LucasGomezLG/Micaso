@@ -15,14 +15,9 @@ export default function ContactModal({
   style?: CSSProperties;
 }) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -62,7 +57,7 @@ export default function ContactModal({
         {label}
       </button>
 
-      {open && mounted &&
+      {open &&
         createPortal(
           <div
             className="animate-overlay fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto overscroll-contain"

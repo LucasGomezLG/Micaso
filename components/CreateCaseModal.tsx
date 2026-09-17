@@ -10,16 +10,11 @@ import Select from "@/components/Select";
 export default function CreateCaseModal({ label = "+ Nuevo caso", disabledReason }: { label?: string; disabledReason?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [titulo, setTitulo] = useState("");
   const [tipoCaso, setTipoCaso] = useState<TipoCaso>("compra");
   const [personas, setPersonas] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -78,7 +73,7 @@ export default function CreateCaseModal({ label = "+ Nuevo caso", disabledReason
         {label}
       </button>
 
-      {open && mounted &&
+      {open &&
         createPortal(
           <div
             className="animate-overlay fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto overscroll-contain"

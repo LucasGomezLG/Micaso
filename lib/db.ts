@@ -17,7 +17,7 @@ const LOCAL_DB_PATH =
 
 async function readLocalStore(): Promise<Record<string, unknown>> {
   try {
-    const raw = await fs.readFile(LOCAL_DB_PATH, "utf-8");
+    const raw = await fs.readFile(/*turbopackIgnore: true*/ LOCAL_DB_PATH, "utf-8");
     return JSON.parse(raw) as Record<string, unknown>;
   } catch {
     return {};

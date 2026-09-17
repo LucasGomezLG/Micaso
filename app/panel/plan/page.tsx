@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Check, ArrowLeft, MessageSquare, Shield, Clock } from "lucide-react";
+import { Check, ArrowLeft, Shield, Clock } from "lucide-react";
 import { headers } from "next/headers";
 import { getCurrentBroker, getBrokerPayments } from "@/lib/brokers";
 import { listCasesForBroker } from "@/lib/cases";
@@ -124,10 +124,6 @@ export default async function PanelPlanPage() {
 
   const daysLeft = computeDaysLeft(broker.trialEndsAt);
   const isTrial = broker.subscriptionStatus === "prueba";
-
-  function buildWhatsappMessage(planTarget: string) {
-    return `¡Hola! Soy ${broker?.nombreMarca} (${broker?.email}). Estoy usando Micaso y me gustaría consultar por el plan "${planTarget}".`;
-  }
 
   return (
     <div className="min-h-full overflow-x-clip" style={{ background: "var(--paper)", color: "var(--ink)" }}>
