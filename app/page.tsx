@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Check, Home, Link2, Lock, Palette, Sparkles, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { auth } from "@/auth";
+import { headers } from "next/headers";
 import ContactModal from "@/components/ContactModal";
 import StickyMobileCta from "@/components/StickyMobileCta";
 import LandingShowcase from "@/components/LandingShowcase";
@@ -84,32 +85,34 @@ const FAQS = [
   },
 ];
 
-const PLANS = [
-  {
-    name: "Para arrancar",
-    blurb: "Para probarlo con tus primeros clientes.",
-    price: "USD 13",
-    limit: "Hasta 5 casos activos a la vez",
-    highlight: false,
-    custom: false,
-  },
-  {
-    name: "Para tu cartera",
-    blurb: "Cuando ya es tu herramienta de todos los días.",
-    price: "USD 29",
-    limit: "Hasta 20 casos activos a la vez",
-    highlight: true,
-    custom: false,
-  },
-  {
-    name: "Volumen alto",
-    blurb: "¿Manejás muchos clientes a la vez? Lo ajustamos con vos.",
-    price: "Hablemos",
-    limit: "Casos activos a medida",
-    highlight: false,
-    custom: true,
-  },
-];
+function getPlans(isArg: boolean) {
+  return [
+    {
+      name: "Inicial",
+      blurb: "Para probarlo con tus primeros clientes.",
+      price: isArg ? "$ 18.000" : "USD 13",
+      limit: "Hasta 5 casos activos a la vez",
+      highlight: false,
+      custom: false,
+    },
+    {
+      name: "Profesional",
+      blurb: "Cuando ya es tu herramienta de todos los días.",
+      price: isArg ? "$ 39.000" : "USD 29",
+      limit: "Hasta 20 casos activos a la vez",
+      highlight: true,
+      custom: false,
+    },
+    {
+      name: "A medida",
+      blurb: "¿Manejás muchos clientes a la vez? Lo ajustamos con vos.",
+      price: "Hablemos",
+      limit: "Casos activos a medida",
+      highlight: false,
+      custom: true,
+    },
+  ];
+}
 
 const MOCK_HOUSES: { title: string; zone: string; price: string; status: string; statusVar: string }[] = [
   { title: "Depto 2 amb. — Belgrano", zone: "CABA", price: "USD 118.000", status: "Visita coordinada", statusVar: "coordinada" },
@@ -122,6 +125,13 @@ const NOISE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'
 export default async function LandingPage() {
   const session = await auth();
   const user = session?.user;
+
+  // Next.js 16 uses await headers()
+  const headersList = await headers();
+  const country = headersList.get("x-vercel-ip-country");
+  const isArg = country === "AR" || !country; // Default to AR for local dev
+
+  const plans = getPlans(isArg);
 
   return (
     <div className="relative flex min-h-full flex-col" style={{ background: "var(--paper)", color: "var(--ink)" }}>
@@ -463,7 +473,7 @@ export default async function LandingPage() {
               necesites.
             </p>
             <div className="mt-10 grid gap-5 sm:grid-cols-3">
-              {PLANS.map((p) => (
+              {plans.map((p) => (
                 <div
                   key={p.name}
                   className="card-hover relative flex flex-col rounded-2xl border p-6"

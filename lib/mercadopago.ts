@@ -25,7 +25,7 @@ export async function createSubscriptionCheckout({
   }
 
     const payload: any = {
-      reason: `Micaso — Plan ${plan === "para_arrancar" ? "Para arrancar" : "Para tu cartera"}`,
+      reason: `Micaso — Plan ${plan === "para_arrancar" ? "Inicial" : "Profesional"}`,
       auto_recurring: {
         frequency: 1,
         frequency_type: "months",

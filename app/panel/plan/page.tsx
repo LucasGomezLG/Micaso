@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Check, ArrowLeft, MessageSquare, Shield, Clock } from "lucide-react";
+import { headers } from "next/headers";
 import { getCurrentBroker } from "@/lib/brokers";
 import { listCasesForBroker } from "@/lib/cases";
 import { formatDate } from "@/lib/format";
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
   description: "Estado de tu suscripción, días restantes de prueba y cambio de plan en Micaso.",
 };
 
-const PLAN_DETAILS: Record<
+function getPlanDetails(isArg: boolean): Record<
   Plan,
   {
     name: string;
@@ -39,53 +40,55 @@ const PLAN_DETAILS: Record<
     ctaLabel: string;
     highlight?: boolean;
   }
-> = {
-  para_arrancar: {
-    name: "Para arrancar",
-    price: "USD 13",
-    priceSub: "/mes (cobrado en pesos)",
-    casesLimit: "Hasta 5 casos activos",
-    description: "Para corredores independientes que arrancan a ordenar el seguimiento de sus clientes.",
-    ctaLabel: "Elegir plan (5 casos)",
-    features: [
-      "Hasta 5 casos activos simultáneos",
-      "Scraping de ZonaProp, Argenprop y MercadoLibre",
-      "Tu foto y nombre de marca en cada caso",
-      "Calculadora de crédito y gastos notariales (8,5%)",
-      "Checklist de trámites, comparador y notas",
-      "Soporte directo por WhatsApp",
-    ],
-  },
-  para_tu_cartera: {
-    name: "Para tu cartera",
-    price: "USD 29",
-    priceSub: "/mes (cobrado en pesos)",
-    casesLimit: "Hasta 20 casos activos",
-    description: "Para inmobiliarias y corredores activos que manejan varias familias en paralelo.",
-    ctaLabel: "Elegir plan (20 casos)",
-    highlight: true,
-    features: [
-      "Hasta 20 casos activos simultáneos (cuadriplica el cupo)",
-      "Todas las funcionalidades incluidas sin restricciones",
-      "Historial permanente de casos cerrados en solo lectura",
-      "Atención y soporte prioritario por WhatsApp",
-      "Ideal si manejás más de 5 clientes a la vez",
-    ],
-  },
-  volumen_alto: {
-    name: "Volumen alto",
-    price: "A convenir",
-    priceSub: "acuerdo a medida",
-    casesLimit: "Casos a medida o ilimitados",
-    description: "Para inmobiliarias de gran escala con alto flujo continuo de clientes.",
-    ctaLabel: "Consultar plan a medida",
-    features: [
-      "Cupo de casos activos a medida o sin límite fijo",
-      "Canal de atención y soporte directo",
-      "Facturación y condiciones comerciales a medida",
-    ],
-  },
-};
+> {
+  return {
+    para_arrancar: {
+      name: "Inicial",
+      price: isArg ? "$ 18.000" : "USD 13",
+      priceSub: isArg ? "/mes" : "/mes (cobrado en pesos)",
+      casesLimit: "Hasta 5 casos activos",
+      description: "Para corredores independientes que arrancan a ordenar el seguimiento de sus clientes.",
+      ctaLabel: "Elegir plan (5 casos)",
+      features: [
+        "Hasta 5 casos activos simultáneos",
+        "Scraping de ZonaProp, Argenprop y MercadoLibre",
+        "Tu foto y nombre de marca en cada caso",
+        "Calculadora de crédito y gastos notariales (8,5%)",
+        "Checklist de trámites, comparador y notas",
+        "Soporte directo por WhatsApp",
+      ],
+    },
+    para_tu_cartera: {
+      name: "Profesional",
+      price: isArg ? "$ 39.000" : "USD 29",
+      priceSub: isArg ? "/mes" : "/mes (cobrado en pesos)",
+      casesLimit: "Hasta 20 casos activos",
+      description: "Para inmobiliarias y corredores activos que manejan varias familias en paralelo.",
+      ctaLabel: "Elegir plan (20 casos)",
+      highlight: true,
+      features: [
+        "Hasta 20 casos activos simultáneos (cuadriplica el cupo)",
+        "Todas las funcionalidades incluidas sin restricciones",
+        "Historial permanente de casos cerrados en solo lectura",
+        "Atención y soporte prioritario por WhatsApp",
+        "Ideal si manejás más de 5 clientes a la vez",
+      ],
+    },
+    volumen_alto: {
+      name: "A medida",
+      price: "A convenir",
+      priceSub: "acuerdo a medida",
+      casesLimit: "Casos a medida o ilimitados",
+      description: "Para inmobiliarias de gran escala con alto flujo continuo de clientes.",
+      ctaLabel: "Consultar plan a medida",
+      features: [
+        "Cupo de casos activos a medida o sin límite fijo",
+        "Canal de atención y soporte directo",
+        "Facturación y condiciones comerciales a medida",
+      ],
+    },
+  };
+}
 
 const STATUS_STYLE: Record<SubscriptionStatus, { bg: string; fg: string }> = {
   prueba: { bg: "var(--status-pendiente-bg)", fg: "var(--status-pendiente)" },
@@ -105,6 +108,13 @@ export default async function PanelPlanPage() {
   if (!broker) {
     redirect("/panel/login");
   }
+
+  // Next.js 16 uses await headers()
+  const headersList = await headers();
+  const country = headersList.get("x-vercel-ip-country");
+  const isArg = country === "AR" || !country; // Default to AR for local dev
+
+  const planDetails = getPlanDetails(isArg);
 
   const cases = await listCasesForBroker(broker.id);
   const activeCases = cases.filter((c) => c.estado === "activo").length;
@@ -184,7 +194,7 @@ export default async function PanelPlanPage() {
                 {PLAN_LABEL[broker.plan]}
               </span>
               <span className="text-xs" style={{ color: "var(--ink-muted)" }}>
-                {PLAN_DETAILS[broker.plan].casesLimit}
+                {planDetails[broker.plan].casesLimit}
               </span>
             </div>
 
@@ -292,7 +302,7 @@ export default async function PanelPlanPage() {
 
           <div className="grid gap-6 sm:grid-cols-3">
             {(["para_arrancar", "para_tu_cartera", "volumen_alto"] as Plan[]).map((pKey) => {
-              const p = PLAN_DETAILS[pKey];
+              const p = planDetails[pKey];
               const isCurrent = broker.plan === pKey;
 
               return (

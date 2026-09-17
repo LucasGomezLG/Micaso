@@ -3,9 +3,9 @@ export type AptoCredito = "no_se" | "si" | "no";
 export type Plan = "para_arrancar" | "para_tu_cartera" | "volumen_alto";
 
 export const PLAN_LABEL: Record<Plan, string> = {
-  para_arrancar: "Para arrancar",
-  para_tu_cartera: "Para tu cartera",
-  volumen_alto: "Volumen alto",
+  para_arrancar: "Inicial",
+  para_tu_cartera: "Profesional",
+  volumen_alto: "A medida",
 };
 
 /** Tope de casos activos simultáneos por plan — ver ARQUITECTURA.md
