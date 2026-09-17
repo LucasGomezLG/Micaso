@@ -398,6 +398,13 @@ terminar la prueba, la respuesta por ahora es pasar el panel a
 solo-lectura hasta que se resuelva, no cortar el acceso de un día para el
 otro (detalle sin cerrar del todo, ver sección 9).
 
+### Internacionalización y Multidioma (Futuro)
+
+Para la expansión a otros países, la arquitectura aprovechará la misma lógica que hoy cambia la moneda de los precios (detectar el país mediante el header `x-vercel-ip-country` inyectado por Vercel, combinado con `Accept-Language` del navegador):
+- **Moneda:** Ya está preparado para mostrar USD a IPs fuera de Argentina. El siguiente paso es acoplar esos precios en USD a una integración con **Stripe** (Checkout Sessions y Webhooks equivalentes a los de Mercado Pago) que procese el cobro internacional.
+- **Idioma:** La aplicación implementará un mecanismo de i18n (ej. `next-intl` o diccionarios manuales, aprovechando el App Router de Next.js). Si se detecta un país no hispanohablante o el `Accept-Language` pide inglés, la app entera (landing page, panel del corredor y el caso de los clientes) se renderizará en inglés. El diseño base ya es neutro y solo requerirá externalizar los strings de texto duro actuales.
+
+
 ### Ciclo de vida de un caso: cuánto dura un link
 
 **Decidido: el corredor cierra el caso a mano, no expira solo.** Mientras
