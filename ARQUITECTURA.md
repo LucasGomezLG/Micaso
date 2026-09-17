@@ -1,7 +1,8 @@
 # De herramienta personal a SaaS para corredores
 
-> Documento de arquitectura — Micaso · 13 sept 2026
-> Estado: **diseño cerrado, sin construir** · Nace de Casa, en producción desde el 12 sept 2026 (41 propiedades, 3 personas usándolo a la fecha)
+> Documento de arquitectura — Micaso · 13 sept 2026 (estado actualizado 17 sept 2026)
+> Estado: **en construcción activa, en vivo en `micaso.com.ar`.** Núcleo multi-caso, panel de corredor (con login real por Google), super-admin con control por corredor y landing pública ya funcionando — ver los addendums fechados en cada sección para el detalle de qué se construyó y cuándo. Falta Mercado Pago (el cobro sigue siendo manual desde `/superadmin`, ver sección 10 y 12) — deliberadamente lo último en construirse.
+> Nace de Casa, en producción desde el 12 sept 2026 (41 propiedades, 3 personas usándolo a la fecha)
 > Versión con diseño: [artifact publicado](https://claude.ai/code/artifact/613d03c0-8366-4fbd-b641-a59eb5383997)
 
 Propuesta de arquitectura para convertir Casa — hoy una herramienta de uso
@@ -104,8 +105,24 @@ uno con su propio acceso.
 | **Criterios** | zonas de interés e imprescindibles en común a cualquier caso; el perfil financiero varía por tipo (ver abajo) |
 | **Casas** | pipeline de 7 estados de búsqueda + papelera recuperable, fotos, comentarios, revisión de visita, plata necesaria calculada contra el presupuesto del caso |
 | **Vistas** | comparación de destacadas, mapa aproximado por zona |
+| **Agenda** | visitas coordinadas agrupadas por día, en orden cronológico, con botón para descargar el evento al calendario del celular |
 | **Checklist** | trámites y documentación, asignable entre los miembros del caso — plantilla distinta por tipo (ver abajo) |
 | **Carga de propiedades** | pegar un link (MercadoLibre, ZonaProp, ArgenProp, RE/MAX, Mudafy) autocompleta título, fotos y precio |
+
+> **Implementado (15 sept 2026): agenda de visitas.** Nueva pestaña
+> `/caso/agenda` — lista las visitas coordinadas en orden cronológico,
+> agrupadas por día, con un botón para descargar un evento `.ics` válido
+> (RFC5545, offset fijo de Argentina UTC-3) a cualquier calendario del
+> celular. De paso se unificaron dos componentes que estaban duplicados
+> entre `HouseCard` y el inicio del caso (`VisitaCoordinadaBadge`,
+> `EmptyState`).
+>
+> **Implementado (17 sept 2026): separar pasadas de próximas.** El
+> filtro original de `/caso/agenda` solo mostraba visitas con fecha
+> futura (`visitaFecha >= hoy`) — una visita ya pasada simplemente
+> desaparecía de la lista, sin aviso ni forma de verla. Ahora se agrupan
+> en dos secciones, "Próximas" y "Visitas pasadas" (esta última, más
+> recientes primero), en vez de perderse.
 
 ### Tipo de caso: no todos buscan lo mismo
 
@@ -171,6 +188,19 @@ entre familias.
   propio — tiene más sentido OAuth para un cliente que vuelve todos los
   días y entra desde una landing pública: sin contraseña que recuperar,
   signup más corto. Sesión larga, ve la lista de sus casos.
+
+  > **Confirmado funcionando de punta a punta (17 sept 2026).** El botón
+  > "Continuar con Google" en `/panel/login` redirige a una pantalla real
+  > de consentimiento de Google ("Sign in with Google — to continue to
+  > Micaso"), con `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` ya cargados — no
+  > es solo la decisión de diseño de este párrafo, el flujo de OAuth ya
+  > está en pie. **Pendiente, del lado de Google Cloud Console (no es
+  > código):** el redirect URI registrado hoy es solo
+  > `http://localhost:3000/api/auth/callback/google` (ver el comentario en
+  > `auth.ts`) — para que el login con Google funcione en
+  > `www.micaso.com.ar` (no solo en local) falta sumar
+  > `https://www.micaso.com.ar/api/auth/callback/google` a la lista de
+  > redirect URIs autorizados del proyecto en Google Cloud Console.
 - **Caso → familia:** usuario/contraseña simple generados al crear el
   caso (no elegidos a mano por el corredor). Cortos está bien — no se
   comparte información bancaria — pero siguen siendo generados al azar y
@@ -490,6 +520,95 @@ Lo mínimo que necesita el panel para ser útil desde el primer día:
 > la carga manual persiste sin perderse, y el manifest/íconos cargan sin
 > sesión.
 
+> **Implementado (15 sept 2026): buscador y tabs en la lista de casos,
+> integrantes opcionales al crear un caso.** `CaseList.tsx` suma pestañas
+> Activos/Todos/Cerrados (con contador) y un buscador por título,
+> integrante o usuario de caso — antes la lista era un `.map()` plano sin
+> filtrar, incómodo en cuanto un corredor tiene más de un puñado de
+> casos. `CreateCaseModal` suma un campo opcional para cargar los nombres
+> de la familia ya en el alta (sigue sin ser obligatorio — el criterio de
+> "quien llegue primero los completa" de la sección 6 no cambia). `/caso`
+> y `/panel` comparten un `EmptyState` para "todavía no hay nada acá" en
+> vez de un mensaje distinto por pantalla.
+
+> **Implementado (16 sept 2026): botón para forzar la instalación como
+> PWA.** La PWA básica de arriba dependía de que la persona encontrara
+> "Agregar a pantalla de inicio" en el menú del navegador —
+> `InstallAppButton` escucha `beforeinstallprompt` en Android/Chrome para
+> disparar el prompt nativo con un toque; en iOS Safari (sin esa API)
+> muestra instrucciones manuales ("Compartir → Agregar a inicio"). Vive
+> en `Nav.tsx` (familia) y, desde el 17 sept 2026, también en el header
+> de `/panel` (corredor). **Límite real, sin resolver:** el proyecto no
+> tiene service worker — Chrome puede no ofrecer nunca el prompt si no
+> considera el sitio "instalable" de forma confiable. Sumar uno es una
+> decisión de alcance todavía sin tomar, no algo pedido.
+
+> **Implementado (16 sept 2026): panel usable en mobile de punta a
+> punta.** El header con el email del corredor, las tabs de `CaseList` y
+> la fila de cada caso desbordaban horizontalmente en mobile —
+> `overflow-x: clip` en `html`/`body` más `min-w-0`/`truncate`/`shrink-0`
+> puntuales, sin romper los headers `sticky`. El aviso "pasarela de cobro
+> en desarrollo" de `/panel/plan` pasa a `PlanGatewayNotice`, descartable
+> con ✕ y que recuerda la elección en `localStorage` vía
+> `useSyncExternalStore` (sin parpadeo de hidratación).
+
+> **Auditoría de UX e implementado (17 sept 2026): varios bugs reales de
+> punta a punta, probados en navegador real, no solo por código.**
+> - **Calculadora:** un valor negativo en "Valor de la propiedad" o
+>   "Ahorro propio" rompía los totales (gastos y cuota negativos) — los
+>   inputs ahora sanitizan con `Math.max(0, ...)` y `min={0}`.
+> - **Confirmaciones críticas del panel:** "Cerrar caso" y "Regenerar
+>   clave" mostraban un toast de Sonner abajo a la derecha, con un botón
+>   de acción que desaparecía solo a los 12 segundos — fácil de pasar
+>   por alto en un celular. Ahora abren un modal centrado (Cancelar /
+>   Confirmar), en `CaseRow` (panel del corredor) y en el nuevo
+>   `AdminCaseCard` (super-admin, ver sección 7).
+> - **Carga de propiedades:** en el modo "pegar un link" alcanzaba con
+>   pegar cualquier texto (sin que llegara a scrapearse nada) para
+>   guardar una casa con la URL cruda como título y precio "-" —
+>   `AddHouseModal` ahora exige un título real (scrapeado o tipeado a
+>   mano) en los dos modos antes de habilitar "Agregar".
+> - **`/panel/plan`:** se sacaron las etiquetas redundantes "Checkout /
+>   Pago online en desarrollo" — el aviso de `PlanGatewayNotice` de
+>   arriba ya cubre lo mismo; queda directo el botón "Coordinar por
+>   WhatsApp".
+> - **React 19:** `ClientOnboardingModal` y `LoginForm` llamaban
+>   `setState` de forma síncrona dentro del cuerpo de un `useEffect` al
+>   montar, disparando el lint nuevo `react-hooks/set-state-in-effect`
+>   (cascading renders) — se difiere con `setTimeout(..., 0)`, mismo
+>   patrón que ya usaba `CalculadoraClient` para restaurar valores de
+>   `localStorage`.
+>
+> Ver también la agenda (sección 3) y el super-admin (sección 7), que
+> tuvieron su propio hallazgo el mismo día.
+
+> **Implementado (17 sept 2026): editar perfil (foto y nombre) desde el
+> celular.** En el header angosto del panel, `BrokerNameEditor` solo se
+> mostraba a partir de `sm:` (`hidden sm:inline-flex`) — pero esa misma
+> clase se reutilizaba también para el `<input>` en modo edición, así que
+> lo que fuera que disparara la edición en mobile heredaba `display:
+> none` y el campo "desaparecía". En mobile ahora solo se ve el círculo
+> de foto (`BrokerProfileModal`, nuevo), que abre un modal simple con
+> foto y nombre editables; desktop no cambió.
+>
+> **Bug de fondo encontrado dos veces el mismo día, mismo mecanismo:**
+> el modal de confirmación de `CaseRow` y el nuevo `BrokerProfileModal`
+> quedaban recortados arriba de la pantalla en vez de centrados en todo
+> el viewport. La card de `CaseRow` tiene `transform` en `:hover` y el
+> `<header>` de `/panel` tiene `backdrop-filter` (`backdrop-blur-md`) —
+> las dos propiedades CSS crean un *containing block* nuevo para
+> cualquier hijo `position: fixed`, así que el modal quedaba encerrado
+> en esa caja en vez de cubrir toda la pantalla. Mismo arreglo en los
+> tres casos afectados (`CaseRow`, `BrokerProfileModal`,
+> `InstallAppButton`): `createPortal` a `document.body`.
+>
+> **Implementado (17 sept 2026): modales tapados por la barra de
+> navegación mobile.** `AddHouseModal`, `EditHouseModal`, `BriefEditor` y
+> `CriteriaEditor` — los cuatro modales "hoja inferior" de `/caso/*` —
+> usaban `z-20`, por debajo de la barra de navegación fija de `Nav.tsx`
+> (`z-30`): el botón de guardar quedaba tapado en mobile. Subidos a
+> `z-50`, mismo nivel que el resto de los modales de la app.
+
 ## 7. Tu panel de super-admin
 
 Una capa más arriba de todo: vos administrando la plataforma completa, no
@@ -537,6 +656,48 @@ demasiados corredores para tocarlos a mano de a uno.
 > manual, no automático — pensado como red de contención mientras no
 > exista un backup programado de verdad, después del incidente de
 > pérdida de datos documentado en la sección 9.
+
+> **Implementado (17 sept 2026): control real por corredor, sin ver la
+> actividad de sus clientes.** `/superadmin` suma KPIs (corredores por
+> estado de suscripción, casos activos/totales) y un buscador con tabs
+> por estado — mismo patrón que `CaseList` en el panel del corredor.
+> Cada fila suma un botón "Gestionar →" a una página nueva,
+> `/superadmin/brokers/[id]`: la cuenta del corredor editable de punta a
+> punta (nombre de marca, plan, estado, fin de prueba — antes solo
+> plan/estado/prueba eran editables, y solo desde la fila de la lista) y
+> la lista de sus casos con métricas agregadas (pendientes, destacadas,
+> última actividad, propiedades en seguimiento). Desde ahí se puede
+> cerrar, reabrir, renombrar o regenerar la clave de un caso puntual
+> (nuevas rutas `/api/superadmin/cases/[id]/*`, protegidas igual que el
+> resto de la sección — reutilizan `closeCase`/`reopenCase`/
+> `regeneratePassword`/`renameCase` de `lib/cases.ts` ya existentes,
+> pasándoles el `brokerId` real del caso en vez de uno nuevo). A
+> propósito **no** hay "Entrar al caso" ahí, ni se muestra la contraseña
+> del caso en esa pantalla (aunque sigue viajando en la respuesta de la
+> API, igual que en el panel del corredor — la restricción es de
+> interfaz, no un límite criptográfico nuevo): control operativo sobre la
+> cuenta del corredor, no visibilidad sobre lo que carga la familia
+> (casas, comentarios, checklist).
+>
+> **Bug de seguridad encontrado y arreglado en el mismo trabajo:**
+> `getBroker`/`getCase` (y sus mutadores `updateBroker`/`updateCase`/
+> `getOrCreateBroker` en `lib/brokers.ts`/`lib/cases.ts`) leían
+> `brokers[id]`/`cases[caseId]` directo sobre un objeto plano de
+> JavaScript. Con `id === "__proto__"` eso devuelve el `Object.prototype`
+> heredado (un objeto "truthy", no `undefined`) — antes no importaba
+> porque ningún `id` le llegaba crudo desde una URL a esas funciones; las
+> rutas nuevas de esta misma sección sí lo hacen (`id`/`caseId` vienen
+> directo de un path param). Reproducido de punta a punta contra el
+> propio servidor (`POST /api/superadmin/cases/__proto__/close` terminaba
+> "cerrando" un caso fantasma guardado bajo esa clave) y cerrado con
+> `Object.prototype.hasOwnProperty.call(...)` en los cuatro puntos de
+> lectura/escritura — mejora también al panel normal del corredor, que
+> comparte las mismas funciones. De paso se encontró y arregló un bug
+> funcional (no de seguridad) en el mismo código: `id` llega todavía
+> URL-encoded (`%40` en vez de `@`) cuando se navega a
+> `/superadmin/brokers/[id]` con `<Link>` — sin `decodeURIComponent`,
+> "Gestionar" no funcionaba para ningún corredor cuyo `id` fuera un email
+> (o sea, todos salvo `dev-broker`).
 
 ## 8. Qué cambia respecto al código de Casa
 
@@ -918,6 +1079,12 @@ resuelto arriba). Lo que sigue sin resolver es la letra real: redactarla
 con cuidado (idealmente con alguien que conozca la ley de protección de
 datos argentina) antes de publicar la landing — eso ya no es una
 decisión de diseño, es contenido que no se improvisa en una tarde.
+
+> **Resuelto (15 sept 2026): texto real publicado, no un stub.** `/terminos`
+> y `/privacidad` ya tienen el contenido completo en producción, separados
+> como se decidió arriba. Sigue siendo prudente una revisión legal
+> profesional antes de escalar a muchos corredores con clientes reales,
+> pero ya no bloquea tener la landing pública en vivo.
 
 **Condición de carrera en el store local — pasó de verdad (14 sept
 2026), resuelto para local; queda un resto menor en Redis**
