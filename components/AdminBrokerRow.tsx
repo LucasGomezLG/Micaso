@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/http";
@@ -104,6 +106,14 @@ export default function AdminBrokerRow({
           className="rounded-lg border px-2 py-1.5 text-xs mono"
           style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
         />
+
+        <Link
+          href={`/superadmin/brokers/${broker.id}`}
+          className="inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold"
+          style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+        >
+          Gestionar <ChevronRight size={13} />
+        </Link>
       </div>
     </div>
   );

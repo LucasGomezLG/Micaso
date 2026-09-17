@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { Download } from "lucide-react";
+import { Download, Users, Building2, Clock } from "lucide-react";
 import { listAllBrokers } from "@/lib/brokers";
 import { listCasesForBroker } from "@/lib/cases";
 import { isUsingRemoteDb } from "@/lib/db";
-import AdminBrokerRow from "@/components/AdminBrokerRow";
+import BrokerList from "@/components/BrokerList";
 import CreateBrokerModal from "@/components/CreateBrokerModal";
 import PanelLogoutButton from "@/components/PanelLogoutButton";
 import { MicasoMark } from "@/components/MicasoMark";
@@ -15,6 +15,17 @@ export default async function SuperadminPage() {
   const brokers = await listAllBrokers();
   const casesByBroker = await Promise.all(brokers.map((b) => listCasesForBroker(b.id)));
   const remoteDb = isUsingRemoteDb();
+
+  const casesCountByBroker = Object.fromEntries(
+    brokers.map((b, i) => [
+      b.id,
+      { active: casesByBroker[i].filter((c) => c.estado === "activo").length, total: casesByBroker[i].length },
+    ])
+  );
+  const totalCasosActivos = casesByBroker.reduce((sum, cases) => sum + cases.filter((c) => c.estado === "activo").length, 0);
+  const totalCasos = casesByBroker.reduce((sum, cases) => sum + cases.length, 0);
+  const enPrueba = brokers.filter((b) => b.subscriptionStatus === "prueba").length;
+  const activos = brokers.filter((b) => b.subscriptionStatus === "activa").length;
 
   return (
     <div className="min-h-full" style={{ background: "var(--paper)", color: "var(--ink)" }}>
@@ -80,14 +91,51 @@ export default async function SuperadminPage() {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col gap-3">
-          {brokers.map((broker, i) => {
-            const cases = casesByBroker[i];
-            const activeCases = cases.filter((c) => c.estado === "activo").length;
-            return (
-              <AdminBrokerRow key={broker.id} broker={broker} activeCases={activeCases} totalCases={cases.length} />
-            );
-          })}
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-2xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+            <div className="flex items-center gap-1.5">
+              <Users size={13} style={{ color: "var(--ink-faint)" }} />
+              <span className="eyebrow">Corredores</span>
+            </div>
+            <p className="mono mt-1 text-xl font-semibold">{brokers.length}</p>
+            <p className="text-[11px]" style={{ color: "var(--ink-faint)" }}>
+              {activos} activos · {enPrueba} en prueba
+            </p>
+          </div>
+          <div className="rounded-2xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+            <div className="flex items-center gap-1.5">
+              <Building2 size={13} style={{ color: "var(--ink-faint)" }} />
+              <span className="eyebrow">Casos activos</span>
+            </div>
+            <p className="mono mt-1 text-xl font-semibold">{totalCasosActivos}</p>
+            <p className="text-[11px]" style={{ color: "var(--ink-faint)" }}>
+              de {totalCasos} en total
+            </p>
+          </div>
+          <div className="rounded-2xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+            <div className="flex items-center gap-1.5">
+              <Clock size={13} style={{ color: "var(--ink-faint)" }} />
+              <span className="eyebrow">En prueba</span>
+            </div>
+            <p className="mono mt-1 text-xl font-semibold">{enPrueba}</p>
+            <p className="text-[11px]" style={{ color: "var(--ink-faint)" }}>
+              14 días sin tarjeta
+            </p>
+          </div>
+          <div className="rounded-2xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+            <div className="flex items-center gap-1.5">
+              <Users size={13} style={{ color: "var(--ink-faint)" }} />
+              <span className="eyebrow">Suscripción activa</span>
+            </div>
+            <p className="mono mt-1 text-xl font-semibold">{activos}</p>
+            <p className="text-[11px]" style={{ color: "var(--ink-faint)" }}>
+              pagando
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <BrokerList brokers={brokers} casesCountByBroker={casesCountByBroker} />
         </div>
       </main>
     </div>

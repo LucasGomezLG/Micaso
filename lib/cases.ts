@@ -113,7 +113,11 @@ export async function listCasesForBroker(brokerId: string): Promise<Case[]> {
 
 export async function getCase(caseId: string): Promise<Case | null> {
   const cases = await getAllCases();
-  return cases[caseId] ?? null;
+  // hasOwnProperty en vez de cases[caseId]: caseId ahora también llega
+  // directo desde path params de rutas de superadmin (ver
+  // app/api/superadmin/cases/[id]/*) — con caseId === "__proto__" el
+  // acceso por corchetes devuelve Object.prototype heredado, no undefined.
+  return Object.prototype.hasOwnProperty.call(cases, caseId) ? cases[caseId] : null;
 }
 
 /** Único punto donde se verifica que un caso pertenezca a un corredor
@@ -147,12 +151,16 @@ async function updateCase(caseId: string, patch: Partial<Case>): Promise<Case | 
   await getAllCases();
   const result = await dbUpdate<Record<string, Case>>(CASES_KEY, (current) => {
     const cases = current ?? {};
+    // hasOwnProperty, no cases[caseId]: con caseId === "__proto__" el
+    // acceso por corchetes devuelve el Object.prototype heredado (un
+    // objeto "truthy") en vez de undefined, y este mutador terminaría
+    // creando/pisando un caso fantasma bajo esa clave.
+    if (!Object.prototype.hasOwnProperty.call(cases, caseId)) return cases;
     const existing = cases[caseId];
-    if (!existing) return cases;
     const updated: Case = { ...existing, ...patch, id: existing.id, updatedAt: new Date().toISOString() };
     return { ...cases, [caseId]: updated };
   });
-  return result[caseId] ?? null;
+  return Object.prototype.hasOwnProperty.call(result, caseId) ? result[caseId] : null;
 }
 
 export async function renameCase(caseId: string, brokerId: string, titulo: string): Promise<Case | null> {

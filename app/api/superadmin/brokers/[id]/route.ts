@@ -17,14 +17,20 @@ export async function PATCH(
   }
 
   const { id } = await ctx.params;
-  let body: { plan?: string; subscriptionStatus?: string; trialEndsAt?: string };
+  let body: { plan?: string; subscriptionStatus?: string; trialEndsAt?: string; nombreMarca?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
   }
 
-  const patch: Partial<{ plan: Plan; subscriptionStatus: SubscriptionStatus; trialEndsAt: string }> = {};
+  const patch: Partial<{ plan: Plan; subscriptionStatus: SubscriptionStatus; trialEndsAt: string; nombreMarca: string }> = {};
+  if (body.nombreMarca !== undefined) {
+    if (typeof body.nombreMarca !== "string" || !body.nombreMarca.trim()) {
+      return NextResponse.json({ error: "Falta el nombre" }, { status: 400 });
+    }
+    patch.nombreMarca = body.nombreMarca.trim();
+  }
   if (body.plan !== undefined) {
     if (!VALID_PLANS.includes(body.plan as Plan)) {
       return NextResponse.json({ error: "Plan inválido" }, { status: 400 });

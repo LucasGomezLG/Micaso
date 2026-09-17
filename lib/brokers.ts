@@ -62,7 +62,7 @@ export async function getOrCreateBroker(
   const id = resolveBrokerId(email);
   const brokers = await dbUpdate<Record<string, Broker>>(BROKERS_KEY, (current) => {
     const brokers = current ?? {};
-    if (brokers[id]) return brokers;
+    if (Object.prototype.hasOwnProperty.call(brokers, id)) return brokers;
     const now = new Date();
     const trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
     const broker: Broker = {
@@ -83,7 +83,11 @@ export async function getOrCreateBroker(
 
 export async function getBroker(id: string): Promise<Broker | null> {
   const brokers = await getAllBrokers();
-  return brokers[id] ?? null;
+  // hasOwnProperty en vez de brokers[id]: `id` puede venir directo de un
+  // path param (ver app/superadmin/brokers/[id]/page.tsx) — con
+  // id === "__proto__", el acceso por corchetes devuelve Object.prototype
+  // (heredado, no undefined) en vez de "no existe".
+  return Object.prototype.hasOwnProperty.call(brokers, id) ? brokers[id] : null;
 }
 
 /** Edita a mano lo que `getOrCreateBroker` trajo de Google —
@@ -97,11 +101,14 @@ export async function updateBroker(
 ): Promise<Broker | null> {
   const brokers = await dbUpdate<Record<string, Broker>>(BROKERS_KEY, (current) => {
     const brokers = current ?? {};
+    // hasOwnProperty, no brokers[id]: con id === "__proto__" el acceso
+    // por corchetes devuelve el Object.prototype heredado (un objeto
+    // "truthy") en vez de undefined — ver el mismo fix en lib/cases.ts.
+    if (!Object.prototype.hasOwnProperty.call(brokers, id)) return brokers;
     const existing = brokers[id];
-    if (!existing) return brokers;
     return { ...brokers, [id]: { ...normalizeBroker(existing), ...patch } };
   });
-  return brokers[id] ?? null;
+  return Object.prototype.hasOwnProperty.call(brokers, id) ? brokers[id] : null;
 }
 
 /** El corredor de la sesión actual (Auth.js) — null si no hay sesión.
