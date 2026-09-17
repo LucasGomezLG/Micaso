@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteHouse, updateHouse } from "@/lib/store";
 import { getCaseIdFromRequest } from "@/lib/session";
+import { notifyCaseClients } from "@/lib/push";
 
 export async function PATCH(
   request: NextRequest,
@@ -18,6 +19,17 @@ export async function PATCH(
   if (!house) {
     return NextResponse.json({ error: "No encontrada" }, { status: 404 });
   }
+
+  // Notificar a los clientes si se coordinó o actualizó una visita
+  if (patch.visitaFecha) {
+    const fechaFormatted = String(patch.visitaFecha).slice(0, 10);
+    notifyCaseClients(caseId, {
+      title: "Micaso · Visita agendada",
+      body: `Visita confirmada: ${house.title || "Propiedad"} (${fechaFormatted})`,
+      url: "/caso/agenda",
+    }).catch(() => {});
+  }
+
   return NextResponse.json({ house });
 }
 

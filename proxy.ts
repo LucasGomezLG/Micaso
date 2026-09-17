@@ -11,11 +11,16 @@ import { CASE_COOKIE } from "@/lib/session";
 // cargar sin sesión, en cualquier página, no solo en la landing —
 // /manifest.webmanifest por el mismo motivo (el navegador lo pide para
 // ofrecer "agregar a pantalla de inicio" incluso en /login, antes de
-// cualquier sesión). /api/auth es Auth.js (Google OAuth) — sus propias
-// rutas internas (signin, callback, signout, session) tienen que ser
-// públicas. /api/cron lo llama Vercel Cron, sin cookie de caso ni
-// sesión de Google — se protege con CRON_SECRET adentro de la propia
-// ruta (ver app/api/cron/archive-stale-cases/route.ts), no acá.
+// cualquier sesión). /sw.js (service worker de Web Push, ver lib/push.ts)
+// necesita lo mismo por una razón más estricta: `navigator.serviceWorker
+// .register()` pide el script directo, sin cookies previsibles ni
+// tolerancia a redirects — si esto devolviera el HTML de /login en vez
+// del JS, el registro del service worker fallaría en el navegador.
+// /api/auth es Auth.js (Google OAuth) — sus propias rutas internas
+// (signin, callback, signout, session) tienen que ser públicas.
+// /api/cron lo llama Vercel Cron, sin cookie de caso ni sesión de
+// Google — se protege con CRON_SECRET adentro de la propia ruta (ver
+// app/api/cron/archive-stale-cases/route.ts), no acá.
 const PUBLIC_PATHS = [
   "/",
   "/login",
@@ -34,6 +39,7 @@ const PUBLIC_PATHS = [
   "/opengraph-image",
   "/robots.txt",
   "/sitemap.xml",
+  "/sw.js",
 ];
 const BROKER_PREFIXES = ["/panel", "/api/panel"];
 const ADMIN_PREFIXES = ["/superadmin", "/api/superadmin"];

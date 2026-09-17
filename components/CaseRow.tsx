@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, Copy, LogIn, Pencil, Share2 } from "lucide-react";
+import { Bell, Check, Copy, LogIn, Pencil, Share2 } from "lucide-react";
 import { Case, CaseEstado, TipoCaso } from "@/lib/types";
 import type { CaseSummary } from "@/lib/store";
 import { daysAgoLabel } from "@/lib/format";
@@ -230,6 +230,20 @@ export default function CaseRow({
           <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: estadoColor.bg, color: estadoColor.fg }}>
             {ESTADO_LABEL[kase.estado]}
           </span>
+          {summary && summary.unreadCount > 0 && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
+              style={{
+                background: "color-mix(in srgb, var(--accent) 15%, var(--surface))",
+                color: "var(--accent)",
+                border: "1px solid color-mix(in srgb, var(--accent) 35%, transparent)",
+              }}
+              title={summary.unreadSummary ?? undefined}
+            >
+              <Bell size={11} className="shrink-0 fill-current animate-pulse" />
+              <span>{summary.unreadCount} novedad{summary.unreadCount === 1 ? "" : "es"}</span>
+            </span>
+          )}
         </div>
         {summary && (
           <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs" style={{ color: "var(--ink-muted)" }}>
@@ -243,6 +257,18 @@ export default function CaseRow({
               {summary.lastActivity ? `última actividad: ${daysAgoLabel(summary.lastActivity)}` : "sin propiedades cargadas"}
             </span>
           </p>
+        )}
+        {summary && summary.unreadSummary && (
+          <div
+            className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium"
+            style={{
+              background: "var(--accent-soft)",
+              color: "var(--accent)",
+              border: "1px solid var(--accent-soft-border)",
+            }}
+          >
+            <span className="truncate">🔔 {summary.unreadSummary}</span>
+          </div>
         )}
         <p className="mt-1 text-xs" style={{ color: "var(--ink-faint)" }}>
           Creado el {new Date(kase.createdAt).toLocaleDateString("es-AR")}

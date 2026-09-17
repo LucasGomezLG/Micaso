@@ -25,7 +25,6 @@ export default function ClientOnboardingModal({
   brokerImage,
   existingPeople = [],
   viewingAsBroker = false,
-  isDemo = false,
 }: ClientOnboardingModalProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);

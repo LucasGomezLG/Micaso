@@ -3,6 +3,8 @@ import { addHouse, getHouses } from "@/lib/store";
 import { House } from "@/lib/types";
 import { getCaseIdFromRequest } from "@/lib/session";
 import { getCase, updatePeople } from "@/lib/cases";
+import { getCurrentBroker } from "@/lib/brokers";
+import { notifyCaseClients } from "@/lib/push";
 
 export async function GET(request: NextRequest) {
   const caseId = getCaseIdFromRequest(request);
@@ -36,6 +38,16 @@ export async function POST(request: NextRequest) {
   const kase = await getCase(caseId);
   if (kase && !kase.people.includes(author)) {
     await updatePeople(caseId, [...kase.people, author]);
+  }
+
+  // Si la propiedad fue agregada por el asesor/corredor, notificar a los clientes vía Web Push
+  const broker = await getCurrentBroker();
+  if (broker) {
+    notifyCaseClients(caseId, {
+      title: "Micaso · Nueva propiedad",
+      body: `Tu asesor cargó: ${house.title || "Nueva propiedad"}`,
+      url: "/caso/casas",
+    }).catch(() => {});
   }
 
   return NextResponse.json({ house }, { status: 201 });

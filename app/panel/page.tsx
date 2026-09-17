@@ -68,7 +68,9 @@ export default async function PanelPage() {
   // (tope de 20 casos por plan, ver ARQUITECTURA.md sección 6). Se
   // calcula para todos los casos, no solo los activos, porque también
   // se muestra en la fila de un caso en solo lectura.
-  const summaryEntries = await Promise.all(cases.map(async (c) => [c.id, await getCaseSummary(c.id)] as const));
+  const summaryEntries = await Promise.all(
+    cases.map(async (c) => [c.id, await getCaseSummary(c.id, c.brokerLastSeenAt)] as const)
+  );
   const summaries = Object.fromEntries(summaryEntries);
 
   const { attentionItems, totalPropiedades, nextVisita } = buildAttentionData(activeCases, summaries);

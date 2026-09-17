@@ -202,6 +202,9 @@ export interface Case {
    * necesita el momento real del cierre, no el de la última edición.
    * `null` mientras el caso está `activo`. Ver ARQUITECTURA.md sección 9. */
   soloLecturaDesde: string | null;
+  /** Cuándo inspeccionó el corredor este caso por última vez — para calcular
+   * novedades y apagar el badge de cambios no leídos en el panel. */
+  brokerLastSeenAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

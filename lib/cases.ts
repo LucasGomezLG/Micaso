@@ -107,6 +107,7 @@ export async function createCase(
     password: encryptSecret(plainPassword),
     people: cleanedPeople,
     soloLecturaDesde: null,
+    brokerLastSeenAt: now,
     createdAt: now,
     updatedAt: now,
   };
@@ -194,6 +195,19 @@ export async function renameCase(caseId: string, brokerId: string, titulo: strin
   const kase = await getCaseForBroker(caseId, brokerId);
   if (!kase) return null;
   const updated = await updateCase(caseId, { titulo });
+  return updated ? decryptCase(updated) : null;
+}
+
+/** Marca el caso como visto por el corredor — actualiza `brokerLastSeenAt`
+ * para apagar el badge de novedades en el panel hasta que la familia
+ * vuelva a realizar acciones. */
+export async function markCaseSeenByBroker(caseId: string, brokerId?: string): Promise<Case | null> {
+  if (brokerId) {
+    const kase = await getCaseForBroker(caseId, brokerId);
+    if (!kase) return null;
+  }
+  const now = new Date().toISOString();
+  const updated = await updateCase(caseId, { brokerLastSeenAt: now });
   return updated ? decryptCase(updated) : null;
 }
 

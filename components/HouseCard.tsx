@@ -213,95 +213,127 @@ export default function HouseCard({
 
   return (
     <div
-      className="flex flex-col overflow-hidden rounded-2xl border transition-opacity"
+      className="flex flex-col overflow-hidden rounded-2xl border transition-all"
       style={{
         background: "var(--surface)",
-        borderColor: "var(--border)",
-        boxShadow: "var(--shadow-card)",
+        borderColor: house.highlighted ? "var(--gold)" : "var(--border)",
+        boxShadow: house.highlighted ? "0 0 0 1px var(--gold), var(--shadow-card)" : "var(--shadow-card)",
         opacity: isDiscarded ? 0.7 : 1,
       }}
     >
-      <a
-        href={house.url ?? undefined}
-        target={house.url ? "_blank" : undefined}
-        rel="noreferrer"
-        className="relative block aspect-[4/3] w-full"
-        style={{ background: "var(--accent-soft)" }}
-      >
-        {showImage ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={proxiedImage(currentImage)!}
-              alt={house.title}
-              onError={() => setImgFailed(true)}
-              className="h-full w-full object-cover"
-            />
-            {house.images.length > 1 && (
-              <>
+      <div className="relative aspect-[4/3] w-full overflow-hidden" style={{ background: "var(--accent-soft)" }}>
+        <a
+          href={house.url ?? undefined}
+          target={house.url ? "_blank" : undefined}
+          rel="noreferrer"
+          className="block h-full w-full"
+        >
+          {showImage ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={proxiedImage(currentImage)!}
+                alt={house.title}
+                onError={() => setImgFailed(true)}
+                className="h-full w-full object-cover"
+              />
+              {house.images.length > 1 && (
+                <>
+                  <button
+                    title="Foto anterior"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setImgFailed(false);
+                      setPhotoIndex((i) => (i - 1 + house.images.length) % house.images.length);
+                    }}
+                    className="absolute left-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full"
+                    style={{ background: "rgba(0,0,0,0.45)", color: "#fff" }}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    title="Foto siguiente"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setImgFailed(false);
+                      setPhotoIndex((i) => (i + 1) % house.images.length);
+                    }}
+                    className="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full"
+                    style={{ background: "rgba(0,0,0,0.45)", color: "#fff" }}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                  <div className="absolute bottom-1.5 left-1/2 flex -translate-x-1/2 gap-1">
+                    {house.images.map((_, i) => (
+                      <span
+                        key={i}
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ background: i === photoIndex ? "#fff" : "rgba(255,255,255,0.5)" }}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center gap-2">
+              <HouseIcon />
+              {house.url && (
                 <button
-                  title="Foto anterior"
                   onClick={(e) => {
                     e.preventDefault();
-                    setImgFailed(false);
-                    setPhotoIndex((i) => (i - 1 + house.images.length) % house.images.length);
+                    refreshFromSource();
                   }}
-                  className="absolute left-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full"
-                  style={{ background: "rgba(0,0,0,0.45)", color: "#fff" }}
+                  disabled={refreshing}
+                  className="rounded-full px-2.5 py-1 text-xs font-medium"
+                  style={{ background: "var(--surface)", color: "var(--accent)" }}
                 >
-                  <ChevronLeft size={16} />
+                  {refreshing ? "buscando…" : "buscar imagen"}
                 </button>
-                <button
-                  title="Foto siguiente"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setImgFailed(false);
-                    setPhotoIndex((i) => (i + 1) % house.images.length);
-                  }}
-                  className="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full"
-                  style={{ background: "rgba(0,0,0,0.45)", color: "#fff" }}
-                >
-                  <ChevronRight size={16} />
-                </button>
-                <div className="absolute bottom-1.5 left-1/2 flex -translate-x-1/2 gap-1">
-                  {house.images.map((_, i) => (
-                    <span
-                      key={i}
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{ background: i === photoIndex ? "#fff" : "rgba(255,255,255,0.5)" }}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-          </>
-        ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-2">
-            <HouseIcon />
-            {house.url && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  refreshFromSource();
-                }}
-                disabled={refreshing}
-                className="rounded-full px-2.5 py-1 text-xs font-medium"
-                style={{ background: "var(--surface)", color: "var(--accent)" }}
-              >
-                {refreshing ? "buscando…" : "buscar imagen"}
-              </button>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </a>
+
+        {/* Botón flotante de Favorito sobre la foto */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onChange(house.id, { highlighted: !house.highlighted });
+          }}
+          aria-label={house.highlighted ? "Quitar de favoritas" : "Marcar como favorita"}
+          title={house.highlighted ? "Quitar de favoritas" : "Marcar como favorita"}
+          className="absolute right-2.5 top-2.5 z-10 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur-md transition-all active:scale-90 hover:scale-110 shadow-sm"
+          style={{
+            background: house.highlighted ? "rgba(20, 24, 30, 0.78)" : "rgba(20, 24, 30, 0.45)",
+            color: house.highlighted ? "var(--gold)" : "#ffffff",
+            border: house.highlighted ? "1.5px solid var(--gold)" : "1px solid rgba(255, 255, 255, 0.35)",
+          }}
+        >
+          <Star
+            size={16}
+            fill={house.highlighted ? "var(--gold)" : "none"}
+            stroke={house.highlighted ? "var(--gold)" : "currentColor"}
+            className={house.highlighted ? "drop-shadow-[0_0_6px_rgba(234,179,8,0.6)]" : ""}
+          />
+        </button>
+
+        {/* Badge Favorita en la esquina superior izquierda */}
         {house.highlighted && (
           <span
-            className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold"
-            style={{ background: "var(--gold-soft)", color: "var(--gold)" }}
+            className="pointer-events-none absolute left-2.5 top-2.5 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold backdrop-blur-md"
+            style={{
+              background: "rgba(20, 24, 30, 0.78)",
+              color: "var(--gold)",
+              border: "1px solid color-mix(in srgb, var(--gold) 40%, transparent)",
+            }}
           >
-            <Star size={12} fill="currentColor" /> destacada
+            <Star size={10} fill="currentColor" /> Favorita
           </span>
         )}
-      </a>
+      </div>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
@@ -606,10 +638,14 @@ export default function HouseCard({
               <Pencil size={14} />
             </button>
             <button
-              title={house.highlighted ? "Quitar destacada" : "Destacar"}
+              title={house.highlighted ? "Quitar de favoritas" : "Marcar como favorita"}
               onClick={() => onChange(house.id, { highlighted: !house.highlighted })}
-              className="flex items-center justify-center rounded-lg border px-2 py-1.5"
-              style={{ borderColor: "var(--border)", color: house.highlighted ? "var(--gold)" : undefined }}
+              className="flex items-center justify-center rounded-lg border px-2 py-1.5 transition-colors"
+              style={{
+                borderColor: house.highlighted ? "var(--gold)" : "var(--border)",
+                color: house.highlighted ? "var(--gold)" : undefined,
+                background: house.highlighted ? "var(--gold-soft)" : undefined,
+              }}
             >
               <Star size={14} fill={house.highlighted ? "currentColor" : "none"} />
             </button>

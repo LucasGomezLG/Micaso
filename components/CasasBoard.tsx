@@ -11,7 +11,7 @@ import HouseCard from "@/components/HouseCard";
 import AddHouseModal from "@/components/AddHouseModal";
 import Select from "@/components/Select";
 
-export type StageId = "todas" | "por_revisar" | "visitas" | "finalistas" | "descartadas" | "borrada";
+export type StageId = "todas" | "favoritas" | "por_revisar" | "visitas" | "finalistas" | "descartadas" | "borrada";
 
 interface StageDef {
   id: StageId;
@@ -24,6 +24,11 @@ const STAGES: StageDef[] = [
   {
     id: "todas",
     label: "Todas",
+    statuses: [],
+  },
+  {
+    id: "favoritas",
+    label: "Favoritas",
     statuses: [],
   },
   {
@@ -66,6 +71,9 @@ const STAGES: StageDef[] = [
 ];
 
 function getInitialState(initialStatus: string): { stage: StageId; subStatus: "todas" | HouseStatus } {
+  if (initialStatus === "favoritas" || initialStatus === "destacadas") {
+    return { stage: "favoritas", subStatus: "todas" };
+  }
   if (initialStatus === "borrada") {
     return { stage: "borrada", subStatus: "todas" };
   }
@@ -113,6 +121,7 @@ export default function CasasBoard({
 
     const byStage: Record<StageId, number> = {
       todas: activeHouses.length,
+      favoritas: destacadasCount,
       por_revisar: (byStatus.pendiente || 0) + (byStatus.duda_visitar || 0),
       visitas: (byStatus.a_coordinar || 0) + (byStatus.coordinada || 0),
       finalistas: (byStatus.gusto || 0) + (byStatus.oferta || 0) + (byStatus.comprada || 0),
@@ -121,12 +130,14 @@ export default function CasasBoard({
     };
 
     return { byStatus, byStage };
-  }, [houses, activeHouses]);
+  }, [houses, activeHouses, destacadasCount]);
 
   const visible = useMemo(() => {
     let list: House[];
     if (stage === "todas") {
       list = activeHouses;
+    } else if (stage === "favoritas") {
+      list = activeHouses.filter((h) => h.highlighted);
     } else if (stage === "borrada") {
       list = houses.filter((h) => h.status === "borrada");
     } else {
@@ -213,10 +224,14 @@ export default function CasasBoard({
           {destacadasCount > 0 && (
             <Link
               href="/caso/casas/comparar"
-              className="inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium"
-              style={{ borderColor: "var(--border)", color: "var(--ink-muted)" }}
+              className="inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-colors"
+              style={{
+                borderColor: "color-mix(in srgb, var(--gold) 50%, var(--border))",
+                color: "var(--gold)",
+                background: "var(--gold-soft)",
+              }}
             >
-              <Star size={15} /> Comparar destacadas ({destacadasCount})
+              <Star size={15} fill="currentColor" /> Comparar favoritas ({destacadasCount})
             </Link>
           )}
           <button
@@ -242,20 +257,47 @@ export default function CasasBoard({
                   onClick={() => handleSelectStage(s.id)}
                   className="inline-flex shrink-0 items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition-all"
                   style={{
-                    background: active ? "var(--accent)" : "var(--surface)",
-                    color: active ? "var(--accent-ink)" : "var(--ink-muted)",
-                    border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                    background: active
+                      ? s.id === "favoritas"
+                        ? "var(--gold)"
+                        : "var(--accent)"
+                      : "var(--surface)",
+                    color: active
+                      ? s.id === "favoritas"
+                        ? "#12181f"
+                        : "var(--accent-ink)"
+                      : s.id === "favoritas" && count > 0
+                        ? "var(--gold)"
+                        : "var(--ink-muted)",
+                    border: `1px solid ${
+                      active
+                        ? s.id === "favoritas"
+                          ? "var(--gold)"
+                          : "var(--accent)"
+                        : s.id === "favoritas" && count > 0
+                          ? "color-mix(in srgb, var(--gold) 45%, var(--border))"
+                          : "var(--border)"
+                    }`,
                     boxShadow: active ? "0 2px 8px -2px rgba(0,0,0,0.14)" : "none",
                   }}
                 >
-                  <span>{s.label}</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    {s.id === "favoritas" && <Star size={13} fill={active || count > 0 ? "currentColor" : "none"} />}
+                    {s.label}
+                  </span>
                   <span
                     className="rounded-full px-1.5 py-0.5 text-xs font-semibold"
                     style={{
                       background: active
-                        ? "color-mix(in srgb, var(--accent-ink) 18%, transparent)"
+                        ? s.id === "favoritas"
+                          ? "rgba(18, 24, 31, 0.2)"
+                          : "color-mix(in srgb, var(--accent-ink) 18%, transparent)"
                         : "color-mix(in srgb, var(--ink) 8%, transparent)",
-                      color: active ? "var(--accent-ink)" : "var(--ink-muted)",
+                      color: active
+                        ? s.id === "favoritas"
+                          ? "#12181f"
+                          : "var(--accent-ink)"
+                        : "var(--ink-muted)",
                     }}
                   >
                     {count}
@@ -400,9 +442,30 @@ export default function CasasBoard({
       )}
 
       {visible.length === 0 ? (
-        <p className="py-12 text-center text-sm" style={{ color: "var(--ink-faint)" }}>
-          {searchQuery ? "No se encontraron propiedades para tu búsqueda." : "No hay propiedades en esta vista todavía."}
-        </p>
+        <div className="py-12 text-center text-sm" style={{ color: "var(--ink-faint)" }}>
+          {searchQuery ? (
+            <p>No se encontraron propiedades para tu búsqueda.</p>
+          ) : stage === "favoritas" ? (
+            <div className="flex flex-col items-center gap-2">
+              <span className="text-2xl">⭐</span>
+              <p className="font-medium text-base" style={{ color: "var(--ink)" }}>
+                Todavía no tenés casas favoritas
+              </p>
+              <p className="max-w-md text-xs" style={{ color: "var(--ink-muted)" }}>
+                Tocá la estrella en la esquina de cualquier propiedad para guardarla en tus favoritas y compararla fácilmente con el resto.
+              </p>
+              <button
+                onClick={() => handleSelectStage("todas")}
+                className="mt-2 rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                style={{ borderColor: "var(--border)", color: "var(--accent)" }}
+              >
+                Ver todas las casas
+              </button>
+            </div>
+          ) : (
+            <p>No hay propiedades en esta vista todavía.</p>
+          )}
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((house) => (

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentBroker } from "@/lib/brokers";
-import { getCaseForBroker } from "@/lib/cases";
+import { getCaseForBroker, markCaseSeenByBroker } from "@/lib/cases";
 import { CASE_COOKIE } from "@/lib/session";
 
 /** Le da al corredor la misma cookie de sesión que usa la familia, para
@@ -25,6 +25,9 @@ export async function POST(
   if (kase.estado === "archivado") {
     return NextResponse.json({ error: "Este caso está archivado" }, { status: 400 });
   }
+
+  // Al entrar al caso, marca las novedades como vistas por el corredor
+  await markCaseSeenByBroker(id, broker.id);
 
   const res = NextResponse.json({ ok: true });
   res.cookies.set(CASE_COOKIE, kase.id, {

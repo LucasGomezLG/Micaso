@@ -294,12 +294,16 @@ export interface CaseSummary {
   overdueAccion: { text: string; fecha: string } | null;
   /** ISO datetime de la visita coordinada futura más próxima, o null. */
   nextVisita: string | null;
+  /** Cantidad de novedades (casas agregadas, cambios o comentarios) no vistas por el corredor. */
+  unreadCount: number;
+  /** Resumen textual amigable de las novedades. */
+  unreadSummary: string | null;
 }
 
 /** Resumen de un caso para el panel del corredor (lista de casos y
  * dashboard, ver app/panel/page.tsx) — pensado para leerse una vez por
  * carga de página, no para reaccionar en vivo a cambios de otro caso. */
-export async function getCaseSummary(caseId: string): Promise<CaseSummary> {
+export async function getCaseSummary(caseId: string, brokerLastSeenAt?: string | null): Promise<CaseSummary> {
   const houses = (await getHouses(caseId)).filter((h) => h.status !== "borrada");
   const pendientes = houses.filter((h) => h.status === "pendiente").length;
   const destacadas = houses.filter((h) => h.highlighted).length;
@@ -319,6 +323,47 @@ export async function getCaseSummary(caseId: string): Promise<CaseSummary> {
     .filter((h): h is House & { visitaFecha: string } => Boolean(h.visitaFecha && h.visitaFecha > nowIso))
     .sort((a, b) => (a.visitaFecha < b.visitaFecha ? -1 : 1))[0];
 
+  // Cálculo de novedades no vistas por el corredor
+  let unreadCount = 0;
+  let newHousesCount = 0;
+  let statusGustoCount = 0;
+  let newCommentsCount = 0;
+
+  if (brokerLastSeenAt) {
+    for (const h of houses) {
+      const isNew = h.addedAt > brokerLastSeenAt;
+      const isUpdated = h.updatedAt > brokerLastSeenAt;
+      if (isNew) {
+        unreadCount++;
+        newHousesCount++;
+      } else if (isUpdated) {
+        unreadCount++;
+        if (h.status === "gusto") statusGustoCount++;
+      }
+      for (const c of h.comments) {
+        if (c.createdAt > brokerLastSeenAt) {
+          unreadCount++;
+          newCommentsCount++;
+        }
+      }
+    }
+  }
+
+  let unreadSummary: string | null = null;
+  if (unreadCount > 0) {
+    const parts: string[] = [];
+    if (newHousesCount > 0) {
+      parts.push(`${newHousesCount} casa${newHousesCount === 1 ? "" : "s"} agregada${newHousesCount === 1 ? "" : "s"}`);
+    }
+    if (statusGustoCount > 0) {
+      parts.push(`marcó "Nos gustó" en ${statusGustoCount}`);
+    }
+    if (newCommentsCount > 0) {
+      parts.push(`${newCommentsCount} nota${newCommentsCount === 1 ? "" : "s"} nueva${newCommentsCount === 1 ? "" : "s"}`);
+    }
+    unreadSummary = parts.length > 0 ? parts.join(" · ") : `${unreadCount} novedades`;
+  }
+
   return {
     pendientes,
     destacadas,
@@ -326,6 +371,8 @@ export async function getCaseSummary(caseId: string): Promise<CaseSummary> {
     lastActivity,
     overdueAccion: overdue ? { text: overdue.proximaAccion, fecha: overdue.proximaAccionFecha } : null,
     nextVisita: upcoming ? upcoming.visitaFecha : null,
+    unreadCount,
+    unreadSummary,
   };
 }
 

@@ -10,6 +10,7 @@ import BriefEditor from "@/components/BriefEditor";
 import PeopleEditor from "@/components/PeopleEditor";
 import VisitaCoordinadaBadge from "@/components/VisitaCoordinadaBadge";
 import EmptyState from "@/components/EmptyState";
+import PushNotificationPrompt from "@/components/PushNotificationPrompt";
 import { House, HouseStatus, TipoCaso } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -89,6 +90,8 @@ export default async function HomePage() {
           <PeopleEditor initialPeople={people} />
         </div>
       </section>
+
+      <PushNotificationPrompt />
 
       {upcoming.length > 0 && (
         <section>

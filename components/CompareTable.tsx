@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Calendar, Check, Pin, X } from "lucide-react";
+import { Calendar, Check, Pin, Star, X } from "lucide-react";
 import { House, LoanInfo } from "@/lib/types";
 import { formatDate, formatDateTime, formatUsd, proxiedImage } from "@/lib/format";
 import { cashNeededRange, pricePerM2 } from "@/lib/mortgage";
@@ -147,27 +147,177 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
   ];
 
   return (
-    <div className="overflow-x-auto rounded-2xl border" style={{ borderColor: "var(--border)" }}>
-      <table className="w-full border-collapse" style={{ background: "var(--surface)" }}>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={i}>
-              <th
-                scope="row"
-                className={cell("sticky left-0 text-left font-medium")}
-                style={{ background: "var(--paper)", color: "var(--ink-muted)", borderColor: "var(--border)" }}
+    <div className="flex flex-col gap-4">
+      {/* Vista Móvil: Tarjetas comparativas con scroll horizontal snap */}
+      <div className="flex flex-col gap-2.5 sm:hidden">
+        <p className="text-xs font-medium" style={{ color: "var(--ink-muted)" }}>
+          Deslizá horizontalmente para comparar ({houses.length} favoritas) →
+        </p>
+        <div className="-mx-4 flex gap-3.5 overflow-x-auto px-4 pb-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+          {houses.map((h, index) => {
+            const v = pricePerM2(h.priceUsd, h.superficieM2);
+            const cash = h.priceUsd ? cashNeededRange(h.priceUsd, loan.hasCredit ? loan.bankMaxUsd : 0) : null;
+            const fit = cash
+              ? cash.high <= loan.ownFundsMaxUsd
+                ? "gusto"
+                : cash.low <= loan.ownFundsMaxUsd
+                  ? "pendiente"
+                  : "descartada"
+              : null;
+
+            return (
+              <div
+                key={h.id}
+                className="flex w-[82vw] max-w-[320px] shrink-0 snap-center flex-col overflow-hidden rounded-2xl border text-sm"
+                style={{
+                  background: "var(--surface)",
+                  borderColor: "var(--border)",
+                  boxShadow: "var(--shadow-card)",
+                }}
               >
-                {row.label}
-              </th>
-              {houses.map((h) => (
-                <td key={h.id} className={cell()} style={{ borderColor: "var(--border)", color: "var(--ink)" }}>
-                  {row.render(h)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                {/* Imagen con badge de orden y botón para quitar de favoritas */}
+                <div className="relative aspect-[16/10] w-full overflow-hidden" style={{ background: "var(--accent-soft)" }}>
+                  {h.images[0] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={proxiedImage(h.images[0])!} alt={h.title} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xs" style={{ color: "var(--ink-faint)" }}>
+                      Sin imagen
+                    </div>
+                  )}
+                  <span
+                    className="absolute left-2.5 top-2.5 rounded-full px-2 py-0.5 text-[10px] font-bold backdrop-blur-md"
+                    style={{ background: "rgba(18, 24, 31, 0.75)", color: "#fff" }}
+                  >
+                    {index + 1} de {houses.length}
+                  </span>
+                  <button
+                    onClick={() => unstar(h.id)}
+                    title="Quitar de favoritas"
+                    aria-label="Quitar de favoritas"
+                    className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-md transition-transform active:scale-90"
+                    style={{
+                      background: "rgba(18, 24, 31, 0.75)",
+                      color: "var(--gold)",
+                      border: "1px solid var(--gold)",
+                    }}
+                  >
+                    <Star size={14} fill="var(--gold)" />
+                  </button>
+                </div>
+
+                <div className="flex flex-1 flex-col gap-3 p-4">
+                  {/* Título */}
+                  <a
+                    href={h.url ?? "/caso/casas"}
+                    target={h.url ? "_blank" : undefined}
+                    rel="noreferrer"
+                    className="line-clamp-2 font-semibold leading-snug"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    {h.title}
+                  </a>
+
+                  <div className="flex items-center justify-between">
+                    <StatusBadge status={h.status} />
+                    <span className="text-xs" style={{ color: "var(--ink-muted)" }}>
+                      {h.zone || "Sin zona"}
+                    </span>
+                  </div>
+
+                  {/* Datos clave de comparación */}
+                  <div
+                    className="grid grid-cols-2 gap-2 rounded-xl border p-2.5"
+                    style={{ borderColor: "var(--border)", background: "var(--paper)" }}
+                  >
+                    <div>
+                      <p className="eyebrow text-[10px]">Precio</p>
+                      <p className="mono font-bold text-sm">{formatUsd(h.priceUsd)}</p>
+                      {v && <p className="mono text-[10px]" style={{ color: "var(--ink-faint)" }}>US$ {v.toLocaleString("es-AR")}/m²</p>}
+                    </div>
+                    <div>
+                      <p className="eyebrow text-[10px]">Superficie / Amb</p>
+                      <p className="font-medium text-xs">
+                        {h.superficieM2 ? `${h.superficieM2} m²` : "—"} · {h.ambientes ? `${h.ambientes} amb` : "—"}
+                      </p>
+                      <p className="text-[11px]" style={{ color: "var(--ink-muted)" }}>
+                        Cochera: {h.cochera === true ? "Sí" : h.cochera === false ? "No" : "Sin dato"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Plata de bolsillo */}
+                  {cash && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span style={{ color: "var(--ink-muted)" }}>Plata necesaria:</span>
+                      <span
+                        className="mono rounded-lg px-2 py-0.5 font-semibold"
+                        style={{ background: `var(--status-${fit}-bg)`, color: `var(--status-${fit})` }}
+                      >
+                        {formatUsd(cash.low)}–{formatUsd(cash.high)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Próxima visita o acción */}
+                  {(h.visitaFecha || h.proximaAccion) && (
+                    <div
+                      className="mt-auto flex flex-col gap-1 rounded-xl p-2.5 text-xs"
+                      style={{ background: "var(--accent-soft)", color: "var(--ink)" }}
+                    >
+                      {h.visitaFecha && (
+                        <span className="flex items-center gap-1.5 font-medium">
+                          <Calendar size={13} style={{ color: "var(--accent)" }} />
+                          Visita: {formatDateTime(h.visitaFecha)}
+                        </span>
+                      )}
+                      {h.proximaAccion && (
+                        <span className="flex items-center gap-1.5" style={{ color: "var(--ink-muted)" }}>
+                          <Pin size={12} /> {h.proximaAccion}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Botón quitar de favoritas */}
+                  <button
+                    type="button"
+                    onClick={() => unstar(h.id)}
+                    className="mt-1 rounded-xl border py-1.5 text-xs font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                    style={{ borderColor: "var(--border)", color: "var(--ink-muted)" }}
+                  >
+                    Quitar de favoritas
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Vista Desktop: Tabla comparativa tabular */}
+      <div className="hidden overflow-x-auto rounded-2xl border sm:block" style={{ borderColor: "var(--border)" }}>
+        <table className="w-full border-collapse" style={{ background: "var(--surface)" }}>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i}>
+                <th
+                  scope="row"
+                  className={cell("sticky left-0 text-left font-medium")}
+                  style={{ background: "var(--paper)", color: "var(--ink-muted)", borderColor: "var(--border)" }}
+                >
+                  {row.label}
+                </th>
+                {houses.map((h) => (
+                  <td key={h.id} className={cell()} style={{ borderColor: "var(--border)", color: "var(--ink)" }}>
+                    {row.render(h)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
