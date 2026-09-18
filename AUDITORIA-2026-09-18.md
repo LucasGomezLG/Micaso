@@ -1,0 +1,563 @@
+# Informe de Auditoría de Arquitectura y Seguridad — Micaso
+
+**Fecha de la Auditoría:** 18 de septiembre de 2026  
+**Auditor:** Arquitecto de Software Principal & Auditor de Seguridad Senior  
+**Repositorio / Proyecto:** Micaso (`D:\Micaso`)  
+**Versión / Commit:** `main` (después de Lote 3 de optimizaciones)  
+**Stack Tecnológico Auditado:** Next.js 16.3.5 (App Router), React 19.2.8, TypeScript 5, Tailwind CSS v4, Upstash Redis, Auth.js (v5 beta), Mercado Pago SDK, Serwist (PWA), Vercel Blob.
+
+---
+
+## 1. Alcance y Componentes Auditados
+
+Se realizó una revisión estática y dinámica exhaustiva del código fuente, cubriendo las 5 áreas requeridas:
+
+1. **Perímetro de Seguridad, Autenticación y Control de Acceso:**
+   - Proxy perimetral de rutas (`proxy.ts`).
+   - Autenticación federada Auth.js (`auth.ts`, `app/api/auth/[...nextauth]/route.ts`).
+   - Gestión de sesiones y cookies de clientes familiares (`lib/session.ts`, `app/api/login/route.ts`, `app/api/demo-access/route.ts`).
+   - Flujos de impersonación y regeneración de credenciales (`app/api/panel/cases/[id]/impersonate/route.ts`).
+
+2. **Capa de Persistencia, Concurrencia y Datos:**
+   - Abstracción de acceso a base de datos y locks (`lib/db.ts`).
+   - Mutaciones de entidades centrales (`lib/cases.ts`, `lib/store.ts`, `lib/brokers.ts`).
+   - Rutas de backup y superadministración (`lib/backup.ts`, `app/api/superadmin/*`).
+
+3. **Seguridad en Entrada de Datos y APIs Externas (OWASP Top 10):**
+   - Motor de extracción de datos y prevención de SSRF (`lib/url-safety.ts`, `app/api/scrape/route.ts`, `app/api/image/route.ts`).
+   - Webhooks de pagos e integridad criptográfica (`app/api/mercadopago/webhook/route.ts`, `lib/mercadopago.ts`).
+   - Protección contra fuerza bruta y rate limiting (`lib/rateLimit.ts`).
+   - Carga y procesamiento de archivos multimedia (`lib/photoUpload.ts`, `app/api/houses/photo/route.ts`).
+
+4. **Rendimiento, I/O y Concurrencia:**
+   - Llamadas sincrónicas a APIs de terceros (`lib/zoneCoords.ts` con Nominatim OpenStreetMap).
+   - Complejidad temporal y dimensional de las estructuras de almacenamiento en Redis.
+   - Paginación y particionamiento de tenants.
+
+5. **Observabilidad, Resiliencia y Calidad de Código:**
+   - Tratamiento de excepciones, códigos de respuesta HTTP y contratos de error.
+   - Gestión de Web Push y saneamiento de suscripciones caducas (`lib/push.ts`).
+   - Cumplimiento de principios SOLID, tipificación estricta en TypeScript y reducción de deuda técnica.
+
+---
+
+## 2. Resumen Ejecutivo
+
+El proyecto **Micaso** presenta una base funcional moderna y de rápida iteración construida sobre Next.js 16 (App Router), React 19 y Upstash Redis. La arquitectura resuelve con destreza el desacoplamiento de la antigua herramienta personal mono-caso (`D:\Casa`) hacia una estructura multi-inquilino para corredores inmobiliarios. Se aprecian decisiones encomiables de ingeniería como el aislamiento de datos por prefijos Redis (`case:{id}:*`), el cifrado reversible AES-256-GCM para contraseñas de casos y la centralización perimetral en `proxy.ts`.
+
+No obstante, la auditoría profunda identificó **vulnerabilidades críticas de seguridad y fallas de integridad transaccional** que impiden que el sistema opere en entornos de producción corporativa sin riesgo severo. El hallazgo más crítico consiste en la emisión de la cookie de sesión del cliente (`case_id`) en texto plano sin firma digital HMAC ni token criptográfico de sesión; esto permite que cualquier atacante que conozca o adivine un identificador suplante la identidad del usuario y obtenga acceso inmediato de lectura y escritura a toda la información privada de la familia (IDOR trivial). Adicionalmente, el motor de scraping contiene un filtro SSRF vulnerable a DNS Rebinding y notaciones IP alternas, y la función central `dbUpdate` en Redis carece de atomicidad, provocando pérdida silenciosa de información ante mutaciones concurrentes.
+
+A nivel de escalabilidad y rendimiento, el almacenamiento monolítico de todos los casos y corredores en claves JSON globales (`cases` y `brokers`) introduce una degradación algorítmica $O(N)$ en memoria y ancho de banda en cada ciclo de vida HTTP. Se detallan a continuación los hallazgos categorizados por severidad y el plan de remediación técnica inmediata.
+
+---
+
+## 3. Matriz de Hallazgos
+
+| ID | Severidad | Área | Hallazgo | Módulos Afectados |
+| :--- | :--- | :--- | :--- | :--- |
+| **SEC-01** | 🔴 Crítica | Seguridad (OWASP A01 / A07) | Suplantación de identidad e IDOR por cookie de sesión `case_id` en texto plano sin firma HMAC ni token criptográfico. | `lib/session.ts`<br>`proxy.ts`<br>`app/api/login/route.ts` |
+| **SEC-02** | 🔴 Crítica | Seguridad (OWASP A10) | Vulnerabilidad de SSRF y evasión de filtros por DNS Rebinding hacia IPs privadas y metadatos de nube en scraping y proxy de imágenes. | `lib/url-safety.ts`<br>`app/api/scrape/route.ts`<br>`app/api/image/route.ts` |
+| **DAT-01** | 🔴 Crítica | Concurrencia e Integridad | Pérdida silenciosa de datos por condición de carrera en `dbUpdate` (Upstash Redis) al no ser una operación atómica (`GET` + `SET`). | `lib/db.ts`<br>`lib/store.ts`<br>`lib/cases.ts` |
+| **ARC-01** | 🟠 Alta | Arquitectura y Rendimiento | Cuello de botella $O(N)$ y anti-patrón de almacenamiento masivo en claves JSON monolíticas globales (`cases` y `brokers`). | `lib/cases.ts`<br>`lib/brokers.ts` |
+| **SEC-03** | 🟠 Alta | Seguridad (OWASP A02 / A01) | Bypass de autenticación por omisión voluntaria de headers en Webhook de Mercado Pago y comparación no segura contra ataques de timing (`!==`). | `app/api/mercadopago/webhook/route.ts` |
+| **PER-01** | 🟠 Alta | Rendimiento y Resiliencia | Bloqueo sincrónico del ciclo HTTP por geocodificación externa (Nominatim OSM) sin caché, sin timeout estricto y con riesgo de IP-ban. | `lib/zoneCoords.ts`<br>`app/api/houses/route.ts`<br>`app/api/houses/[id]/route.ts` |
+| **SEC-04** | 🟠 Alta | Seguridad (OWASP A04) | Falsificación de IP (`X-Forwarded-For`) para evadir el Rate Limiting y ausencia de cuotas en proxies pesados (`/api/scrape`, `/api/image`). | `lib/rateLimit.ts`<br>`app/api/login/route.ts`<br>`app/api/scrape/route.ts` |
+| **COD-01** | 🟡 Media | Calidad de Código | Falta de validación estricta de esquemas en tiempo de ejecución (Zod) y riesgo de asignación masiva de campos no tipados. | `lib/store.ts`<br>`app/api/houses/[id]/route.ts` |
+| **OBS-01** | 🟡 Media | Manejo de Errores y Logs | Retorno anómalo de HTTP 200 en respuestas de error de API y supresión ciega de excepciones (`catch(() => {})`) en Web Push. | `app/api/scrape/route.ts`<br>`lib/push.ts`<br>`app/api/houses/route.ts` |
+| **ARC-02** | 🔵 Baja | Mantenibilidad | Acoplamiento excesivo en controladores de Next.js sin segregación formal de una capa de servicios de dominio. | `app/api/panel/cases/route.ts`<br>`app/api/superadmin/cases/[id]/route.ts` |
+
+---
+
+## 4. Análisis Detallado y Soluciones (Hallazgos Críticos y Altos)
+
+---
+
+### 🔴 SEC-01: Suplantación de identidad e IDOR por cookie `case_id` en texto plano
+
+#### Descripción del Problema
+En `app/api/login/route.ts` (línea 42), tras validar las credenciales del caso, el servidor establece la cookie de sesión con el UUID en texto plano:
+```typescript
+res.cookies.set(CASE_COOKIE, kase.id, { httpOnly: true, ... });
+```
+Posteriormente, en `proxy.ts` (línea 119) y en `lib/session.ts` (líneas 13-25), el sistema simplemente extrae `request.cookies.get("case_id")?.value` y consulta directamente la base de datos sin validar un HMAC, firma o token temporal.
+
+#### Impacto Potencial
+**CVSS 9.1 (Crítico).** Insecure Direct Object Reference (IDOR). Un atacante que conozca el UUID de un caso (leakeado en un enlace de WhatsApp, referer, historial del navegador o por conocimiento previo del identificador `"demo"`) puede setear manualmente `case_id=<uuid>` en su navegador o cliente HTTP y vulnerar instantáneamente la sesión, accediendo y modificando toda la búsqueda de la familia sin haber ingresado nunca la contraseña.
+
+#### Solución Recomendada
+Firmar criptográficamente el token de sesión con HMAC-SHA256 y marca de tiempo (`issuedAt`) para forzar vencimiento y prevenir manipulación:
+
+```typescript
+// lib/sessionToken.ts
+import crypto from "crypto";
+
+const SESSION_SECRET = process.env.CASE_SECRET_KEY || process.env.AUTH_SECRET;
+if (!SESSION_SECRET) {
+  throw new Error("Falta SESSION_SECRET o CASE_SECRET_KEY en las variables de entorno.");
+}
+
+const MAX_SESSION_AGE_MS = 90 * 24 * 60 * 60 * 1000; // 90 días
+
+export function createSessionToken(caseId: string): string {
+  const issuedAt = Date.now();
+  const payload = `${caseId}:${issuedAt}`;
+  const hmac = crypto.createHmac("sha256", SESSION_SECRET);
+  hmac.update(payload);
+  const signature = hmac.digest("base64url");
+  return `${caseId}.${issuedAt}.${signature}`;
+}
+
+export function verifySessionToken(token: string): string | null {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+
+  const [caseId, issuedAtStr, signature] = parts;
+  const issuedAt = Number(issuedAtStr);
+  if (Number.isNaN(issuedAt) || Date.now() - issuedAt > MAX_SESSION_AGE_MS) {
+    return null; // Token expirado
+  }
+
+  const payload = `${caseId}:${issuedAt}`;
+  const expectedHmac = crypto.createHmac("sha256", SESSION_SECRET);
+  expectedHmac.update(payload);
+  const expectedSignature = expectedHmac.digest("base64url");
+
+  const sigBuf = Buffer.from(signature, "utf8");
+  const expectedBuf = Buffer.from(expectedSignature, "utf8");
+
+  if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+    return null; // Firma alterada o inválida
+  }
+
+  return caseId;
+}
+```
+
+---
+
+### 🔴 SEC-02: Bypass de protección SSRF y DNS Rebinding en Scraper e Image Proxy
+
+#### Descripción del Problema
+En `lib/url-safety.ts`, la validación de URLs externas se limita a una expresión regular estática sobre el hostname textual:
+```typescript
+const BLOCKED_HOSTS = /^(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|0\.0\.0\.0|^0$|\[::1\]|\[::\]|::)/i;
+```
+Este mecanismo no realiza resolución de nombres previa al fetch:
+1. Cualquier dominio público que resuelva a una IP privada (ej. `127.0.0.1.nip.io` o un registro DNS propio de un atacante apuntando a `169.254.169.254`) pasará exitosamente el regex.
+2. No contempla formatos numéricos alternativos (IPs decimales como `http://2130706433/` que equivalen a `127.0.0.1`) ni rangos IPv6 especiales.
+
+#### Impacto Potencial
+**CVSS 8.6 (Crítico).** Server-Side Request Forgery (SSRF). Un atacante puede forzar al backend en Vercel a realizar peticiones HTTP hacia servicios internos, endpoints de metadata de nube (`http://169.254.169.254/latest/meta-data/`) para robar tokens temporales de IAM, o utilizar la infraestructura de Micaso para escanear redes privadas.
+
+#### Solución Recomendada
+Resolver el nombre de dominio vía DNS antes de realizar la petición HTTP y validar que ninguna dirección resuelta pertenezca al espacio de direccionamiento privado o reservado:
+
+```typescript
+// lib/url-safety.ts
+import dns from "dns/promises";
+import net from "net";
+
+function isPrivateIp(ip: string): boolean {
+  if (!net.isIP(ip)) return true;
+
+  if (net.isIPv4(ip)) {
+    const parts = ip.split(".").map(Number);
+    if (parts[0] === 0 || parts[0] === 127) return true; // Loopback
+    if (parts[0] === 10) return true; // RFC 1918
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+    if (parts[0] === 192 && parts[1] === 168) return true;
+    if (parts[0] === 169 && parts[1] === 254) return true; // Link-Local / Metadata
+    if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) return true; // CGNAT
+    return false;
+  }
+
+  const lower = ip.toLowerCase();
+  if (lower === "::1" || lower === "::") return true;
+  if (lower.startsWith("fe80:") || lower.startsWith("fc00:") || lower.startsWith("fd00:")) return true;
+  if (lower.startsWith("::ffff:127.") || lower.startsWith("::ffff:169.254.")) return true;
+
+  return false;
+}
+
+export async function validateSafeUrl(url: URL): Promise<boolean> {
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+
+  try {
+    const records = await dns.lookup(url.hostname, { all: true });
+    if (!records || records.length === 0) return false;
+
+    for (const item of records) {
+      if (isPrivateIp(item.address)) return false;
+    }
+    return true;
+  } catch {
+    return false; // Si falla la resolución DNS, rechazar por seguridad
+  }
+}
+```
+
+---
+
+### 🔴 DAT-01: Pérdida silenciosa de datos por condición de carrera en `dbUpdate` (Redis)
+
+#### Descripción del Problema
+En `lib/db.ts` (líneas 136-141), la función de mutación en producción ejecuta un `GET` seguido de un `SET` no coordinados:
+```typescript
+export async function dbUpdate<T>(key: string, mutate: (current: T | null) => T): Promise<T> {
+  if (redis) {
+    const current = await redis.get<T>(key);
+    const next = mutate(current ?? null);
+    await redis.set(key, next);
+    return next;
+  }
+  // ...
+}
+```
+En Redis sobre HTTP (Upstash REST API), no hay transacción abierta. Si dos peticiones concurrentes llegan casi en paralelo (por ejemplo, dos integrantes de la familia agregando comentarios o un webhook de Mercado Pago y un broker actualizando un estado), la segunda petición leerá el valor previo antes de que la primera termine de persistir, **sobrescribiendo y perdiendo la mutación anterior**.
+
+#### Impacto Potencial
+**Crítico (Integridad del Negocio).** Corrupción silenciosa de listas de propiedades, estados de verificación, comentarios familiares o datos de cobro de corredores sin dejar trazas de error en los logs.
+
+#### Solución Recomendada
+Implementar Optimistic Concurrency Control (OCC) con script Lua atómico y política de reintentos exponenciales con jitter:
+
+```typescript
+// lib/db.ts
+export async function dbUpdate<T>(
+  key: string,
+  mutate: (current: T | null) => T,
+  maxRetries = 5
+): Promise<T> {
+  if (redis) {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const current = await redis.get<T>(key);
+      const next = mutate(current ?? null);
+
+      const currentJson = current !== null && current !== undefined ? JSON.stringify(current) : "";
+      const nextJson = JSON.stringify(next);
+
+      // Lua Script atómico: solo persiste si el valor no fue modificado por otro worker
+      const casScript = `
+        local val = redis.call('GET', KEYS[1])
+        if (not val and ARGV[1] == '') or (val == ARGV[1]) then
+          redis.call('SET', KEYS[1], ARGV[2])
+          return 1
+        else
+          return 0
+        end
+      `;
+
+      const success = await redis.eval(casScript, [key], [currentJson, nextJson]);
+      if (success === 1) return next;
+
+      // Esperar breve tiempo con jitter antes de reintentar
+      await new Promise((r) => setTimeout(r, Math.random() * 35 + 10));
+    }
+
+    throw new Error(`Fallo de concurrencia: no se pudo actualizar atómicamente la clave "${key}".`);
+  }
+
+  // Fallback local con lock de disco
+  return withLocalStoreLock(async () => {
+    const store = await readLocalStore();
+    const next = mutate((store[key] as T) ?? null);
+    store[key] = next;
+    await writeLocalStore(store);
+    return next;
+  });
+}
+```
+
+---
+
+### 🟠 ARC-01: Cuello de botella $O(N)$ en claves JSON monolíticas globales
+
+#### Descripción del Problema
+En `lib/cases.ts`, todos los casos del sistema se persisten dentro de un único objeto JSON en la clave Redis `"cases"` (`Record<string, Case>`).
+En cada verificación de sesión o lectura de caso se ejecuta `getCase(caseId) -> getAllCases()`, descargando, parseando y procesando en memoria **todos los casos de todos los corredores de la plataforma**. Además, el inicio de sesión de caso ejecuta un escaneo lineal:
+```typescript
+const candidate = Object.values(cases).find((c) => c.username === username);
+```
+No existe unicidad garantizada para `username`, arriesgando colisiones donde un usuario nunca pueda iniciar sesión.
+
+#### Impacto Potencial
+**Alto.** Con el crecimiento del SaaS, el tamaño del payload transferido desde Upstash hacia Vercel crecerá a megabytes por petición, saturando la memoria del runtime serverless, disparando la latencia en milisegundos y aumentando los costos de transferencia de datos de forma exponencial.
+
+#### Solución Recomendada
+Migrar a un esquema particionado:
+- Cada caso en su propia clave: `case:{caseId}:meta`.
+- Índice $O(1)$ de usuario a caso: `index:case:username:{username}`.
+- Relación de casos por corredor indexada mediante Sets de Redis: `broker:{brokerId}:cases`.
+
+---
+
+### 🟠 SEC-03: Bypass de autenticación y ataques de timing en Webhook de Mercado Pago
+
+#### Descripción del Problema
+En `app/api/mercadopago/webhook/route.ts` (líneas 17-38):
+1. La condición `if (MP_WEBHOOK_SECRET && signatureHeader && reqId)` permite que un atacante omita los encabezados `x-signature` y `x-request-id`, salteándose la comprobación y logrando procesar el cuerpo del webhook.
+2. La comparación de hashes se hace mediante `computedHash !== hash`, lo cual no es seguro contra ataques de canal lateral (timing attacks).
+3. El manifiesto HMAC utiliza `id:${reqId}` en lugar de extraer el parámetro de recurso `data.id` exigido por las especificaciones oficiales de Mercado Pago.
+
+#### Impacto Potencial
+**Alto (Fraude Financiero).** Posibilidad de falsificar notificaciones de suscripción aprobada (`status = "authorized"`), otorgando planes pagos sin desembolso económico real.
+
+#### Solución Recomendada
+Exigir obligatoriamente los headers de firma cuando exista `MP_WEBHOOK_SECRET` y comparar mediante `crypto.timingSafeEqual`:
+
+```typescript
+// app/api/mercadopago/webhook/route.ts (refactor seguro)
+if (MP_WEBHOOK_SECRET) {
+  const signatureHeader = request.headers.get("x-signature");
+  const reqId = request.headers.get("x-request-id");
+  const url = new URL(request.url);
+  const dataId = url.searchParams.get("data.id");
+
+  if (!signatureHeader || !reqId) {
+    return NextResponse.json({ error: "Faltan encabezados de firma de seguridad" }, { status: 401 });
+  }
+
+  let ts = "";
+  let hash = "";
+  for (const part of signatureHeader.split(",")) {
+    const [key, value] = part.split("=");
+    if (key === "ts") ts = value;
+    if (key === "v1") hash = value;
+  }
+
+  if (!ts || !hash) {
+    return NextResponse.json({ error: "Encabezado x-signature malformado" }, { status: 401 });
+  }
+
+  const manifest = `id:${dataId || ""};request-id:${reqId};ts:${ts};`;
+  const hmac = crypto.createHmac("sha256", MP_WEBHOOK_SECRET);
+  hmac.update(manifest);
+  const computedHash = hmac.digest("hex");
+
+  const hashBuf = Buffer.from(hash, "utf8");
+  const compBuf = Buffer.from(computedHash, "utf8");
+
+  if (hashBuf.length !== compBuf.length || !crypto.timingSafeEqual(hashBuf, compBuf)) {
+    console.error("[Seguridad] Firma inválida detectada en Webhook de Mercado Pago");
+    return NextResponse.json({ error: "Firma inválida" }, { status: 403 });
+  }
+}
+```
+
+---
+
+### 🟠 PER-01: Bloqueo sincrónico por geocodificación externa (Nominatim OSM)
+
+#### Descripción del Problema
+En `lib/zoneCoords.ts` (`geocodeZone`), las llamadas de creación y edición de casas (`POST /api/houses` y `PATCH /api/houses/[id]`) efectúan una llamada HTTP directa a la API pública de OpenStreetMap Nominatim en el hilo sincrónico de la petición.
+- No cuenta con timeout: demoras en OSM congelan la experiencia de guardado del usuario.
+- No cuenta con caché: consultas repetidas para la misma zona ("Palermo", "Belgrano") golpean repetidamente la API externa.
+- El User-Agent `"Micaso/1.0"` carece de información de contacto, violando las políticas de uso de OpenStreetMap y arriesgando un baneo de IP (HTTP 403) sobre el bloque de servidores de Vercel.
+
+#### Impacto Potencial
+**Alto.** Degrada la experiencia del usuario con esperas de varios segundos al guardar propiedades y genera fallos intermitentes en la aplicación.
+
+#### Solución Recomendada
+Configurar almacenamiento en caché en Redis (`geo:zone:{zona}`) con TTL extendido, timeout estricto de 2 segundos y User-Agent conforme al TOS de OSM:
+
+```typescript
+// lib/zoneCoords.ts
+import { dbGet, dbSet } from "./db";
+
+export async function geocodeZone(zone: string): Promise<{ lat: number; lng: number } | null> {
+  if (!zone?.trim()) return null;
+  const cacheKey = `geo:zone:${encodeURIComponent(zone.trim().toLowerCase())}`;
+
+  // 1. Verificar en caché Redis (evita llamadas externas innecesarias)
+  const cached = await dbGet<{ lat: number; lng: number }>(cacheKey);
+  if (cached) return cached;
+
+  // 2. Consulta externa con timeout estricto
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2000); // 2 segundos máximo
+
+  try {
+    const q = encodeURIComponent(`${zone}, Buenos Aires, Argentina`);
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "MicasoApp/1.0 (contacto@micaso.com.ar)",
+      },
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && data.length > 0) {
+      const coords = { lat: Number(data[0].lat), lng: Number(data[0].lon) };
+      await dbSet(cacheKey, coords); // Persistir en caché
+      return coords;
+    }
+  } catch {
+    return null; // En caso de fallo o timeout, no bloquea la experiencia del usuario
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  return null;
+}
+```
+
+---
+
+### 🟠 SEC-04: Evasión de Rate Limiting por falsificación de IP (`X-Forwarded-For`)
+
+#### Descripción del Problema
+En `app/api/login/route.ts` (líneas 6-9), la IP del cliente se extrae como:
+```typescript
+function getClientIp(request: NextRequest): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  return forwarded?.split(",")[0]?.trim() || "unknown";
+}
+```
+En plataformas cloud o proxies inversos que anexan IPs, la primera entrada (`split(",")[0]`) puede ser inyectada directamente por el cliente (`X-Forwarded-For: 1.2.3.4`). Un atacante puede rotar este valor en cada intento para evadir el límite de 10 intentos fallidos. Además, rutas con alto consumo como `/api/scrape` carecen de limitación de tasa.
+
+#### Impacto Potencial
+**Alto.** Ataques de fuerza bruta ilimitados contra contraseñas de casos y riesgo de denegación de billetera por invocación desmedida de funciones serverless de scraping.
+
+#### Solución Recomendada
+Extraer la IP desde `x-real-ip` (garantizada por la infraestructura perimetral de Vercel) o el último valor confiable de la lista, e incorporar rate limiting sobre `/api/scrape`:
+
+```typescript
+// lib/rateLimit.ts
+export function getTrustedIp(request: NextRequest): string {
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const parts = forwarded.split(",").map((p) => p.trim());
+    return parts[parts.length - 1]; // La última IP fue agregada por el proxy confiable
+  }
+
+  return "unknown";
+}
+```
+
+---
+
+## 5. Plan de Acción y Roadmap Priorizado
+
+### Fase 1: Remediación Crítica Inmediata (Prioridad 1)
+- [ ] Implementar tokens de sesión sellados con HMAC en `lib/sessionToken.ts` para mitigar el IDOR en cookies de casos ([SEC-01](#-sec-01-suplantación-de-identidad-e-idor-por-cookie-case_id-en-texto-plano)).
+- [ ] Reemplazar la regex de validación SSRF por verificación DNS previa en `lib/url-safety.ts` ([SEC-02](#-sec-02-bypass-de-protección-ssrf-y-dns-rebinding-en-scraper-e-image-proxy)).
+- [ ] Refactorizar `app/api/mercadopago/webhook/route.ts` exigiendo encabezados y comparación con `timingSafeEqual` ([SEC-03](#-sec-03-bypass-de-autenticación-y-ataques-de-timing-en-webhook-de-mercado-pago)).
+
+### Fase 2: Integridad Transaccional y Resiliencia (Prioridad 2)
+- [ ] Reemplazar el flujo read-modify-write no atómico en `lib/db.ts` por scripts Lua atómicos ([DAT-01](#-dat-01-pérdida-silenciosa-de-datos-por-condición-de-carrera-en-dbupdate-redis)).
+- [ ] Añadir caché y timeout estricto a la geocodificación en `lib/zoneCoords.ts` ([PER-01](#-per-01-bloqueo-sincrónico-por-geocodificación-externa-nominatim-osm)).
+- [ ] Ajustar la detección de IP confiable en `lib/rateLimit.ts` y extender el rate limit a `/api/scrape` ([SEC-04](#-sec-04-evasión-de-rate-limiting-por-falsificación-de-ip-x-forwarded-for)).
+
+### Fase 3: Escalabilidad y Calidad de Código (Prioridad 3)
+- [ ] Migrar el esquema de Redis hacia almacenamiento particionado (`case:{id}:meta` y Sets por broker) ([ARC-01](#-arc-01-cuello-de-botella-on-en-claves-json-monolíticas-globales)).
+- [ ] Integrar `zod` para validación estricta de esquemas en todos los Route Handlers de Next.js ([COD-01](#3-matriz-de-hallazgos)).
+- [ ] Estandarizar respuestas HTTP devolviendo códigos 4xx/5xx ante fallos en lugar de códigos 200 con payload de error ([OBS-01](#3-matriz-de-hallazgos)).
+
+---
+
+## 6. Auditoría de Segunda Instancia: Revisión de Puntos Ciegos y Red Team
+
+**Enfoque de la Revisión:** Detección de fallas sutiles en la lógica de negocio, condiciones de carrera compuestas, estados asimétricos de sesión, fugas de memoria y vectores de DoS lógico que no fueron cubiertos en la instancia inicial.
+
+### Matriz de Hallazgos de Segunda Instancia (Red Team)
+
+| ID | Severidad | Área | Hallazgo | Módulos Afectados |
+| :--- | :--- | :--- | :--- | :--- |
+| **RT-01** | 🟠 Alta | Lógica de Negocio / Sesiones | Resurrección automática y regeneración de prueba gratuita (14 días) para corredores eliminados vía JWT stateless de Auth.js. | `lib/brokers.ts`<br>`proxy.ts` |
+| **RT-02** | 🟠 Alta | Lógica de Negocio / Facturación | Acceso perpetuo y gratuito a casos activos existentes con períodos de prueba vencidos o suscripciones canceladas. | `proxy.ts`<br>`app/api/panel/cases/[id]/impersonate/route.ts` |
+| **RT-03** | 🟠 Alta | DoS Lógico & Streaming I/O | Slow-Read Attack y consumo ilimitado de memoria por desactivación prematura de timeout y stream sin límite de bytes en scraper. | `app/api/scrape/route.ts` |
+| **RT-04** | 🟠 Alta | Integridad de Negocio / Repudio | Inyección de comentarios pre-fabricados con autores falsos y polución permanente del roster familiar en creación de propiedades. | `lib/store.ts`<br>`app/api/houses/route.ts` |
+| **RT-05** | 🟠 Alta | Facturación / Mercado Pago | Doble facturación recurrente por generación de múltiples suscripciones preapproval activas sin cancelación previa. | `app/api/panel/subscription/route.ts` |
+| **RT-06** | 🟡 Media | Seguridad / Privacidad de Sesión | Fuga de acceso a casos de clientes y persistencia residual de cookie `case_id` (90 días) post-logout en el panel del corredor. | `components/PanelLogoutButton.tsx`<br>`app/api/panel/cases/[id]/impersonate/route.ts` |
+| **RT-07** | 🟡 Media | Inyección de Protocolo (CRLF) | CRLF Injection en archivos de exportación de calendario (.ics) a través de enlaces no saneados (`house.url`). | `lib/ics.ts` |
+| **RT-08** | 🟡 Media | Gestión de Recursos & Costos | Acumulación indefinida de imágenes huérfanas en Vercel Blob por ausencia total del método `del()` en bajas de casas y casos. | `lib/store.ts`<br>`app/api/houses/photo/route.ts`<br>`app/api/houses/[id]/route.ts` |
+
+---
+
+### Análisis Detallado de Hallazgos de Segunda Instancia
+
+#### 1. RT-01: Resurrección Automática de Brokers Eliminados vía JWT de Auth.js
+- **Vector de Ataque / Falla Sutil:** El token de sesión de Google dura 30 días en cookie JWT (`authjs.session-token`). Cuando el superadministrador elimina un corredor en Redis, `proxy.ts` solo verifica `if (userEmail)` confiando en el JWT válido. Al cargar el panel, `getCurrentBroker()` llama incondicionalmente a `getOrCreateBroker()`, recreando al broker en Redis y otorgándole un nuevo período de prueba de 14 días.
+- **Archivos:** `lib/brokers.ts`, `proxy.ts`.
+- **Solución:** Separar la consulta estricta de la creación de brokers; verificar en el proxy que el broker exista en base de datos.
+```typescript
+// lib/brokers.ts
+export async function getCurrentBroker(): Promise<Broker | null> {
+  const session = await auth();
+  const email = session?.user?.email;
+  if (!email) return null;
+  const brokerId = resolveBrokerId(email);
+  return getBroker(brokerId); // Solo lectura, no recrea
+}
+```
+
+#### 2. RT-02: Acceso Perpetuo a Casos Activos con Suscripción Vencida o Cancelada
+- **Vector de Ataque / Falla Sutil:** `assertUnderCaseLimit()` solo se evalúa al crear o reabrir casos. Ni `proxy.ts` ni los endpoints del caso verifican el estado del broker al acceder a los casos ya creados. Un broker puede crear su caso durante la prueba gratis, cancelar o dejar vencer su plan, y continuar utilizándolo de por vida junto a sus clientes sin pagar la cuota mensual.
+- **Archivos:** `proxy.ts`, `app/api/panel/cases/[id]/impersonate/route.ts`.
+- **Solución:** Comprobar en `checkCaseAccess` (`proxy.ts`) que el broker del caso no tenga la prueba vencida ni suscripción cancelada:
+```typescript
+// proxy.ts (checkCaseAccess)
+if (kase && kase.id !== "demo") {
+  const broker = await getBroker(kase.brokerId);
+  const isExpired = broker?.subscriptionStatus === "prueba" && new Date() > new Date(broker.trialEndsAt);
+  const isInactive = broker?.subscriptionStatus === "cancelada" || broker?.subscriptionStatus === "atrasada";
+  if (!broker || isExpired || isInactive) {
+    return pathname.startsWith("/api/")
+      ? NextResponse.json({ error: "Suscripción suspendida" }, { status: 402 })
+      : NextResponse.redirect(new URL("/login?reason=subscription_required", request.url));
+  }
+}
+```
+
+#### 3. RT-03: Slow-Read Attack y Fuga de Memoria por Stream Desprotegido en Scraper
+- **Vector de Ataque / Falla Sutil:** En `fetchHtml`, `clearTimeout(timeout)` se ejecuta apenas se reciben los encabezados de respuesta HTTP, dejando la lectura del body `await res.text()` sin timeout activo y sin límite de tamaño en bytes. Un servidor lento o con payload masivo congela la función serverless o genera un crash por Out Of Memory (OOM).
+- **Archivo:** `app/api/scrape/route.ts`.
+- **Solución:** Mantener el AbortController activo durante todo el ciclo y leer el cuerpo con un límite estricto de 3 MB:
+```typescript
+// app/api/scrape/route.ts
+const MAX_BYTES = 3 * 1024 * 1024; // 3MB
+async function readLimitedBody(res: Response): Promise<string> {
+  if (!res.body) return "";
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let total = 0, text = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_BYTES) throw new Error("Cuerpo de respuesta excede 3MB");
+    text += decoder.decode(value, { stream: true });
+  }
+  return text + decoder.decode();
+}
+```
+
+#### 4. RT-04: Inyección de Comentarios Forjados y Contaminación del Roster
+- **Vector de Ataque / Falla Sutil:** En `addHouse`, `input.comments ?? []` acepta comentarios pre-fabricados en el body de `POST /api/houses`, permitiendo inyectar notas con autores falsos ("Carolina", "Banco") y fechas arbitrarias. Además, cualquier valor en `addedBy` es sumado de forma irreversible a `kase.people`.
+- **Archivos:** `lib/store.ts`, `app/api/houses/route.ts`.
+- **Solución:** Inicializar siempre `comments: []` al crear una propiedad y validar que `addedBy` pertenezca al roster de personas del caso antes de permitir el alta.
+
+#### 5. RT-05: Doble Facturación por Suscripciones Duplicadas en Mercado Pago
+- **Vector de Ataque / Falla Sutil:** En `POST /api/panel/subscription`, no se valida si `broker.mpPreapprovalId` ya tiene una suscripción activa previa antes de emitir un nuevo checkout. Si el corredor cambia de plan o reintenta el checkout, Mercado Pago debita ambas suscripciones mensualmente.
+- **Archivo:** `app/api/panel/subscription/route.ts`.
+- **Solución:** Cancelar preventivamente la suscripción anterior (`cancelSubscription(broker.mpPreapprovalId)`) antes de solicitar un nuevo `preapproval`.
+
+#### 6. RT-06: Persistencia Residual de Cookie `case_id` Post-Logout en Panel
+- **Vector de Ataque / Falla Sutil:** Al usar la función de impersonación, el servidor asigna la cookie `case_id` por 90 días. Al cerrar sesión en el panel (`PanelLogoutButton`), NextAuth solo destruye su propia cookie JWT, pero deja viva `case_id`. En un equipo compartido, el siguiente usuario en entrar a `/caso` accede al caso privado del cliente anterior.
+- **Archivos:** `components/PanelLogoutButton.tsx`, `app/api/panel/cases/[id]/impersonate/route.ts`.
+- **Solución:** Crear un endpoint de logout centralizado en el servidor que elimine explícitamente `case_id` (`res.cookies.delete(CASE_COOKIE)`).
+
+#### 7. RT-07: CRLF Injection en Archivos ICS de Agenda de Visitas
+- **Vector de Ataque / Falla Sutil:** En `lib/ics.ts`, `escapeIcsText` omite escapar el retorno de carro `\r`, y la propiedad `house.url` se concatena directamente sin sanear. Si una URL contiene `\r\n`, se inyectan propiedades arbitrarias o eventos maliciosos en el software de calendario del usuario.
+- **Archivo:** `lib/ics.ts`.
+- **Solución:** Sanear rigurosamente retornos de carro y saltos de línea con `value.replace(/[\r\n]/g, "")` para URLs y headers de una sola línea.
+
+#### 8. RT-08: Acumulación de Blobs Huérfanos en Vercel Blob
+- **Vector de Ataque / Falla Sutil:** El método `del()` de `@vercel/blob` no es invocado en ninguna parte del código fuente. Cuando una casa o un caso son eliminados, los archivos binarios persisten en Vercel Storage indefinidamente, acumulando costos de almacenamiento.
+- **Archivos:** `lib/store.ts`, `app/api/houses/[id]/route.ts`.
+- **Solución:** Integrar `del()` en `deleteHouse` y `deleteCaseData` extrayendo las URLs con dominio `blob.vercel-storage.com`.
+

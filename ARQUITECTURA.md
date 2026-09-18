@@ -1275,6 +1275,21 @@ borrar copias viejas).
 > `/superadmin`, loguearse con la nueva, confirmar que la vieja ya no
 > funciona, y que el backup descargado la muestra cifrada.
 
+> **Auditoría Integral de Arquitectura y Seguridad (18 sept 2026):** Se llevó a
+> cabo una auditoría exhaustiva en dos fases (Arquitectura Base + Red Team de Puntos Ciegos)
+> de todo el repositorio (ver informe técnico formal completo en
+> [AUDITORIA-2026-09-18.md](file:///d:/Micaso/AUDITORIA-2026-09-18.md)). Se identificaron:
+> - **Fase 1:** 3 hallazgos críticos (falsificación de sesión e IDOR por cookie `case_id` sin firma HMAC,
+>   SSRF y evasión por DNS Rebinding en scraping/proxy, y condición de carrera en `dbUpdate`
+>   sobre Redis) y 4 hallazgos de severidad alta (almacenamiento monolítico $O(N)$ en `"cases"`,
+>   omisión de firma en webhook de Mercado Pago, geocodificación OSM Nominatim sincrónica
+>   sin caché y evasión de rate limiting por IP spoofing).
+> - **Fase 2 (Red Team / Puntos Ciegos):** 8 hallazgos adicionales de lógica de negocio y abuso funcional
+>   (resurrección de brokers borrados vía JWT de 30 días, acceso ilimitado a casos con trial vencido,
+>   Slow-Read DoS en scraper, inyección de comentarios forjados, doble cobro de suscripción MP, fuga de
+>   sesión residual post-logout, CRLF injection en .ics y almacenamiento de blobs huérfanos en Vercel).
+> El plan de remediación priorizado quedó establecido en dicho documento.
+
 **Barrido de "quedó pensado para un solo caso" (14 sept 2026) — dos
 bugs reales encontrados y resueltos**
 Además de la auditoría de aislamiento de arriba (¿puede un caso/corredor
