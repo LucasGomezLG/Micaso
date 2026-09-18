@@ -1,7 +1,7 @@
 # De herramienta personal a SaaS para corredores
 
-> Documento de arquitectura — Micaso · 13 sept 2026 (estado actualizado 17 sept 2026)
-> Estado: **en construcción activa, en vivo en `micaso.com.ar`.** Núcleo multi-caso, panel de corredor (con login real por Google), super-admin con control por corredor y landing pública ya funcionando — ver los addendums fechados en cada sección para el detalle de qué se construyó y cuándo. Falta Mercado Pago (el cobro sigue siendo manual desde `/superadmin`, ver sección 10 y 12) — deliberadamente lo último en construirse.
+> Documento de arquitectura — Micaso · 13 sept 2026 (estado actualizado 18 sept 2026)
+> Estado: **en construcción activa, en vivo en `micaso.com.ar`.** Núcleo multi-caso, panel de corredor (con login real por Google), super-admin con control por corredor, landing pública, Mercado Pago (suscripciones vía Preapproval, ARS/USD según IP), notificaciones Web Push y PWA con soporte offline (Serwist) ya funcionando — ver los addendums fechados en cada sección para el detalle de qué se construyó y cuándo. Lo que falta es más chico y puntual: legal (sección 9), la confirmación del `robots.txt`/términos de ZonaProp (sección 9), y la migración internacional a Stripe/i18n (sección 6 y 13, todavía sin arrancar).
 > Nace de Casa, en producción desde el 12 sept 2026 (41 propiedades, 3 personas usándolo a la fecha)
 > Versión con diseño: [artifact publicado](https://claude.ai/code/artifact/613d03c0-8366-4fbd-b641-a59eb5383997)
 
@@ -107,7 +107,7 @@ uno con su propio acceso.
 | **Vistas** | comparación de destacadas, mapa aproximado por zona |
 | **Agenda** | visitas coordinadas agrupadas por día, en orden cronológico, con botón para descargar el evento al calendario del celular |
 | **Checklist** | trámites y documentación, asignable entre los miembros del caso — plantilla distinta por tipo (ver abajo) |
-| **Carga de propiedades** | pegar un link (MercadoLibre, ZonaProp, ArgenProp, RE/MAX, Mudafy) autocompleta título, fotos y precio |
+| **Carga de propiedades** | pegar un link de cualquier sitio autocompleta título, fotos, precio, ambientes, superficie y zona (si el sitio lo permite — ver abajo) |
 
 > **Implementado (15 sept 2026): agenda de visitas.** Nueva pestaña
 > `/caso/agenda` — lista las visitas coordinadas en orden cronológico,
@@ -123,6 +123,40 @@ uno con su propio acceso.
 > desaparecía de la lista, sin aviso ni forma de verla. Ahora se agrupan
 > en dos secciones, "Próximas" y "Visitas pasadas" (esta última, más
 > recientes primero), en vez de perderse.
+>
+> **Aclaración (18 sept 2026): la carga de propiedades no es una lista
+> cerrada de sitios soportados.** `app/api/scrape/route.ts` no tiene
+> lógica particular por sitio salvo dos excepciones — le pega a
+> **cualquier** link que se le pegue y saca lo que encuentre con
+> heurísticas genéricas (Open Graph, JSON-LD de schema.org, microdatos,
+> y texto libre del título/descripción como último recurso). Las dos
+> excepciones son de naturaleza distinta, vale la pena no confundirlas:
+> **(a) bloqueo legal** — MercadoLibre, ArgenProp y ZonaProp enteros, más
+> `mudafy.com.ar/ficha/*`, no se tocan en absoluto porque sus términos de
+> uso lo prohíben (sección 9); no es que sean "más difíciles" de leer,
+> están vedados sin importar eso. **(b) ayuda técnica** — RE/MAX (y
+> Mudafy fuera de `/ficha/`) sí se leen, pero necesitaron una función
+> aparte porque el precio no viene en una etiqueta estándar sino en un
+> bloque de JSON que arma el sitio con JavaScript. Cualquier sitio nuevo
+> que un corredor o familia use — un portal chico, la web propia de una
+> inmobiliaria, Facebook Marketplace — funciona solo si expone esos datos
+> de forma estándar, sin que haga falta tocar código para sumarlo.
+>
+> **Implementado el mismo día: ambientes, superficie y zona, no solo
+> título/fotos/precio.** `guessAmbientesFromText`/`guessSuperficieFromText`
+> en `app/api/scrape/route.ts` buscan "N ambientes"/"N amb" y "NNN
+> m2"/"NNN m²" en el título y la descripción (con JSON-LD `numberOfRooms`/
+> `floorSize` como fuente preferida cuando el sitio lo trae); si aparece
+> más de un número y no coinciden, se abstienen en vez de adivinar mal —
+> mismo criterio que ya usaba el código para el precio. La zona no se
+> adivina de texto libre (demasiado propenso a error): `AddHouseModal`
+> ahora recibe las zonas de interés que el caso ya tiene cargadas en sus
+> criterios (`criteria.brief.zones`) y, si el título del aviso menciona
+> alguna, la propone sola — si no reconoce ninguna, el campo queda vacío
+> para completar a mano. Probado de punta a punta con un caso real y un
+> link real de RE/MAX: ambientes y zona se completaron solos, superficie
+> quedó vacía porque ese aviso puntual no la menciona (comportamiento
+> correcto, no un bug).
 
 ### Tipo de caso: no todos buscan lo mismo
 
@@ -293,6 +327,15 @@ Lo mínimo nuevo para no reinventar lo que ya resuelven bien otros.
   > `EditHouseModal`. Falta probarlo a mano en el navegador (esto se
   > probó por API), pero el mecanismo nuevo — auth, subida a Blob,
   > servido público, persistencia — ya está verificado real.
+- **`web-push`** — notificaciones push del navegador (protocolo Web Push
+  estándar, sin servicio de terceros tipo Firebase) para avisar a la
+  familia cuando el corredor agenda una visita o carga una propiedad
+  nueva. Ver el addendum "Implementado (17 sept 2026): notificaciones Web
+  Push" en la sección 6 para el detalle.
+- **Serwist** (`@serwist/next` + `serwist`) — precaching y pantalla
+  offline (PWA de verdad, no solo instalable). Ver el addendum
+  "Implementado (18 sept 2026): PWA con soporte offline de verdad" en la
+  sección 6.
 
 ### Deliberadamente no se suma nada
 
@@ -544,20 +587,55 @@ Lo mínimo que necesita el panel para ser útil desde el primer día:
 > en `Nav.tsx` (familia) y, desde el 17 sept 2026, también en el header
 > de `/panel` (corredor).
 >
-> **Revisado (17 sept 2026): funciona sin service worker.** El proyecto
-> no tiene uno — el criterio de instalabilidad de Chrome ya no lo exige
-> de forma estricta, y en la práctica el prompt apareció en producción
-> sin él. Revisión de código: `manifest.ts` trae los campos que Chrome
-> chequea (`name`, `short_name`, `icons` 192/512, `start_url`, `display:
-> "standalone"`); `app/icons/192` y `app/icons/512` (`next/og`) generan
-> esos íconos, y `app/apple-icon.tsx` cubre el ícono de iOS vía la
+> **Revisado (17 sept 2026): la instalación como PWA no depende de tener
+> service worker.** El criterio de instalabilidad de Chrome ya no lo
+> exige de forma estricta, y en la práctica el prompt apareció en
+> producción sin él. Revisión de código: `manifest.ts` trae los campos
+> que Chrome chequea (`name`, `short_name`, `icons` 192/512, `start_url`,
+> `display: "standalone"`); `app/icons/192` y `app/icons/512` (`next/og`)
+> generan esos íconos, y `app/apple-icon.tsx` cubre el ícono de iOS vía la
 > convención de archivo de Next.js (`appleWebApp` en `layout.tsx` agrega
 > los meta tags de Safari). `InstallAppButton` no muestra el botón si
 > `matchMedia("(display-mode: standalone)")` ya es true (evita ofrecer
-> instalar algo ya instalado). Sin service worker la app no funciona
-> offline ni cachea nada — no es un problema hoy porque cada pantalla
-> depende de datos en vivo, pero si más adelante se quiere soporte
-> offline, ahí sí hace falta sumar uno.
+> instalar algo ya instalado). En el momento de esta revisión el proyecto
+> todavía no tenía service worker — cambió más tarde el mismo día, ver
+> el addendum siguiente.
+>
+> **Implementado (17 sept 2026): notificaciones Web Push + primer service
+> worker.** `public/sw.js` (hecho a mano, sin librería) escucha `push` y
+> `notificationclick` — cuando el corredor agenda una visita o carga una
+> propiedad nueva, la familia que dio permiso recibe una notificación del
+> sistema operativo aunque no tenga la pestaña abierta. `lib/push.ts`
+> guarda la suscripción del navegador aislada por `caseId` (claves VAPID
+> autogeneradas si no hay variables de entorno propias),
+> `PushNotificationPrompt.tsx` es el banner de opt-in en `/caso`, y el
+> panel del corredor suma un badge de "novedades" (casas o comentarios no
+> vistos desde el último ingreso). De paso, "destacada" pasa a llamarse
+> "favorita" en toda la UI (tab propio en el tablero de casas, vista de
+> comparación adaptada a mobile). `/sw.js` tuvo que sumarse a
+> `PUBLIC_PATHS` de `proxy.ts` — igual que `/manifest.webmanifest`, el
+> navegador lo pide sin sesión activa. El caso demo tiene las
+> notificaciones deshabilitadas para no mandarle push reales a cualquiera
+> que entre a probarlo.
+>
+> **Implementado (18 sept 2026): PWA con soporte offline de verdad
+> (Serwist), sin perder el service worker de Web Push.** Se sumó
+> `@serwist/next` para precachear los assets de la app y mostrar una
+> pantalla propia (`/offline`) cuando no hay conexión, en vez de la
+> pantalla en blanco del navegador. El service worker pasa a generarse en
+> build desde `app/sw.ts` (antes `public/sw.js` se escribía a mano) — los
+> listeners de `push`/`notificationclick` del addendum de arriba se
+> movieron ahí, fusionados con el precaching de Serwist, para que el
+> build de uno no pise al otro; `public/sw.js` deja de vivir en el repo
+> (pasa a ser un artefacto de build, gitignored, igual que `.next/`).
+> Next 16 usa Turbopack por defecto pero `@serwist/next` todavía no lo
+> soporta (solo tiene soporte experimental vía un paquete aparte,
+> `@serwist/turbopack`) — **decisión: forzar webpack** en los scripts de
+> `dev`/`build` en vez de migrar a esa vía experimental o al "modo
+> configurador" de Serwist (que hubiera sumado tres dependencias nuevas y
+> un build en dos pasos). Todo el proyecto pierde Turbopack a cambio, no
+> solo el service worker — el trade-off elegido mientras el soporte de
+> Serwist para Turbopack siga así de inmaduro.
 
 > **Implementado (16 sept 2026): panel usable en mobile de punta a
 > punta.** El header con el email del corredor, las tabs de `CaseList` y
@@ -838,11 +916,29 @@ personas lo sigue siendo a escala.
 >   esto no era un cambio de URL — `isBlockedForAutoFill()` corta el
 >   autocompletado para todo `argenprop.com`. El link se sigue pegando y
 >   guardando; título, foto y precio quedan a cargo de quien lo agrega.
-> - **ZonaProp**: su `robots.txt` no bloquea el patrón de URL que
->   `lib/seed.ts` usa hoy (`/propiedades/clasificado/...`). Su página de
->   términos de uso es una SPA (React) que no entrega el texto legal sin
->   ejecutar JS — no se pudo confirmar el contenido de primera mano ni
->   con curl ni con WebFetch. Sigue sin confirmar.
+> - **ZonaProp — confirmado y resuelto (18 sept 2026).** Su `robots.txt`
+>   no bloquea el patrón de URL que `lib/seed.ts` usa hoy
+>   (`/propiedades/clasificado/...`); el bloqueo estaba en los términos
+>   de uso, en una página que es una SPA de React y no entrega el texto
+>   legal sin ejecutar JavaScript — `curl` y WebFetch no pudieron leerla
+>   antes. Confirmado con un navegador real (Playwright, ya en uso para
+>   probar la app) contra
+>   `help.zonaprop.com.ar/s/article/terminos-y-condiciones-de-uso`. Dos
+>   cláusulas aplican, ninguna nombra "scraping" literal pero las dos
+>   apuntan a lo mismo: **1.5.4** prohíbe específicamente *"el uso o
+>   intento de uso de cualquier máquina, software, herramienta, agente u
+>   otro mecanismo para navegar o buscar en este Sitio Web"* que no sean
+>   sus propias herramientas de búsqueda — un fetch programático de una
+>   ficha es exactamente eso; **1.3.2** prohíbe *"el uso, adaptación,
+>   reproducción y/o comercialización no autorizada del Contenido"*
+>   (texto, imágenes, entre otros) — el scraper reproduce título y foto
+>   dentro de un producto pago, que es comercialización en el sentido
+>   literal de la cláusula. **Arreglado:** mismo mecanismo que ArgenProp
+>   y MercadoLibre — `isBlockedForAutoFill()` en `app/api/scrape/route.ts`
+>   corta el autocompletado para todo `zonaprop.com.ar`; el link se sigue
+>   pegando y guardando, título/foto/precio quedan a cargo de quien lo
+>   agrega. Con esto, los cinco sitios de `lib/seed.ts` ya están
+>   revisados — ninguno queda pendiente de confirmar.
 > - **MercadoLibre — el más grave de los cinco, confirmado con el texto
 >   real (no una fuente secundaria).** Leído directo de
 >   `mercadolibre.com.ar/ayuda/terminos-y-condiciones-de-uso_991`
@@ -913,8 +1009,8 @@ volúmenes esperados (decenas de casos por corredor, no miles — ya
 asumido arriba), cualquier precio de plan por encima de unos pocos
 dólares por mes deja margen bruto superior al 90%. El techo real es
 cuánto esté dispuesto a pagar un corredor — ver sección 11 para el precio
-decidido y sección 12 para la validación con Carolina, que sigue
-pendiente.
+decidido y sección 12 para la validación con Carolina, que ya confirmó
+que pagaría (falta la letra chica: cuánto, con qué frecuencia).
 
 **Seguridad de las credenciales por caso — ya resuelto**
 - **Límite de intentos:** bloquear el login de un caso después de 10
@@ -1252,10 +1348,6 @@ Explícitamente afuera hasta tener señal real de que el resto funciona:
 - OAuth para el acceso de un caso — sigue siendo usuario/contraseña
   simple para esa puerta (ver sección 4); Google OAuth ya está decidido,
   pero solo para corredor y super-admin.
-- Construir el cobro de verdad (Mercado Pago) — el modelo ya está diseñado
-  (sección 6: plan fijo mensual + prueba de 14 días sin tarjeta), pero no
-  se escribe una línea de código hasta confirmar que alguien más, además
-  de Carolina, pagaría (ver sección 12).
 - Equipos / múltiples corredores por inmobiliaria compartiendo casos.
 - Geocodificación real de direcciones — el mapa sigue siendo aproximado
   por zona.
@@ -1378,7 +1470,7 @@ de visita en cada propiedad o si eso termina siendo fricción.
 
 ---
 
-## 12. Hacia la expansión internacional (Plan a futuro)
+## 13. Hacia la expansión internacional (Plan a futuro)
 
 Micaso se construyó inicialmente enfocado en Argentina (Mercado Pago en ARS, copys "apto crédito", "cochera", "ambientes", zona horaria local). Sin embargo, el objetivo a largo plazo es llevarlo al exterior. Cuando se valide este modelo y se decida dar el salto, se deberán contemplar los siguientes frentes:
 

@@ -513,6 +513,7 @@ export default function CasasBoard({
       {showAdd && (
         <AddHouseModal
           people={people}
+          zones={zones}
           existingUrls={houses.map((h) => h.url).filter((u): u is string => u !== null)}
           onClose={() => setShowAdd(false)}
           onCreated={() => {

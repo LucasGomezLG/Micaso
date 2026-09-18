@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { proxiedImage } from "@/lib/format";
@@ -18,6 +18,7 @@ type Draft = {
   priceUsd: string;
   zone: string;
   ambientes: string;
+  superficieM2: string;
   cochera: boolean;
   notes: string;
   addedBy: string;
@@ -32,6 +33,7 @@ function emptyDraft(people: string[]): Draft {
     priceUsd: "",
     zone: "",
     ambientes: "",
+    superficieM2: "",
     cochera: false,
     notes: "",
     addedBy: people[0] ?? "",
@@ -40,11 +42,13 @@ function emptyDraft(people: string[]): Draft {
 
 export default function AddHouseModal({
   people,
+  zones = [],
   existingUrls = [],
   onClose,
   onCreated,
 }: {
   people: string[];
+  zones?: string[];
   existingUrls?: string[];
   onClose: () => void;
   onCreated: () => void;
@@ -76,7 +80,7 @@ export default function AddHouseModal({
     urlInputRef.current?.focus();
   }, []);
 
-  async function fetchPreview(url: string) {
+  const fetchPreview = useCallback(async (url: string) => {
     setFetching(true);
     setScrapeMsg(null);
     try {
@@ -89,11 +93,17 @@ export default function AddHouseModal({
       if (data.error) {
         setScrapeMsg(data.error);
       } else {
+        const zoneMatch = zones.find(
+          (z) => z && (data.title as string | null)?.toLowerCase().includes(z.toLowerCase())
+        );
         setDraft((d) => (d.url === url ? {
           ...d,
           title: data.title || d.title,
           images: data.images?.length ? data.images : d.images,
           priceUsd: data.priceUsd ? String(data.priceUsd) : d.priceUsd,
+          ambientes: data.ambientes ? String(data.ambientes) : d.ambientes,
+          superficieM2: data.superficieM2 ? String(data.superficieM2) : d.superficieM2,
+          zone: zoneMatch || d.zone,
         } : d));
         setScrapeMsg("Listo — revisá los datos y completá lo que falte.");
       }
@@ -102,7 +112,7 @@ export default function AddHouseModal({
     } finally {
       setFetching(false);
     }
-  }
+  }, [zones]);
 
   // Auto-fetch as soon as a full URL lands in the field — pasted or typed —
   // instead of making people press a separate button.
@@ -114,7 +124,7 @@ export default function AddHouseModal({
       fetchPreview(url);
     }, 400);
     return () => clearTimeout(timer);
-  }, [draft.url]);
+  }, [draft.url, fetchPreview]);
 
   async function onFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -146,6 +156,7 @@ export default function AddHouseModal({
         priceUsd: draft.priceUsd ? Number(draft.priceUsd) : null,
         zone: draft.zone || null,
         ambientes: draft.ambientes ? Number(draft.ambientes) : null,
+        superficieM2: draft.superficieM2 ? Number(draft.superficieM2) : null,
         cochera: draft.cochera,
         comments: draft.notes.trim()
           ? [{ id: crypto.randomUUID(), author: draft.addedBy, text: draft.notes.trim(), createdAt: new Date().toISOString() }]
@@ -286,7 +297,7 @@ export default function AddHouseModal({
             />
           </label>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <label className="flex flex-col gap-1">
               <span className="eyebrow">Precio (USD)</span>
               <input
@@ -303,6 +314,15 @@ export default function AddHouseModal({
                 className="field"
                 value={draft.ambientes}
                 onChange={(e) => setDraft({ ...draft, ambientes: e.target.value })}
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="eyebrow">Superficie (m²)</span>
+              <input
+                type="number"
+                className="field"
+                value={draft.superficieM2}
+                onChange={(e) => setDraft({ ...draft, superficieM2: e.target.value })}
               />
             </label>
           </div>

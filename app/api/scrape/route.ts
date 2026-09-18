@@ -69,10 +69,31 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&gt;/g, ">");
 }
 
-type JsonLdGuess = { images: string[]; priceUsd: number | null };
+type JsonLdGuess = {
+  images: string[];
+  priceUsd: number | null;
+  ambientes: number | null;
+  superficieM2: number | null;
+};
+
+/** schema.org a veces da `floorSize`/`numberOfRooms` como número/string
+ * plano y a veces como `{ "@type": "QuantitativeValue", "value": N }` —
+ * misma pinta en ambos casos, así que un solo helper alcanza. */
+function numberFromQuantitativeValue(raw: unknown): number | null {
+  if (typeof raw === "number") return raw;
+  if (typeof raw === "string") {
+    const n = Number(raw);
+    return Number.isNaN(n) ? null : n;
+  }
+  if (raw && typeof raw === "object" && "value" in raw) {
+    return numberFromQuantitativeValue((raw as { value: unknown }).value);
+  }
+  return null;
+}
 
 /** Some sites (MercadoLibre, etc.) skip og:image but still ship schema.org
- * JSON-LD with an image/offer — read that as a fallback. */
+ * JSON-LD with an image/offer/numberOfRooms/floorSize — read that as a
+ * fallback for lo que no vino en meta tags ni en el texto visible. */
 function guessFromJsonLd(html: string): JsonLdGuess {
   const blocks = html.matchAll(
     /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
@@ -95,13 +116,45 @@ function guessFromJsonLd(html: string): JsonLdGuess {
           offer?.priceCurrency === "USD" && offer?.price
             ? Number(offer.price)
             : null;
-        if (images.length || priceUsd) return { images, priceUsd };
+        const ambientes = numberFromQuantitativeValue(item?.numberOfRooms);
+        const superficieM2 = numberFromQuantitativeValue(item?.floorSize);
+        if (images.length || priceUsd || ambientes || superficieM2) {
+          return { images, priceUsd, ambientes, superficieM2 };
+        }
       }
     } catch {
       // not valid JSON, or not the shape we expect — skip this block
     }
   }
-  return { images: [], priceUsd: null };
+  return { images: [], priceUsd: null, ambientes: null, superficieM2: null };
+}
+
+/** Busca "N ambientes"/"N amb" en el título o la descripción del aviso —
+ * cubre los sitios que no traen `numberOfRooms` en JSON-LD, que en avisos
+ * argentinos son la mayoría. Un solo número esperado; si el texto trae
+ * más de una mención y no coinciden, mejor abstenerse que adivinar mal
+ * (mismo criterio que `guessPriceFromEmbeddedJson`). */
+function guessAmbientesFromText(...texts: (string | null)[]): number | null {
+  const found = new Set<number>();
+  for (const text of texts) {
+    if (!text) continue;
+    for (const match of text.matchAll(/(\d{1,2})\s*amb(?:iente)?s?\b/gi)) {
+      found.add(Number(match[1]));
+    }
+  }
+  return found.size === 1 ? [...found][0] : null;
+}
+
+/** Mismo criterio que `guessAmbientesFromText`, para "NNN m2"/"NNN m²". */
+function guessSuperficieFromText(...texts: (string | null)[]): number | null {
+  const found = new Set<number>();
+  for (const text of texts) {
+    if (!text) continue;
+    for (const match of text.matchAll(/(\d{2,4})\s*m(?:2|²)\b/gi)) {
+      found.add(Number(match[1]));
+    }
+  }
+  return found.size === 1 ? [...found][0] : null;
 }
 
 /** Some sites (RE/MAX, etc.) don't put the price in text or JSON-LD at
@@ -152,12 +205,19 @@ function guessPriceUsd(...texts: (string | null)[]): number | null {
  * - ArgenProp: términos de uso art. 26.3 — nombra "scraping"
  *   explícitamente como uso prohibido del sitio.
  * - Mudafy: `robots.txt` prohíbe crawlear `/ficha/*` para cualquier
- *   bot; el resto del sitio (ej. `/casas/*`) no está vedado. */
+ *   bot; el resto del sitio (ej. `/casas/*`) no está vedado.
+ * - ZonaProp: términos y condiciones de uso, cláusulas 1.5.4 y 1.3.2
+ *   (verificado 18 sept 2026, ver ARQUITECTURA.md sección 9) — prohíben
+ *   "el uso... de cualquier máquina, software, herramienta, agente u
+ *   otro mecanismo para navegar o buscar en este Sitio Web" que no sea
+ *   su propio buscador, y por separado "la reproducción y/o
+ *   comercialización no autorizada del Contenido" (texto, imágenes). */
 function isBlockedForAutoFill(url: URL): boolean {
   const host = url.hostname.toLowerCase();
   if (/(^|\.)mercadolibre\.com\.ar$/.test(host)) return true;
   if (/(^|\.)argenprop\.com$/.test(host)) return true;
   if (/(^|\.)mudafy\.com\.ar$/.test(host) && url.pathname.startsWith("/ficha/")) return true;
+  if (/(^|\.)zonaprop\.com\.ar$/.test(host)) return true;
   return false;
 }
 
@@ -257,12 +317,16 @@ export async function POST(request: NextRequest) {
       guessPriceFromMicrodata(html) ??
       guessPriceUsd(title, description) ??
       guessPriceFromEmbeddedJson(html);
+    const ambientes = jsonLd.ambientes ?? guessAmbientesFromText(title, description);
+    const superficieM2 = jsonLd.superficieM2 ?? guessSuperficieFromText(title, description);
 
     return NextResponse.json({
       title: title ? decodeHtmlEntities(title).trim() : null,
       images,
       description,
       priceUsd,
+      ambientes,
+      superficieM2,
     });
   } catch {
     return NextResponse.json(

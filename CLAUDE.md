@@ -34,46 +34,39 @@ Siempre leer y comprender el contexto antes de proponer cambios:
 
 ## Estado del proyecto
 
-Micaso es la propuesta de convertir [Casa](../Casa) (una herramienta
-privada de búsqueda de casa, en producción para 3 personas en `D:\Casa`)
-en un SaaS que un corredor inmobiliario contrata para gestionar la
-búsqueda de cada uno de sus clientes. Ver `README.md` para la estructura
-del repo y `ARQUITECTURA.md` para el diseño completo — leerlo antes de
-proponer cualquier cambio, es la fuente de verdad de todas las decisiones
-tomadas hasta ahora.
+Micaso es la conversión de [Casa](../Casa) (una herramienta privada de
+búsqueda de casa, en producción para 3 personas en `D:\Casa`) en un SaaS
+que un corredor inmobiliario contrata para gestionar la búsqueda de cada
+uno de sus clientes. Ver `README.md` para la estructura del repo y
+`ARQUITECTURA.md` para el diseño completo — leerlo antes de proponer
+cualquier cambio, es la fuente de verdad de todas las decisiones tomadas
+hasta ahora (tiene addendums fechados en cada sección; el estado real
+puede estar varias secciones más abajo del texto original, no solo en el
+encabezado).
 
-**El código que hay acá (`app/`, `components/`, `lib/`, `proxy.ts`) es
-una copia sin modificar de `D:\Casa`, no el producto SaaS.** Se copió el
-14 de septiembre de 2026 como punto de partida (ver README.md) — sigue
-siendo la app de un solo caso, con el login hardcodeado y las 41
-propiedades semilla de Lucas. Ninguna línea de la capa multi-corredor
-(auth de corredor, cobro, paneles) está escrita todavía.
+**Ya no es una copia de `D:\Casa` sin modificar — es el producto SaaS, en
+producción.** Desde el punto de partida del 14 de septiembre de 2026 (ver
+README.md) se construyó encima: la capa multi-corredor (Auth.js con
+Google para corredor y super-admin, `lib/cases.ts`, namespacing por
+`case:{caseId}:...`, panel del corredor, super-admin) está escrita y en
+vivo en `micaso.com.ar`, con Carolina como primera corredora real. Mercado
+Pago (suscripciones vía API de Preapproval, con precio en ARS/USD según
+IP) también está implementado, igual que notificaciones Web Push, PWA con
+soporte offline (Serwist) y el resto de lo que `ARQUITECTURA.md` documenta
+sección por sección. Lo que sigue pendiente son detalles puntuales, no la
+capa entera — no asumir que algo "no está escrito todavía" sin
+confirmarlo contra el código o los addendums fechados de
+`ARQUITECTURA.md`.
 
-**Decisión (14 sept 2026): se construye igual, sin esperar validación de
-pago.** La sección 12 de `ARQUITECTURA.md` ("Camino de validación
-sugerido") describía un gate — no escribir código hasta que un corredor,
-además de Carolina, confirmara que pagaría. Lucas decidió que no importa:
-quiere construirlo igual como proyecto personal para aprender, y ver más
-adelante si alguien paga. La validación de pago ya no bloquea el
-desarrollo — sigue siendo relevante como señal de negocio, no como
-condición para escribir código.
-
-## Cómo se está construyendo
-
-Este proyecto no arranca de cero: `ARQUITECTURA.md` sección 8 ("Qué
-cambia respecto al código de Casa") tiene, archivo por archivo, qué se
-extiende del código ya existente en `D:\Casa` (Next.js 16, React 19,
-TypeScript, Tailwind v4, Redis vía Upstash) y qué es nuevo (Auth.js para
-login de corredor/super-admin, Mercado Pago para el cobro, storage de
-imágenes). La base ya se copió acá (14 sept 2026, sin modificar).
-
-Orden de construcción elegido: primero el núcleo multi-caso que no
-depende de credenciales externas (`lib/types.ts`, `lib/store.ts`, nuevo
-`lib/cases.ts`, plantillas de `lib/seed.ts`) — es la base de la que todo
-lo demás cuelga. Auth.js (necesita credenciales de Google OAuth) y
-Mercado Pago (necesita cuenta y API keys) se dejan para cuando Lucas
-tenga esas credenciales a mano; mientras tanto se puede seguir avanzando
-con un login placeholder simple para el panel del corredor.
+**Decisión (14 sept 2026), sigue vigente: no se espera validación de
+pago para seguir construyendo.** La sección 12 de `ARQUITECTURA.md`
+("Camino de validación sugerido") describía un gate — no escribir código
+hasta que un corredor, además de Carolina, confirmara que pagaría. Lucas
+decidió que no importa: quiere construirlo igual como proyecto personal
+para aprender, y ver más adelante si el negocio funciona. La validación
+de pago no bloquea el desarrollo — sigue siendo relevante como señal de
+negocio, no como condición para escribir código (y, de hecho, Carolina ya
+confirmó que pagaría — ver esa misma sección).
 
 ## Decisiones ya cerradas (no volver a discutir sin motivo)
 
