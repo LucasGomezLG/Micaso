@@ -221,6 +221,64 @@ function isBlockedForAutoFill(url: URL): boolean {
   return false;
 }
 
+type SlugGuess = { titleGuess: string | null; ambientes: number | null };
+
+/** Para un sitio bloqueado, lo único que se puede sacar sin pedirle nada
+ * a su servidor es el texto que el propio sitio ya metió en la URL como
+ * slug SEO — parsear ESE string no es "acceso automatizado al sitio" en
+ * ningún sentido: es leer un texto que el usuario ya pegó en el input,
+ * igual que si lo hubiera tipeado él mismo pero más rápido. Los tres
+ * portales bloqueados meten título (y a veces ambientes) ahí; probado a
+ * mano contra avisos reales de los tres (18 sept 2026, ver
+ * ARQUITECTURA.md sección 9). */
+function guessFromBlockedUrlSlug(url: URL): SlugGuess {
+  const host = url.hostname.toLowerCase();
+  let slug = url.pathname.replace(/\.html$/i, "");
+
+  // Mudafy a veces termina el slug con un hash en vez de un ID numérico
+  // (ej. /ficha/propiedad/<slug>/01196e6407cce600705f8e45aa08625b).
+  slug = slug.replace(/\/[0-9a-f]{16,}$/i, "");
+
+  if (/(^|\.)mercadolibre\.com\.ar$/.test(host)) {
+    // MLA-<id>-<slug>-_JM
+    slug = slug.replace(/^\/?MLA-\d+-/i, "/").replace(/-_JM$/i, "");
+  } else {
+    if (/(^|\.)zonaprop\.com\.ar$/.test(host)) {
+      slug = slug.replace(/^\/?propiedades\/clasificado\//i, "/");
+    }
+    if (/(^|\.)mudafy\.com\.ar$/.test(host)) {
+      slug = slug.replace(/^\/?ficha\/propiedad\//i, "/");
+    }
+    // ArgenProp y ZonaProp terminan el slug con el ID del aviso.
+    slug = slug.replace(/-{1,2}\d+$/i, "");
+  }
+
+  const words = slug.replace(/^\/+|\/+$/g, "").split(/[-/]+/).filter(Boolean);
+  if (words.length === 0) return { titleGuess: null, ambientes: null };
+
+  const ambientesMatch = words.join(" ").match(/(\d{1,2})\s*amb/i);
+  const ambientes = ambientesMatch ? Number(ambientesMatch[1]) : null;
+
+  const joined = words.join(" ");
+  const titleGuess = joined.charAt(0).toUpperCase() + joined.slice(1);
+
+  return { titleGuess, ambientes };
+}
+
+function blockedAutoFillResponse(blockedUrl: URL) {
+  const guess = guessFromBlockedUrlSlug(blockedUrl);
+  return {
+    title: guess.titleGuess,
+    images: [],
+    description: null,
+    priceUsd: null,
+    ambientes: guess.ambientes,
+    superficieM2: null,
+    notice:
+      "Este sitio no permite autocompletar foto ni precio — completamos lo que pudimos sacar del link, cargá el resto a mano.",
+  };
+}
+
 /** RE/MAX (`robots.txt`, `User-agent: *`) prohíbe crawlear cualquier URL
  * con el parámetro `associate` — es el ID del agente que comparte el
  * link, no cambia el contenido del aviso, así que sacarlo antes de
@@ -240,28 +298,62 @@ const USER_AGENTS = [
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
 ];
 
-async function fetchHtml(url: string): Promise<{ html: string } | { error: string }> {
-  let lastStatus: number | null = null;
-  for (const userAgent of USER_AGENTS) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(url, {
-        signal: controller.signal,
-        headers: { "User-Agent": userAgent, Accept: "text/html" },
-      });
-      clearTimeout(timeout);
-      if (res.ok) return { html: await res.text() };
-      lastStatus = res.status;
-    } catch {
-      // network error/timeout — try the next user agent
+const MAX_REDIRECT_HOPS = 5;
+
+/** Sigue redirects a mano (`redirect: "manual"`) en vez de dejar que
+ * `fetch` los siga solo — un acortador (share.google, bit.ly, o
+ * cualquier otro) que apunte a un sitio bloqueado terminaría trayendo su
+ * contenido igual si se dejara al fetch nativo resolver la cadena entera
+ * antes de mirar el resultado. Acá se chequea `isBlockedForAutoFill` en
+ * cada hop ANTES de pedirlo, así nunca se le manda un request al sitio
+ * bloqueado, ni siquiera para descartar la respuesta después (encontrado
+ * probando con un link acortado apuntando a MercadoLibre, 18 sept
+ * 2026 — ver ARQUITECTURA.md sección 9). */
+async function fetchHtml(
+  startUrl: URL
+): Promise<{ html: string } | { error: string } | { blockedUrl: URL }> {
+  let current = startUrl;
+  for (let hop = 0; hop < MAX_REDIRECT_HOPS; hop++) {
+    if (!isSafeExternalUrl(current)) return { error: "Host no permitido" };
+    if (isBlockedForAutoFill(current)) return { blockedUrl: current };
+
+    const fetchTarget = stripDisallowedQuery(current).toString();
+    let lastStatus: number | null = null;
+    let nextHop: URL | null = null;
+    for (const userAgent of USER_AGENTS) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(fetchTarget, {
+          signal: controller.signal,
+          redirect: "manual",
+          headers: { "User-Agent": userAgent, Accept: "text/html" },
+        });
+        clearTimeout(timeout);
+        if (res.status >= 300 && res.status < 400) {
+          const location = res.headers.get("location");
+          if (location) {
+            nextHop = new URL(location, fetchTarget);
+            break;
+          }
+        }
+        if (res.ok) return { html: await res.text() };
+        lastStatus = res.status;
+      } catch {
+        // network error/timeout — try the next user agent
+      }
     }
+    if (nextHop) {
+      current = nextHop;
+      continue;
+    }
+    return {
+      error: lastStatus
+        ? `El sitio respondió ${lastStatus}`
+        : "No se pudo leer el link (puede bloquear bots).",
+    };
   }
-  return {
-    error: lastStatus
-      ? `El sitio respondió ${lastStatus}`
-      : "No se pudo leer el link (puede bloquear bots).",
-  };
+  return { error: "Demasiados redirects." };
 }
 
 export async function POST(request: NextRequest) {
@@ -284,17 +376,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "URL inválida" }, { status: 400 });
   }
   if (isBlockedForAutoFill(parsed)) {
-    return NextResponse.json(
-      { error: "Este sitio no permite autocompletar este aviso — cargalo a mano." },
-      { status: 200 }
-    );
+    return NextResponse.json(blockedAutoFillResponse(parsed));
   }
-  const fetchUrl = stripDisallowedQuery(parsed).toString();
 
   try {
-    const fetched = await fetchHtml(fetchUrl);
+    const fetched = await fetchHtml(parsed);
     if ("error" in fetched) {
       return NextResponse.json({ error: fetched.error }, { status: 200 });
+    }
+    if ("blockedUrl" in fetched) {
+      return NextResponse.json(blockedAutoFillResponse(fetched.blockedUrl));
     }
     const html = fetched.html;
     const title =

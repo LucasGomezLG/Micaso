@@ -135,7 +135,7 @@ export default function AddHouseModal({
           superficieM2: data.superficieM2 ? String(data.superficieM2) : d.superficieM2,
           zone: zoneMatch || d.zone,
         } : d));
-        setScrapeMsg("Listo — revisá los datos y completá lo que falte.");
+        setScrapeMsg(data.notice || "Listo — revisá los datos y completá lo que falte.");
       }
     } catch {
       setScrapeMsg("No se pudo leer el link.");

@@ -999,6 +999,77 @@ personas lo sigue siendo a escala.
 >   pegando y guardando, título/foto/precio quedan a cargo de quien lo
 >   agrega. Con esto, los cinco sitios de `lib/seed.ts` ya están
 >   revisados — ninguno queda pendiente de confirmar.
+>
+> **Revisión adicional (18 sept 2026)** — Lucas pidió revisar de nuevo
+> los cinco de arriba "por las dudas" más cuatro inmobiliarias chicas de
+> la zona de búsqueda (links pasados a mano, no en `lib/seed.ts` todavía).
+>
+> - **Re-chequeo de los cinco ya conocidos: sin cambios**, salvo un
+>   detalle nuevo en Mudafy. Se releyó el `robots.txt` de los cinco y se
+>   re-confirmó el texto exacto del art. 26.3 de ArgenProp contra la web
+>   en vivo — idéntico a lo ya documentado arriba. **Mudafy** sí tiene
+>   algo no documentado todavía: su `robots.txt` bloquea `Disallow: /*?`
+>   (cualquier URL con query string) para `User-agent: *`, no solo
+>   `/ficha/*`. Hoy no afecta nada porque los links de Mudafy usados no
+>   llevan query params, pero un link con `?utm_...` de tracking quedaría
+>   bloqueado sin que `isBlockedForAutoFill()` lo sepa — no se tocó el
+>   código todavía, queda anotado para cuando se dé el caso.
+>   Adicionalmente, a diferencia de MercadoLibre/ArgenProp/ZonaProp, para
+>   **RE/MAX y Mudafy** el arreglo original (14-15 sept) solo había
+>   chequeado `robots.txt`, no el texto de los Términos y Condiciones —
+>   se leyeron completos hoy (`remax.com.ar/terminos-y-condiciones` y
+>   `mudafy.com.ar/d/terminos-y-condiciones`): **ninguno de los dos tiene
+>   cláusula de scraping, bots, ni de propiedad intelectual/reproducción
+>   de contenido** — RE/MAX ni siquiera tiene una cláusula de derechos de
+>   autor en sus T&C; lo único cercano en Mudafy es la sección 8 sobre su
+>   sistema de valuación específicamente, no el sitio en general. Con
+>   esto, RE/MAX y Mudafy quedan confirmados a nivel de términos, no solo
+>   de `robots.txt`.
+> - **Bernabé Propiedades (`bernabepropiedades.com.ar`), DIC Propiedades
+>   (`dicpropiedades.com.ar`), Altamirano (`altamirano.com.ar`) y
+>   Montenegro Propiedades (`montenegropropiedades.com.ar`) — sin
+>   restricción encontrada en ninguno de los cuatro.** `robots.txt`: DIC
+>   tiene `Allow: /` explícito para todos los bots; Bernabé solo bloquea
+>   bots de SEO nombrados (AhrefsBot, MJ12bot, etc.), no bots generales;
+>   Altamirano nombra puntualmente a GPTBot/ChatGPT-User pero solo les
+>   bloquea parámetros sueltos (`whatsapp`, `markers`), no las fichas de
+>   propiedad; Montenegro no tiene `robots.txt` (404). Ninguno de los
+>   cuatro tiene una página de Términos y Condiciones pública/enlazada
+>   (Bernabé menciona "aceptás los T&C" en el formulario de contacto,
+>   pero sin link visible ni contenido encontrado). A diferencia de los
+>   cinco portales grandes de arriba, son inmobiliarias chicas sin
+>   departamento legal — no hay una cláusula contractual que violar
+>   porque no existe la cláusula. No se agregó ninguno de los cuatro a
+>   `isBlockedForAutoFill()`, y el scraper ya los soporta automático hoy
+>   (no están en la lista de bloqueados). Vale la pena repetir esta
+>   revisión si alguna vez agregan un sitio nuevo grande a la lista, o
+>   periódicamente para los que ya nombran bots de IA en su `robots.txt`
+>   (Altamirano) por si suman restricciones más adelante.
+> - **Agujero encontrado y cerrado: un link acortado bypaseaba el
+>   bloqueo.** `isBlockedForAutoFill()` solo chequeaba el host del link
+>   tal cual se pegaba, no el destino final después de seguir redirects
+>   — un link de `share.google` (el que genera el botón "Compartir" de
+>   Google en el celular, y que ya aparece en casas reales cargadas)
+>   apuntando a MercadoLibre traía el aviso completo igual, sin que el
+>   bloqueo se enterara. Probado y confirmado con un redirect armado a
+>   mano antes de arreglarlo. **Arreglado:** `fetchHtml()` en
+>   `app/api/scrape/route.ts` ahora sigue redirects a mano
+>   (`redirect: "manual"`) y chequea `isBlockedForAutoFill` en cada hop
+>   *antes* de pedirlo — si un hop cae en un sitio bloqueado, corta ahí
+>   mismo sin haberle mandado nunca un request a ese sitio.
+> - **Nuevo (18 sept 2026): datos aproximados desde el slug de la URL
+>   para los sitios bloqueados, sin pedirle nada a su servidor.** Los
+>   tres portales bloqueados meten el título del aviso (y ArgenProp/
+>   ZonaProp a veces los ambientes) como texto en el path de la URL —
+>   parsear ESE string no es acceso automatizado al sitio en ningún
+>   sentido, es leer texto que el usuario ya pegó en el input, igual que
+>   si lo hubiera tipeado él mismo. `guessFromBlockedUrlSlug()` en
+>   `app/api/scrape/route.ts` hace ese parseo (probado contra avisos
+>   reales de los tres sitios) y el endpoint devuelve esos campos más un
+>   `notice` explicando qué falta cargar a mano (foto y precio siguen
+>   sin poder sacarse así). El front (`AddHouseModal.tsx`) ya sabía
+>   completar el formulario con lo que venga en la respuesta — solo hubo
+>   que dejar de tratar esta respuesta como un error duro.
 > - **MercadoLibre — el más grave de los cinco, confirmado con el texto
 >   real (no una fuente secundaria).** Leído directo de
 >   `mercadolibre.com.ar/ayuda/terminos-y-condiciones-de-uso_991`
