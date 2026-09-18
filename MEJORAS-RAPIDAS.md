@@ -1,5 +1,8 @@
 # Mejoras rápidas de alto valor
 
+> **Estado: COMPLETADO (18 sept 2026)**
+> Todas las 9 mejoras detalladas en este documento han sido implementadas en el "Lote 3", probadas y pusheadas a producción, incluyendo la reescritura total del flujo de geocodificación mediante la API de Nominatim, accesibilidad, modals transaccionales y performance móvil.
+
 Backlog de mejoras concretas, de esfuerzo bajo y alto valor, encontradas
 al explorar el repo (no una auditoría exhaustiva). Surgió de revisar el
 diff grande de UX/seguridad que ya se mergeó (ver `ARQUITECTURA.md`,

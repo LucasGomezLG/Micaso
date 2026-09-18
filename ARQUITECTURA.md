@@ -740,6 +740,12 @@ Lo mínimo que necesita el panel para ser útil desde el primer día:
 > - **Menú compartir:** En `HouseCard`, el botón de WhatsApp ahora abre un menú desplegable armado a mano (no hay componente `Popover` en el repo) con opciones separadas para "WhatsApp" o "Copiar enlace al portapapeles".
 > - **Métricas de lista:** `CaseList` gana ordenamiento dinámico ("Más recientes", "A–Z (Nombre)", "Más propiedades") usando un nuevo campo calculado `summaries`, y cada fila de caso muestra ahora el número total de propiedades ("{n} propiedades") y las pendientes de revisar ("{n} por revisar").
 
+> **Implementado (18 sept 2026, parte 2): Mejoras Rápidas Lote 3 (Mobile, API Geocoding, Accesibilidad).**
+> - **Skeletons de Carga:** Archivos `loading.tsx` dedicados bajo `/caso` y `/panel` para dar feedback menor a 50ms al usuario de celular mientras Redis resuelve datos, anulando el delay visual de las transiciones de App Router.
+> - **Refactor Hooks y Error Boundaries:** Creación de `useModalScrollLock` reduciendo boilerplate y reparando bugs de modales previos, sumado a un `app/caso/error.tsx` para evitar que caídas de red rompan el Footer y NavBar de las familias.
+> - **Geocodificación Real (Nominatim):** Al persistir una propiedad, se introdujo una integración server-side contra *OpenStreetMap Nominatim* (`lib/zoneCoords.ts`) que mapea texto libre de zonas a `lat`/`lng` reales de manera transparente. Previene el crasheo del mapa de familias en el interior y provee un fallback nativo a la lista estática si Nominatim falla.
+> - **Seguridad y Mobile-First:** Solución del scroll-bounce en iOS Safari/Chrome mediante CSS `overscroll-behavior-y: contain`. Adicionalmente, el login cuenta con atributos nativos `autoComplete` completos y todos los Action Buttons poseen `aria-label` para plena compatibilidad con lectores de pantalla y administradores de contraseñas de mobile.
+
 > **Implementado (17 sept 2026): editar perfil (foto y nombre) desde el
 > celular.** En el header angosto del panel, `BrokerNameEditor` solo se
 > mostraba a partir de `sm:` (`hidden sm:inline-flex`) — pero esa misma
