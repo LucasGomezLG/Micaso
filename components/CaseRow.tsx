@@ -322,6 +322,7 @@ export default function CaseRow({
             type="button"
             onClick={copiarCredenciales}
             title="Copiar usuario, clave y link de acceso"
+            aria-label="Copiar usuario, clave y link de acceso"
             className="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold transition-all hover:opacity-80"
             style={{
               background: copiedCreds ? "var(--status-gusto-bg)" : "var(--accent-soft)",
@@ -337,6 +338,7 @@ export default function CaseRow({
             type="button"
             onClick={compartirPorWhatsapp}
             title="Compartir usuario y contraseña por WhatsApp"
+            aria-label="Compartir usuario y contraseña por WhatsApp"
             className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold"
             style={{ borderColor: "var(--border-strong)", color: "var(--ink-muted)" }}
           >
@@ -347,6 +349,7 @@ export default function CaseRow({
             onClick={entrarComoCaso}
             disabled={loading !== null}
             title="Entrar y ver/editar este caso como lo ve la familia"
+            aria-label="Entrar y ver/editar este caso como lo ve la familia"
             className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >

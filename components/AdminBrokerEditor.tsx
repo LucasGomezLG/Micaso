@@ -75,7 +75,7 @@ export default function AdminBrokerEditor({ broker, caseCount }: { broker: Broke
       <div className="flex flex-wrap items-center gap-3">
         {broker.imagenUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={broker.imagenUrl} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" referrerPolicy="no-referrer" />
+          <img src={broker.imagenUrl} alt="" loading="lazy" className="h-12 w-12 shrink-0 rounded-full object-cover" referrerPolicy="no-referrer" />
         ) : (
           <span
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-semibold"

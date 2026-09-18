@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Check, Copy, Eye, EyeOff, LogIn, Share2 } from "lucide-react";
 import { Case, TipoCaso } from "@/lib/types";
 import { buildCaseCredentialsText, buildCaseShareMessage, openWhatsapp } from "@/lib/whatsapp";
+import { useModalScrollLock } from "@/lib/hooks";
 import Select from "@/components/Select";
 
 export default function CreateCaseModal({ label = "+ Nuevo caso", disabledReason }: { label?: string; disabledReason?: string }) {
@@ -32,28 +33,10 @@ export default function CreateCaseModal({ label = "+ Nuevo caso", disabledReason
     router.refresh();
   }
 
-  useEffect(() => {
-    if (!open) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        if (createdCase) {
-          resetAndClose();
-        } else {
-          setOpen(false);
-        }
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, createdCase]);
+  useModalScrollLock(open, () => {
+    if (createdCase) resetAndClose();
+    else setOpen(false);
+  });
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

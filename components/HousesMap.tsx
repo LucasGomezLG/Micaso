@@ -18,10 +18,24 @@ export default function HousesMap({ houses }: { houses: House[] }) {
 
       const groups = new Map<string, { lat: number; lng: number; houses: House[] }>();
       for (const house of houses) {
-        const coord = matchZoneCoord(house.zone);
-        if (!coord) continue;
-        if (!groups.has(coord.name)) groups.set(coord.name, { lat: coord.lat, lng: coord.lng, houses: [] });
-        groups.get(coord.name)!.houses.push(house);
+        let coordName: string;
+        let coordLat: number;
+        let coordLng: number;
+        
+        if (house.lat && house.lng) {
+          coordName = house.zone || "Desconocida";
+          coordLat = house.lat;
+          coordLng = house.lng;
+        } else {
+          const coord = matchZoneCoord(house.zone);
+          if (!coord) continue;
+          coordName = coord.name;
+          coordLat = coord.lat;
+          coordLng = coord.lng;
+        }
+
+        if (!groups.has(coordName)) groups.set(coordName, { lat: coordLat, lng: coordLng, houses: [] });
+        groups.get(coordName)!.houses.push(house);
       }
 
       map = L.map(mapRef.current, { scrollWheelZoom: true }).setView([-34.535, -58.52], 12);

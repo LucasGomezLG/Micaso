@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Check, ArrowRight, User, Building2, Star, CheckSquare, X } from "lucide-react";
 import { MicasoMark } from "@/components/MicasoMark";
+import { useModalScrollLock } from "@/lib/hooks";
 
 const ONBOARDED_KEY_PREFIX = "micaso-client-onboarded:";
 const AUTHOR_KEY = "casa-comment-author";
@@ -36,14 +37,7 @@ export default function ClientOnboardingModal({
 
   const effectiveBrokerName = brokerName?.trim() || "Tu corredor inmobiliario";
 
-  useEffect(() => {
-    if (!open) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [open]);
+  useModalScrollLock(open, () => setOpen(false));
 
   useEffect(() => {
     // Si quien mira es el corredor o ya completó el onboarding en este dispositivo, no mostrar

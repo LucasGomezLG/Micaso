@@ -120,6 +120,7 @@ export default function LoginForm() {
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
+                autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="rounded-lg border px-3 py-2"
@@ -133,6 +134,7 @@ export default function LoginForm() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
                   className="w-full rounded-lg border px-3 py-2 pr-10"
                   style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
                 />

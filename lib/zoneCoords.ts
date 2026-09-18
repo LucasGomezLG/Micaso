@@ -40,3 +40,31 @@ export function matchZoneCoord(zone: string | null): (ZoneCoord & { name: string
   const found = ZONE_NAMES.find((name) => zone.includes(name));
   return found ? { ...ZONE_COORDS[found], name: found } : null;
 }
+
+/** Geocodes a zone string using Nominatim API */
+export async function geocodeZone(zone: string): Promise<{ lat: number; lng: number } | null> {
+  if (!zone) return null;
+  
+  try {
+    const q = encodeURIComponent(`${zone}, Argentina`);
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
+      headers: {
+        "User-Agent": "Micaso/1.0",
+      },
+    });
+    
+    if (!res.ok) return null;
+    
+    const data = await res.json();
+    if (data && data.length > 0) {
+      return {
+        lat: Number(data[0].lat),
+        lng: Number(data[0].lon),
+      };
+    }
+  } catch (error) {
+    console.error("Error geocoding zone:", error);
+  }
+  
+  return null;
+}

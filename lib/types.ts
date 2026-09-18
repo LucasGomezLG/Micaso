@@ -88,6 +88,8 @@ export interface House {
   source: string;
   priceUsd: number | null;
   zone: string | null;
+  lat: number | null;
+  lng: number | null;
   ambientes: number | null;
   dormitorios: number | null;
   cochera: boolean | null;

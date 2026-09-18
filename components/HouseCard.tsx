@@ -28,6 +28,7 @@ import Image from "next/image";
 import { AptoCredito, House, HouseStatus, LoanInfo, PIPELINE_STATUSES, STATUS_LABEL } from "@/lib/types";
 import { formatDate, formatUsd, isOverdue, proxiedImage, telHref } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/http";
+import { useModalScrollLock } from "@/lib/hooks";
 import { openWhatsapp } from "@/lib/whatsapp";
 import { cashNeededRange, pricePerM2 } from "@/lib/mortgage";
 import StatusBadge from "@/components/StatusBadge";
@@ -110,21 +111,9 @@ export default function HouseCard({
     } catch {}
   }, [people]);
 
-  useEffect(() => {
-    if (!confirmDelete) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && !deleting) setConfirmDelete(false);
-    }
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [confirmDelete, deleting]);
+  useModalScrollLock(confirmDelete, () => {
+    if (!deleting) setConfirmDelete(false);
+  });
 
   async function postComment() {
     const text = commentText.trim();
@@ -293,6 +282,7 @@ export default function HouseCard({
                 <>
                   <button
                     title="Foto anterior"
+                    aria-label="Foto anterior"
                     onClick={(e) => {
                       e.preventDefault();
                       setImgFailed(false);
@@ -305,6 +295,7 @@ export default function HouseCard({
                   </button>
                   <button
                     title="Foto siguiente"
+                    aria-label="Foto siguiente"
                     onClick={(e) => {
                       e.preventDefault();
                       setImgFailed(false);
@@ -663,6 +654,7 @@ export default function HouseCard({
             {house.url && (
               <button
                 title="Actualizar imagen/precio desde el aviso"
+                aria-label="Actualizar imagen/precio desde el aviso"
                 onClick={refreshFromSource}
                 disabled={refreshing}
                 className="flex items-center justify-center rounded-lg border px-2 py-1.5"
@@ -675,6 +667,7 @@ export default function HouseCard({
               <button
                 type="button"
                 title="Compartir propiedad"
+                aria-label="Compartir propiedad"
                 onClick={() => setShareOpen((v) => !v)}
                 className="flex items-center justify-center rounded-lg border px-2 py-1.5 transition-colors hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
                 style={{
@@ -727,6 +720,7 @@ export default function HouseCard({
             </div>
             <button
               title="Editar título, precio, zona, ambientes, cochera o imagen"
+              aria-label="Editar título, precio, zona, ambientes, cochera o imagen"
               onClick={() => setEditOpen(true)}
               className="flex items-center justify-center rounded-lg border px-2 py-1.5"
               style={{ borderColor: "var(--border)" }}
@@ -735,6 +729,7 @@ export default function HouseCard({
             </button>
             <button
               title={house.highlighted ? "Quitar de favoritas" : "Marcar como favorita"}
+              aria-label={house.highlighted ? "Quitar de favoritas" : "Marcar como favorita"}
               onClick={() => onChange(house.id, { highlighted: !house.highlighted })}
               className="flex items-center justify-center rounded-lg border px-2 py-1.5 transition-colors"
               style={{
@@ -747,6 +742,7 @@ export default function HouseCard({
             </button>
             <button
               title="Archivar (se puede restaurar desde la pestaña Borradas)"
+              aria-label="Archivar (se puede restaurar desde la pestaña Borradas)"
               onClick={() => onChange(house.id, { status: "borrada" })}
               className="flex items-center justify-center rounded-lg border px-2 py-1.5"
               style={{ borderColor: "var(--border)", color: "var(--status-descartada)" }}

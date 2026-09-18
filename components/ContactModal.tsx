@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-
-const CONTACT_EMAIL = "luccaass96@gmail.com";
+import { CONTACT_EMAIL } from "@/lib/site";
+import { useModalScrollLock } from "@/lib/hooks";
 
 export default function ContactModal({
   label = "Escribinos",
@@ -19,21 +19,7 @@ export default function ContactModal({
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    if (!open) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
+  useModalScrollLock(open, () => setOpen(false));
 
   function submit(e: React.FormEvent) {
     e.preventDefault();

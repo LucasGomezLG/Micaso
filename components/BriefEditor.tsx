@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { X } from "lucide-react";
 import { SearchBrief } from "@/lib/types";
 import { apiErrorMessage } from "@/lib/http";
+import { useModalScrollLock } from "@/lib/hooks";
 
 export default function BriefEditor({ brief }: { brief: SearchBrief }) {
   const router = useRouter();
@@ -14,21 +15,7 @@ export default function BriefEditor({ brief }: { brief: SearchBrief }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(brief);
 
-  useEffect(() => {
-    if (!open) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
+  useModalScrollLock(open, () => setOpen(false));
 
   async function save() {
     setSaving(true);

@@ -5,6 +5,7 @@ import { getCaseIdFromRequest } from "@/lib/session";
 import { getCase, updatePeople } from "@/lib/cases";
 import { getCurrentBroker } from "@/lib/brokers";
 import { notifyCaseClients } from "@/lib/push";
+import { geocodeZone } from "@/lib/zoneCoords";
 
 export async function GET(request: NextRequest) {
   const caseId = getCaseIdFromRequest(request);
@@ -29,6 +30,14 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+  if (body.zone) {
+    const coords = await geocodeZone(body.zone);
+    if (coords) {
+      body.lat = coords.lat;
+      body.lng = coords.lng;
+    }
+  }
+
   const house = await addHouse(caseId, body as Pick<House, "addedBy"> & Partial<House>);
 
   // Si el nombre de quien agregó la casa no figura todavía en la lista

@@ -90,7 +90,7 @@ export default function Nav({
           <Link href="/caso" className="flex min-w-0 items-center gap-2">
             {brokerImage ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={brokerImage} alt="" className="h-7 w-7 shrink-0 rounded-full" referrerPolicy="no-referrer" />
+              <img src={brokerImage} alt="" loading="lazy" className="h-7 w-7 shrink-0 rounded-full" referrerPolicy="no-referrer" />
             ) : (
               <span
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"

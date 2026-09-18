@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { X } from "lucide-react";
 import { Criteria } from "@/lib/types";
 import { apiErrorMessage } from "@/lib/http";
+import { useModalScrollLock } from "@/lib/hooks";
 
 export default function CriteriaEditor({ criteria }: { criteria: Criteria }) {
   const router = useRouter();
@@ -15,21 +16,7 @@ export default function CriteriaEditor({ criteria }: { criteria: Criteria }) {
   const [form, setForm] = useState(criteria.loan);
   const [newCondition, setNewCondition] = useState("");
 
-  useEffect(() => {
-    if (!open) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
+  useModalScrollLock(open, () => setOpen(false));
 
   async function save() {
     setSaving(true);
@@ -112,7 +99,7 @@ export default function CriteriaEditor({ criteria }: { criteria: Criteria }) {
                   className="field"
                   value={form.approvedAmountArs}
                   onChange={(e) =>
-                    setForm({ ...form, approvedAmountArs: Number(e.target.value) })
+                    setForm({ ...form, approvedAmountArs: Number(e.target.value) || 0 })
                   }
                 />
               </Field>
@@ -122,7 +109,7 @@ export default function CriteriaEditor({ criteria }: { criteria: Criteria }) {
                   className="field"
                   value={form.approvedInstallmentArs}
                   onChange={(e) =>
-                    setForm({ ...form, approvedInstallmentArs: Number(e.target.value) })
+                    setForm({ ...form, approvedInstallmentArs: Number(e.target.value) || 0 })
                   }
                 />
               </Field>
@@ -139,7 +126,7 @@ export default function CriteriaEditor({ criteria }: { criteria: Criteria }) {
                   type="number"
                   className="field"
                   value={form.termMonths}
-                  onChange={(e) => setForm({ ...form, termMonths: Number(e.target.value) })}
+                  onChange={(e) => setForm({ ...form, termMonths: Number(e.target.value) || 0 })}
                 />
               </Field>
               <Field label="Préstamo máximo del banco (USD)">
@@ -147,7 +134,7 @@ export default function CriteriaEditor({ criteria }: { criteria: Criteria }) {
                   type="number"
                   className="field"
                   value={form.bankMaxUsd}
-                  onChange={(e) => setForm({ ...form, bankMaxUsd: Number(e.target.value) })}
+                  onChange={(e) => setForm({ ...form, bankMaxUsd: Number(e.target.value) || 0 })}
                 />
               </Field>
               <Field label="Condiciones del banco">
@@ -207,7 +194,7 @@ export default function CriteriaEditor({ criteria }: { criteria: Criteria }) {
                 className="field"
                 value={form.ownFundsMinUsd}
                 onChange={(e) =>
-                  setForm({ ...form, ownFundsMinUsd: Number(e.target.value) })
+                  setForm({ ...form, ownFundsMinUsd: Number(e.target.value) || 0 })
                 }
               />
             </Field>
@@ -217,7 +204,7 @@ export default function CriteriaEditor({ criteria }: { criteria: Criteria }) {
                 className="field"
                 value={form.ownFundsMaxUsd}
                 onChange={(e) =>
-                  setForm({ ...form, ownFundsMaxUsd: Number(e.target.value) })
+                  setForm({ ...form, ownFundsMaxUsd: Number(e.target.value) || 0 })
                 }
               />
             </Field>

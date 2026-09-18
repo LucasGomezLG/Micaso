@@ -3,6 +3,7 @@ import { deleteHouse, getHouses, updateHouse } from "@/lib/store";
 import { getCaseIdFromRequest } from "@/lib/session";
 import { notifyCaseClients } from "@/lib/push";
 import { formatUsd } from "@/lib/format";
+import { geocodeZone } from "@/lib/zoneCoords";
 
 export async function PATCH(
   request: NextRequest,
@@ -20,10 +21,19 @@ export async function PATCH(
   // Si el patch trae un precio nuevo, guardar el anterior para poder avisar
   // del cambio — se pierde después de `updateHouse`, así que hay que leerlo
   // antes. Solo se lee cuando hace falta (no en cada cambio de estado/favorito).
+  const previousHouse = (await getHouses(caseId)).find((h) => h.id === id);
   const previousPriceUsd =
     typeof patch.priceUsd === "number"
-      ? ((await getHouses(caseId)).find((h) => h.id === id)?.priceUsd ?? null)
+      ? (previousHouse?.priceUsd ?? null)
       : null;
+
+  if (typeof patch.zone === "string" && patch.zone !== previousHouse?.zone) {
+    const coords = await geocodeZone(patch.zone);
+    if (coords) {
+      patch.lat = coords.lat;
+      patch.lng = coords.lng;
+    }
+  }
 
   const house = await updateHouse(caseId, id, patch);
   if (!house) {

@@ -7,6 +7,7 @@ import { proxiedImage } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/http";
 import { uploadHousePhoto } from "@/lib/photoUpload";
 import { parseListingText } from "@/lib/listingText";
+import { useModalScrollLock } from "@/lib/hooks";
 import Select from "@/components/Select";
 
 const URL_PATTERN = /^https?:\/\/.+\..+/i;
@@ -85,20 +86,7 @@ export default function AddHouseModal({
     urlInputRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [onClose]);
+  useModalScrollLock(true, onClose);
 
   async function pasteFromClipboard() {
     try {

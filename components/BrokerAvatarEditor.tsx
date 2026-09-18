@@ -87,7 +87,7 @@ export default function BrokerAvatarEditor({
       >
         {imagenUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imagenUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+          <img src={imagenUrl} alt="" loading="lazy" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
         ) : (
           <span className="font-semibold" style={{ color: "var(--accent)", fontSize: size * 0.46 }}>
             {nombreMarca.slice(0, 1).toUpperCase()}

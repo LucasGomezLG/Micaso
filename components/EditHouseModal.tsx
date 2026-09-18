@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { House } from "@/lib/types";
 import { proxiedImage } from "@/lib/format";
 import { uploadHousePhoto } from "@/lib/photoUpload";
+import { useModalScrollLock } from "@/lib/hooks";
 import Select from "@/components/Select";
 
 export default function EditHouseModal({
@@ -38,20 +39,7 @@ export default function EditHouseModal({
   const [visitaFecha, setVisitaFecha] = useState(house.visitaFecha ?? "");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [onClose]);
+  useModalScrollLock(true, onClose);
 
   async function onFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

@@ -136,6 +136,8 @@ export async function addHouse(
     source: input.source || (input.url ? guessSource(input.url) : "Manual"),
     priceUsd: input.priceUsd ?? null,
     zone: input.zone ?? null,
+    lat: input.lat ?? null,
+    lng: input.lng ?? null,
     ambientes: input.ambientes ?? null,
     dormitorios: input.dormitorios ?? null,
     cochera: input.cochera ?? null,

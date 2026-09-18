@@ -59,7 +59,7 @@ export default function BrokerProfileModal({
       >
         {initialImagenUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={initialImagenUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+          <img src={initialImagenUrl} alt="" loading="lazy" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
         ) : (
           <span className="flex h-full w-full items-center justify-center text-xs font-semibold" style={{ color: "var(--accent)" }}>
             {initialName.slice(0, 1).toUpperCase()}

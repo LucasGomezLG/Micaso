@@ -197,7 +197,7 @@ export default function BrokerOnboarding({ broker }: { broker: Broker }) {
                   >
                     {imagenUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={imagenUrl} alt="Logo o foto" className="h-full w-full object-cover" />
+                      <img src={imagenUrl} alt="Logo o foto" loading="lazy" className="h-full w-full object-cover" />
                     ) : (
                       <span className="text-2xl font-bold" style={{ color: "var(--accent)" }}>
                         {nombreMarca ? nombreMarca.slice(0, 1).toUpperCase() : "M"}
@@ -280,7 +280,7 @@ export default function BrokerOnboarding({ broker }: { broker: Broker }) {
                   <div className="flex min-w-0 items-center gap-2.5">
                     {imagenUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={imagenUrl} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+                      <img src={imagenUrl} alt="" loading="lazy" className="h-8 w-8 shrink-0 rounded-full object-cover" />
                     ) : (
                       <span
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"

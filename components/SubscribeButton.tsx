@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface SubscribeButtonProps {
   plan: "para_arrancar" | "para_tu_cartera";
@@ -31,7 +32,7 @@ export default function SubscribeButton({ plan, label, highlight }: SubscribeBut
       }
     } catch (err) {
       console.error(err);
-      alert("Hubo un error al intentar conectarse con Mercado Pago. Por favor, intentá de nuevo.");
+      toast.error("Hubo un error al intentar conectarse con Mercado Pago. Por favor, intentá de nuevo.");
       setLoading(false);
     }
   }

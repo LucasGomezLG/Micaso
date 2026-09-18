@@ -82,7 +82,9 @@ type SeedFields =
   | "proximaAccionFecha"
   | "visitaFecha"
   | "visitReview"
-  | "aptoCredito";
+  | "aptoCredito"
+  | "lat"
+  | "lng";
 
 function h(partial: Omit<House, SeedFields> & {
   id: string;
@@ -113,6 +115,8 @@ function h(partial: Omit<House, SeedFields> & {
     proximaAccionFecha: null,
     visitaFecha: null,
     visitReview: null,
+    lat: null,
+    lng: null,
     aptoCredito: "no_se",
     updatedAt: partial.addedAt,
     ...rest,

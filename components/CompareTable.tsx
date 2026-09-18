@@ -38,7 +38,7 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
         <a href={h.url ?? `/caso/casas#house-${h.id}`} target={h.url ? "_blank" : undefined} rel="noreferrer" className="block h-24 w-36 overflow-hidden rounded-lg" style={{ background: "var(--accent-soft)" }}>
           {h.images[0] && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={proxiedImage(h.images[0])!} alt={h.title} className="h-full w-full object-cover" />
+            <img src={proxiedImage(h.images[0])!} alt={h.title} loading="lazy" className="h-full w-full object-cover" />
           )}
         </a>
       ),
@@ -191,7 +191,7 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
                 <div className="relative aspect-[16/10] w-full overflow-hidden" style={{ background: "var(--accent-soft)" }}>
                   {h.images[0] ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={proxiedImage(h.images[0])!} alt={h.title} className="h-full w-full object-cover" />
+                    <img src={proxiedImage(h.images[0])!} alt={h.title} loading="lazy" className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-xs" style={{ color: "var(--ink-faint)" }}>
                       Sin imagen
