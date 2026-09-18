@@ -22,3 +22,21 @@ export async function recordFailedAttempt(scope: string, id: string): Promise<vo
 export async function clearAttempts(scope: string, id: string): Promise<void> {
   await dbDelete(key(scope, id));
 }
+
+/** Cuota genérica de ventana fija — a diferencia de isRateLimited/
+ * recordFailedAttempt (pensadas para intentos de login fallidos, que se
+ * registran aparte del chequeo), esto suma 1 uso y devuelve si ya se
+ * pasó del máximo en una sola llamada. Pensado para limitar cuánto puede
+ * pegar una ruta cara (como /api/scrape, que hace un fetch saliente por
+ * llamada) por sesión de caso, no por IP — el caso ya requiere sesión
+ * válida (proxy.ts lo exige), así que lo que hay que evitar es que una
+ * sola sesión comprometida o un script mal armado la use sin límite. */
+export async function checkAndConsumeQuota(
+  scope: string,
+  id: string,
+  max: number,
+  windowSeconds: number
+): Promise<boolean> {
+  const count = await dbIncrWithTtl(key(scope, id), windowSeconds);
+  return count <= max;
+}

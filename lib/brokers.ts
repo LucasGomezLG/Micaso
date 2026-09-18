@@ -7,6 +7,20 @@ import { Broker, PaymentRecord } from "./types";
 const BROKERS_KEY = "brokers";
 const TRIAL_DAYS = 14;
 
+/** IDs de corredores borrados a mano desde /superadmin — un tombstone,
+ * no un valor derivable de `brokers` (que ya no tiene el registro una
+ * vez borrado). Sin esto, un corredor dado de baja podía "resucitar"
+ * solo con tener su cookie de sesión de Google todavía viva (dura hasta
+ * 30 días, ver auth.ts): getCurrentBroker() llamaba a getOrCreateBroker
+ * sin distinguir "nunca existió" de "existió y se borró", así que lo
+ * recreaba con un período de prueba nuevo de 14 días. */
+const DELETED_BROKERS_KEY = "deleted_broker_ids";
+
+async function isBrokerDeleted(id: string): Promise<boolean> {
+  const deleted = await dbGet<Record<string, true>>(DELETED_BROKERS_KEY);
+  return Boolean(deleted && Object.prototype.hasOwnProperty.call(deleted, id));
+}
+
 /** El corredor real detrás de un email de Google. Casi siempre es el
  * email mismo (único y estable) — la única excepción es el mail del
  * propio Lucas, que se mapea al `dev-broker` de siempre para no migrar
@@ -61,9 +75,11 @@ export async function getOrCreateBroker(
   googleImage: string | null | undefined
 ): Promise<Broker> {
   const id = resolveBrokerId(email);
+  let created = false;
   const brokers = await dbUpdate<Record<string, Broker>>(BROKERS_KEY, (current) => {
     const brokers = current ?? {};
     if (Object.prototype.hasOwnProperty.call(brokers, id)) return brokers;
+    created = true;
     const now = new Date();
     const trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
     const broker: Broker = {
@@ -79,6 +95,18 @@ export async function getOrCreateBroker(
     };
     return { ...brokers, [id]: broker };
   });
+  // Una creación real (a mano desde /superadmin, o un corredor nuevo de
+  // verdad) saca cualquier tombstone previo — si alguna vez se lo borró y
+  // ahora un admin lo vuelve a dar de alta a propósito, no debería seguir
+  // bloqueado (ver isBrokerDeleted, usado por getCurrentBroker).
+  if (created) {
+    await dbUpdate<Record<string, true>>(DELETED_BROKERS_KEY, (current) => {
+      if (!current || !Object.prototype.hasOwnProperty.call(current, id)) return current ?? {};
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  }
   return normalizeBroker(brokers[id]);
 }
 
@@ -125,6 +153,8 @@ export async function getCurrentBroker(): Promise<Broker | null> {
     email = cookieStore.get("micaso_dev_user")?.value;
   }
   if (!email) return null;
+  const id = resolveBrokerId(email);
+  if (await isBrokerDeleted(id)) return null;
   return getOrCreateBroker(email, session?.user?.name, session?.user?.image);
 }
 
@@ -158,6 +188,9 @@ export async function deleteBroker(id: string): Promise<boolean> {
     delete next[id];
     return next;
   });
+  if (existed) {
+    await dbUpdate<Record<string, true>>(DELETED_BROKERS_KEY, (current) => ({ ...(current ?? {}), [id]: true }));
+  }
   return existed;
 }
 

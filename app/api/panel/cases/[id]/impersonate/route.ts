@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentBroker } from "@/lib/brokers";
 import { getCaseForBroker, markCaseSeenByBroker } from "@/lib/cases";
 import { CASE_COOKIE } from "@/lib/session";
+import { createCaseSessionToken } from "@/lib/sessionToken";
 
 /** Le da al corredor la misma cookie de sesión que usa la familia, para
  * que entre a /caso con la sesión de Google que ya tiene — reutiliza el
@@ -30,7 +31,7 @@ export async function POST(
   await markCaseSeenByBroker(id, broker.id);
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(CASE_COOKIE, kase.id, {
+  res.cookies.set(CASE_COOKIE, createCaseSessionToken(kase.id), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCaseByCredentials } from "@/lib/cases";
 import { CASE_COOKIE } from "@/lib/session";
+import { createCaseSessionToken } from "@/lib/sessionToken";
 import { clearAttempts, isRateLimited, recordFailedAttempt } from "@/lib/rateLimit";
 
 function getClientIp(request: NextRequest): string {
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
   await clearAttempts("case-login", ip);
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(CASE_COOKIE, kase.id, {
+  res.cookies.set(CASE_COOKIE, createCaseSessionToken(kase.id), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

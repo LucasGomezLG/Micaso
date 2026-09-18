@@ -1290,6 +1290,64 @@ borrar copias viejas).
 >   sesión residual post-logout, CRLF injection en .ics y almacenamiento de blobs huérfanos en Vercel).
 > El plan de remediación priorizado quedó establecido en dicho documento.
 
+> **Verificación y remediación de la auditoría del 18 sept — no todo lo
+> reportado era real (18 sept 2026).** Antes de implementar nada se
+> verificó cada hallazgo contra el código real, no contra lo que decía
+> el informe (protocolo de este CLAUDE.md: no fabricar, confirmar). Dos
+> resultaron falsos positivos: **RT-06** (cookie `case_id` post-logout)
+> ya se borraba en `PanelLogoutButton.tsx` desde antes de la auditoría —
+> el auditor no leyó el archivo real; y **SEC-04** (spoofing de IP vía
+> `X-Forwarded-For`) es falso en este deploy — Vercel sobreescribe ese
+> header y no reenvía IPs externas sin plan Enterprise + Trusted Proxy
+> (confirmado contra la doc oficial de Vercel). Dos estaban sobreestimados:
+> **SEC-01** no es CVSS 9.1/IDOR trivial — los IDs de caso son UUIDs
+> random de 128 bits, no adivinables, y `"demo"` es público a propósito
+> (`/api/demo-access`); igual se firmó la cookie (HMAC + expiración) como
+> defensa en profundidad. **SEC-03** no permite fraude — el webhook
+> siempre vuelve a consultar el estado real a la API de Mercado Pago en
+> vez de confiar en el body; sí tenía dos bugs de correctitud reales
+> (validación salteable sin headers, manifest HMAC armado con
+> `x-request-id` en vez de `data.id`, que habría rechazado webhooks
+> legítimos el día que `MP_WEBHOOK_SECRET` se configurara) — ambos
+> arreglados.
+>
+> Implementado: SEC-01 (`lib/sessionToken.ts`, HMAC+expiración),
+> RT-01 (tombstone de brokers borrados en `lib/brokers.ts`), RT-05
+> (cancela suscripción previa antes de crear una nueva), RT-02
+> (`downgradeCasesForInactiveBrokers` en `lib/cases.ts` — conecta "atrasada
+> = mismo trato que solo_lectura", que estaba documentado pero no
+> conectado a ningún código), SEC-03 (fix de correctitud), SEC-02
+> (resolución DNS antes de fetch en `lib/url-safety.ts`), RT-03
+> (timeout activo + tope de 3MB en el scraper), RT-04 (`comments`/
+> `checklist` ya no se aceptan del body al crear una casa), RT-07 (CRLF
+> injection en `lib/ics.ts`), RT-08 (`del()` de Vercel Blob al borrar
+> casa/caso), PER-01 (caché en Redis + timeout de 2.5s para Nominatim,
+> movido a `lib/geocode.ts` para no romper el bundle del browser — ver
+> nota abajo). Cada fix tiene test de regresión (`test/sessionToken.test.mts`
+> nuevo, CRLF en `test/ics.test.mts`, manifest correcto en
+> `test/mercadopago.test.mts`) y se probó en runtime contra el server de
+> dev real (login, SSRF con `nip.io` e IP decimal, rate limit de scrape,
+> inyección de comentarios, resurrección de broker, downgrade de caso).
+>
+> **Efecto colateral de desplegar esto: todas las sesiones de caso
+> existentes en producción quedan invalidadas** — el formato de la
+> cookie cambió (de UUID crudo a token firmado), así que familias y
+> corredores con `case_id` guardado van a tener que loguearse de nuevo
+> una vez (con la misma contraseña de siempre, no se pierde nada). Vale
+> la pena avisarle a Carolina antes de desplegar.
+>
+> **Deliberadamente no tocado:** **ARC-01** (partir `cases`/`brokers` de
+> una clave JSON monolítica a claves por entidad) y **DAT-01** (la
+> condición de carrera de `dbUpdate` en Redis, sin WATCH/MULTI) quedan
+> afuera de este lote — la sección 9 de este documento ya los describe
+> como riesgo aceptado a esta escala, con la misma solución de fondo para
+> los dos (estructuras atómicas nativas de Redis en vez de un JSON
+> grande). Es una migración de datos en producción con usuarios reales,
+> no un fix quirúrgico — mejor encararla aparte, con su propio plan.
+> **COD-01** (validación Zod en runtime), **OBS-01** (códigos HTTP
+> consistentes) y **ARC-02** (capa de servicios) quedan como deuda menor
+> de calidad de código, no de seguridad — no bloquean nada.
+
 **Barrido de "quedó pensado para un solo caso" (14 sept 2026) — dos
 bugs reales encontrados y resueltos**
 Además de la auditoría de aislamiento de arriba (¿puede un caso/corredor

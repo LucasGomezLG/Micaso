@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { DEV_BROKER_ID } from "./auth";
-import { getBroker } from "./brokers";
+import { getBroker, listAllBrokers } from "./brokers";
 import { decryptSecret, encryptSecret, timingSafeStringEqual } from "./crypto";
 import { dbDelete, dbGet, dbUpdate } from "./db";
 import { DEMO_CASE_ID } from "./seed";
@@ -306,6 +306,46 @@ export async function deleteBrokerCaseIndex(brokerId: string): Promise<void> {
 }
 
 const GRACE_PERIOD_DAYS = 90;
+
+/** "atrasada (falló un cobro o venció la prueba) tiene el mismo trato
+ * que solo_lectura" — ARQUITECTURA.md sección 7. Hasta ahora esto no
+ * estaba conectado: assertUnderCaseLimit solo lo chequeaba al crear o
+ * reabrir un caso, así que un corredor con la prueba vencida o la
+ * suscripción cancelada podía seguir usando de por vida los casos que ya
+ * tenía activos (no se le negaba el acceso en ningún otro punto). Pasa
+ * los casos activos de esos corredores a solo_lectura, igual que un
+ * cierre manual — comparten el mismo camino y los mismos 90 días de
+ * gracia antes de archivarse (ver archiveStaleReadOnlyCases). Pensado
+ * para correr desde el cron diario (igual que el archivado) y también
+ * apenas el webhook de Mercado Pago marca a un corredor puntual como
+ * atrasado/cancelado, para no esperar hasta el próximo cron. */
+export async function downgradeCasesForInactiveBrokers(brokerId?: string): Promise<string[]> {
+  const brokers = brokerId ? [await getBroker(brokerId)].filter((b): b is NonNullable<typeof b> => b !== null) : await listAllBrokers();
+  const inactiveBrokerIds = new Set(
+    brokers
+      .filter(
+        (b) =>
+          b.subscriptionStatus === "atrasada" ||
+          b.subscriptionStatus === "cancelada" ||
+          (b.subscriptionStatus === "prueba" && new Date() > new Date(b.trialEndsAt))
+      )
+      .map((b) => b.id)
+  );
+  if (inactiveBrokerIds.size === 0) return [];
+
+  const downgraded: string[] = [];
+  await dbUpdate<Record<string, Case>>(CASES_KEY, (current) => {
+    const cases = current ?? {};
+    const next = { ...cases };
+    for (const kase of Object.values(cases)) {
+      if (kase.estado !== "activo" || !inactiveBrokerIds.has(kase.brokerId)) continue;
+      downgraded.push(kase.id);
+      next[kase.id] = { ...kase, estado: "solo_lectura", soloLecturaDesde: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    }
+    return next;
+  });
+  return downgraded;
+}
 
 /** Archiva los casos que llevan más de 90 días en solo_lectura (cierre
  * manual o, más adelante, impago) — pensado para correr una vez por día

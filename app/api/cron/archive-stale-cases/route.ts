@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { archiveStaleReadOnlyCases } from "@/lib/cases";
+import { archiveStaleReadOnlyCases, downgradeCasesForInactiveBrokers } from "@/lib/cases";
 
 /** Vercel Cron llama a esto una vez por día (ver vercel.json) mandando
  * `Authorization: Bearer $CRON_SECRET` — solo se exige si CRON_SECRET
@@ -19,6 +19,10 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Primero baja a solo_lectura los casos de corredores sin suscripción
+  // vigente (venció la prueba, atrasada, cancelada) — así entran al mismo
+  // conteo de 90 días de gracia que archiva la llamada de abajo.
+  const downgraded = await downgradeCasesForInactiveBrokers();
   const archived = await archiveStaleReadOnlyCases();
-  return NextResponse.json({ archived });
+  return NextResponse.json({ downgraded, archived });
 }

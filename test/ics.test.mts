@@ -56,3 +56,26 @@ test("buildVisitIcs genera un archivo .ics RFC5545 válido con offset UTC-3 y 1 
     );
   }
 });
+
+test("buildVisitIcs no permite CRLF injection vía house.url", () => {
+  const house: IcsHouse = {
+    id: "h-test-3",
+    title: "Depto con URL maliciosa",
+    zone: null,
+    url: "https://example.com/aviso\r\nX-Injected:evil\r\nBEGIN:VALARM",
+    visitaFecha: "2026-09-17T15:30",
+    contactoNombre: null,
+    contactoTelefono: null,
+  };
+
+  const ics = buildVisitIcs(house, "https://micaso.com.ar/caso/casas");
+  assert.ok(ics !== null);
+
+  // Ninguna línea inyectada vía \r\n debería aparecer como línea propia
+  // del .ics — el \r\n del input tiene que haber sido removido, no
+  // interpretado como separador de propiedades.
+  const rawLines = ics.split("\r\n");
+  assert.ok(!rawLines.includes("X-Injected:evil"));
+  assert.ok(!rawLines.some((l) => l === "BEGIN:VALARM"));
+  assert.ok(ics.includes("URL:https://example.com/avisoX-Injected:evilBEGIN:VALARM\r\n"));
+});

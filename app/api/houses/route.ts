@@ -5,7 +5,7 @@ import { getCaseIdFromRequest } from "@/lib/session";
 import { getCase, updatePeople } from "@/lib/cases";
 import { getCurrentBroker } from "@/lib/brokers";
 import { notifyCaseClients } from "@/lib/push";
-import { geocodeZone } from "@/lib/zoneCoords";
+import { geocodeZone } from "@/lib/geocode";
 
 export async function GET(request: NextRequest) {
   const caseId = getCaseIdFromRequest(request);

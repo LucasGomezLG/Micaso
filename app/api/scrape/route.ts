@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isSafeExternalUrl } from "@/lib/url-safety";
+import { isSafeExternalUrl, isSafeResolvedUrl } from "@/lib/url-safety";
 import { guessAmbientesFromText, guessSuperficieFromText, guessPriceUsd } from "@/lib/listingText";
+import { checkAndConsumeQuota } from "@/lib/rateLimit";
+import { getCaseIdFromRequest } from "@/lib/session";
 
 function extractMeta(html: string, property: string): string | null {
   return extractMetaAll(html, property)[0] ?? null;
@@ -260,6 +262,36 @@ const USER_AGENTS = [
 ];
 
 const MAX_REDIRECT_HOPS = 5;
+const MAX_BODY_BYTES = 3 * 1024 * 1024; // 3MB — un aviso inmobiliario normal pesa una fracción de esto
+
+/** Lee el body con un tope de bytes duro, sin soltar el AbortController
+ * hasta terminar — antes `clearTimeout(timeout)` se ejecutaba apenas
+ * llegaban los headers, así que un sitio lento (o malicioso) podía
+ * mandar el body a cuentagotas indefinidamente sin que ningún timeout lo
+ * cortara (slow-read / Slowloris), y sin límite de tamaño un body
+ * gigante podía agotar la memoria de la función serverless. */
+async function readLimitedBody(res: Response, controller: AbortController): Promise<string> {
+  if (!res.body) return "";
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let total = 0;
+  let text = "";
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_BODY_BYTES) {
+        controller.abort();
+        throw new Error("Respuesta demasiado pesada");
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return text + decoder.decode();
+}
 
 /** Sigue redirects a mano (`redirect: "manual"`) en vez de dejar que
  * `fetch` los siga solo — un acortador (share.google, bit.ly, o
@@ -275,22 +307,21 @@ async function fetchHtml(
 ): Promise<{ html: string } | { error: string } | { blockedUrl: URL }> {
   let current = startUrl;
   for (let hop = 0; hop < MAX_REDIRECT_HOPS; hop++) {
-    if (!isSafeExternalUrl(current)) return { error: "Host no permitido" };
+    if (!(await isSafeResolvedUrl(current))) return { error: "Host no permitido" };
     if (isBlockedForAutoFill(current)) return { blockedUrl: current };
 
     const fetchTarget = stripDisallowedQuery(current).toString();
     let lastStatus: number | null = null;
     let nextHop: URL | null = null;
     for (const userAgent of USER_AGENTS) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
         const res = await fetch(fetchTarget, {
           signal: controller.signal,
           redirect: "manual",
           headers: { "User-Agent": userAgent, Accept: "text/html" },
         });
-        clearTimeout(timeout);
         if (res.status >= 300 && res.status < 400) {
           const location = res.headers.get("location");
           if (location) {
@@ -298,10 +329,12 @@ async function fetchHtml(
             break;
           }
         }
-        if (res.ok) return { html: await res.text() };
+        if (res.ok) return { html: await readLimitedBody(res, controller) };
         lastStatus = res.status;
       } catch {
         // network error/timeout — try the next user agent
+      } finally {
+        clearTimeout(timeout);
       }
     }
     if (nextHop) {
@@ -318,6 +351,15 @@ async function fetchHtml(
 }
 
 export async function POST(request: NextRequest) {
+  const caseId = getCaseIdFromRequest(request);
+  const withinQuota = await checkAndConsumeQuota("scrape", caseId, 40, 5 * 60);
+  if (!withinQuota) {
+    return NextResponse.json(
+      { error: "Demasiados links pegados en poco tiempo — probá de nuevo en unos minutos." },
+      { status: 429 }
+    );
+  }
+
   let url: unknown;
   try {
     ({ url } = await request.json());

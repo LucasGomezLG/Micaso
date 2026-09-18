@@ -3,7 +3,7 @@ import { deleteHouse, getHouses, updateHouse } from "@/lib/store";
 import { getCaseIdFromRequest } from "@/lib/session";
 import { notifyCaseClients } from "@/lib/push";
 import { formatUsd } from "@/lib/format";
-import { geocodeZone } from "@/lib/zoneCoords";
+import { geocodeZone } from "@/lib/geocode";
 
 export async function PATCH(
   request: NextRequest,

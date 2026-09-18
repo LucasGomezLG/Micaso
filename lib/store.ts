@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { del } from "@vercel/blob";
 import { dbDelete, dbGet, dbUpdate } from "./db";
 import { DEMO_CASE_ID, SEED_CHECKLIST, SEED_CRITERIA, SEED_HOUSES } from "./seed";
 import { buildChecklistTemplate } from "./checklistTemplates";
@@ -10,12 +11,33 @@ const housesKey = (caseId: string) => `case:${caseId}:houses`;
 const checklistKey = (caseId: string) => `case:${caseId}:checklist`;
 const criteriaKey = (caseId: string) => `case:${caseId}:criteria`;
 
+/** De las fotos de una casa, cuáles viven en nuestro propio Vercel Blob
+ * (subidas a mano, ver app/api/houses/photo/route.ts) — a diferencia de
+ * las que vienen de un aviso scrapeado (og:image de MercadoLibre, etc.),
+ * que apuntan al CDN del portal y nunca hay que borrar. Nada en el
+ * código llamaba a `del()` de @vercel/blob hasta ahora: cada foto subida
+ * quedaba en el storage para siempre, incluso borrando la casa o el
+ * caso entero — sin costo altísimo a esta escala, pero indefinidamente
+ * creciente. */
+function ownBlobUrls(images: string[]): string[] {
+  return images.filter((url) => {
+    try {
+      return new URL(url).hostname.endsWith(".blob.vercel-storage.com");
+    } catch {
+      return false;
+    }
+  });
+}
+
 /** Borra las casas, el checklist y los criterios de un caso — usado por
  * el borrado definitivo desde /superadmin (ver lib/cases.ts deleteCase,
  * que borra el caso en sí; el caller llama a las dos). Irreversible a
  * propósito, no hay soft-delete acá. */
 export async function deleteCaseData(caseId: string): Promise<void> {
+  const houses = await getHouses(caseId).catch(() => []);
+  const blobUrls = ownBlobUrls(houses.flatMap((h) => h.images));
   await Promise.all([dbDelete(housesKey(caseId)), dbDelete(checklistKey(caseId)), dbDelete(criteriaKey(caseId))]);
+  if (blobUrls.length > 0) await del(blobUrls).catch(() => {});
 }
 
 /** Un caso nuevo arranca sin criterios cargados — el corredor o la
@@ -144,8 +166,15 @@ export async function addHouse(
     superficieM2: input.superficieM2 ?? null,
     aptoCredito: input.aptoCredito ?? "no_se",
     images: input.images ?? [],
-    comments: input.comments ?? [],
-    checklist: input.checklist ?? [],
+    // Nunca del body de entrada: POST /api/houses pasa el body casi tal
+    // cual (ver app/api/houses/route.ts) — si se confiara en
+    // input.comments/checklist, cualquiera con sesión del caso podría
+    // inyectar comentarios "ya escritos" con autor y fecha arbitrarios
+    // (ej. atribuirle una frase falsa al corredor) en vez de agregarlos
+    // de a uno por los endpoints dedicados (addComment, etc.), que sí
+    // fijan el autor y la fecha del lado del servidor.
+    comments: [],
+    checklist: [],
     status: input.status ?? "pendiente",
     highlighted: input.highlighted ?? false,
     contactoNombre: input.contactoNombre ?? null,
@@ -261,7 +290,14 @@ export async function deleteHouseChecklistItem(
 }
 
 export async function deleteHouse(caseId: string, id: string): Promise<void> {
-  await mutateHouses(caseId, (houses) => houses.filter((house) => house.id !== id));
+  let removedImages: string[] = [];
+  await mutateHouses(caseId, (houses) => {
+    const target = houses.find((h) => h.id === id);
+    if (target) removedImages = target.images;
+    return houses.filter((house) => house.id !== id);
+  });
+  const blobUrls = ownBlobUrls(removedImages);
+  if (blobUrls.length > 0) await del(blobUrls).catch(() => {});
 }
 
 export function guessSource(url: string): string {

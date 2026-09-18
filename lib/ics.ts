@@ -20,10 +20,21 @@ function toIcsUtcStamp(date: Date): string {
 
 function escapeIcsText(value: string): string {
   return value
+    .replace(/\r\n?/g, "\n") // normaliza CRLF/CR sueltos antes de escapar el \n
     .replace(/\\/g, "\\\\")
     .replace(/;/g, "\\;")
     .replace(/,/g, "\\,")
     .replace(/\n/g, "\\n");
+}
+
+/** Para valores de una sola línea que no pasan por escapeIcsText (como
+ * `URL:`) — un \r o \n sin escapar ahí inyectaría propiedades .ics
+ * arbitrarias (CRLF injection) si `house.url` viniera con saltos de
+ * línea. No debería poder pasar `new URL()` con eso adentro, pero
+ * house.url es un string guardado tal cual (ver lib/store.ts addHouse),
+ * así que esto no depende de esa validación para ser seguro. */
+function stripCrlf(value: string): string {
+  return value.replace(/[\r\n]/g, "");
 }
 
 function utf8ByteLength(text: string): number {
@@ -94,7 +105,7 @@ export function buildVisitIcs(house: IcsHouse, caseUrl: string): string | null {
     `SUMMARY:${escapeIcsText(`Visita: ${house.title}`)}`,
     ...(house.zone ? [`LOCATION:${escapeIcsText(house.zone)}`] : []),
     `DESCRIPTION:${escapeIcsText(descriptionLines.join("\n"))}`,
-    ...(house.url ? [`URL:${house.url}`] : []),
+    ...(house.url ? [`URL:${stripCrlf(house.url)}`] : []),
     "END:VEVENT",
     "END:VCALENDAR",
   ];

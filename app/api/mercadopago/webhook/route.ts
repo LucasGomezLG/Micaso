@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { addBrokerPayment, updateBroker } from "@/lib/brokers";
+import { downgradeCasesForInactiveBrokers } from "@/lib/cases";
 import { getPayment, getSubscription } from "@/lib/mercadopago";
 import { PaymentRecord, Plan } from "@/lib/types";
 
@@ -12,35 +13,51 @@ export async function POST(request: Request) {
     const rawBody = await request.text();
     const signatureHeader = request.headers.get("x-signature");
     const reqId = request.headers.get("x-request-id");
+    const dataIdParam = new URL(request.url).searchParams.get("data.id");
 
-    // En desarrollo estricto, validamos la firma si el secret está configurado
-    if (MP_WEBHOOK_SECRET && signatureHeader && reqId) {
-      const parts = signatureHeader.split(",");
+    // Si el secret está configurado, la firma es obligatoria — antes,
+    // si el llamador simplemente no mandaba los headers de firma, la
+    // validación entera se saltaba (la condición de abajo era `if
+    // (secret && header && reqId)`, false con headers ausentes). El
+    // manifest también estaba mal armado: usaba x-request-id en vez del
+    // id real del recurso (`data.id`, el que exige la spec de MP) — con
+    // esto puesto así, la firma de un webhook legítimo de Mercado Pago
+    // nunca iba a coincidir el día que MP_WEBHOOK_SECRET se configurara
+    // en producción.
+    if (MP_WEBHOOK_SECRET) {
+      if (!signatureHeader || !reqId) {
+        console.error("Webhook de Mercado Pago sin headers de firma");
+        return NextResponse.json({ error: "Missing signature headers" }, { status: 401 });
+      }
+
       let ts = "";
       let hash = "";
-
-      for (const part of parts) {
+      for (const part of signatureHeader.split(",")) {
         const [key, value] = part.split("=");
         if (key === "ts") ts = value;
         if (key === "v1") hash = value;
       }
 
-      if (ts && hash) {
-        const manifest = `id:${reqId};request-id:${reqId};ts:${ts};`;
-        const hmac = crypto.createHmac("sha256", MP_WEBHOOK_SECRET);
-        hmac.update(manifest);
-        const computedHash = hmac.digest("hex");
+      if (!ts || !hash) {
+        return NextResponse.json({ error: "Malformed x-signature" }, { status: 401 });
+      }
 
-        if (computedHash !== hash) {
-          console.error("Firma de webhook inválida en Mercado Pago");
-          return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
-        }
+      const manifest = `id:${dataIdParam ?? ""};request-id:${reqId};ts:${ts};`;
+      const hmac = crypto.createHmac("sha256", MP_WEBHOOK_SECRET);
+      hmac.update(manifest);
+      const computedHash = hmac.digest("hex");
+
+      const hashBuf = Buffer.from(hash, "utf8");
+      const compBuf = Buffer.from(computedHash, "utf8");
+      if (hashBuf.length !== compBuf.length || !crypto.timingSafeEqual(hashBuf, compBuf)) {
+        console.error("Firma de webhook inválida en Mercado Pago");
+        return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
       }
     }
 
     // Parsea el evento
     const body = JSON.parse(rawBody);
-    
+
     // El id del recurso viene en body.data.id o en body.id según la versión del webhook
     const resourceId = body?.data?.id || body?.id;
     const type = body?.type || body?.action; // type="subscription_preapproval"
@@ -75,11 +92,13 @@ export async function POST(request: Request) {
           await updateBroker(brokerId, {
             subscriptionStatus: "atrasada",
           });
+          await downgradeCasesForInactiveBrokers(brokerId);
         } else if (status === "cancelled") {
           // Suscripción dada de baja
           await updateBroker(brokerId, {
             subscriptionStatus: "cancelada",
           });
+          await downgradeCasesForInactiveBrokers(brokerId);
         }
       }
     } else if (topic === "payment") {

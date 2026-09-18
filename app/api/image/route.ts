@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { isSafeExternalUrl } from "@/lib/url-safety";
+import { isSafeResolvedUrl } from "@/lib/url-safety";
 
 // Proxy property photos through our own server: several listing sites
 // (ArgenProp, etc.) hotlink-protect their CDN and 403 an <img> requested
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   } catch {
     return new Response("URL inválida", { status: 400 });
   }
-  if (!isSafeExternalUrl(url)) {
+  if (!(await isSafeResolvedUrl(url))) {
     return new Response("Host no permitido", { status: 400 });
   }
 

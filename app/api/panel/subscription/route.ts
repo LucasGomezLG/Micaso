@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentBroker, updateBroker } from "@/lib/brokers";
+import { downgradeCasesForInactiveBrokers } from "@/lib/cases";
 import { cancelSubscription, createSubscriptionCheckout } from "@/lib/mercadopago";
 
 export async function POST(request: Request) {
@@ -13,6 +14,16 @@ export async function POST(request: Request) {
 
     if (plan !== "para_arrancar" && plan !== "para_tu_cartera") {
       return NextResponse.json({ error: "Plan inválido" }, { status: 400 });
+    }
+
+    // Si ya tenía una suscripción activa (cambio de plan, o reintento de
+    // checkout sin haber cancelado antes), cancelarla primero — si no,
+    // Mercado Pago termina cobrando las dos por separado cada mes. Un
+    // error al cancelar en MP no debería trabar el flujo (mejor dejar
+    // pasar a que el corredor pueda suscribirse igual y resolver el
+    // duplicado a mano después, que dejarlo sin poder pagar nunca).
+    if (broker.mpPreapprovalId && broker.subscriptionStatus === "activa") {
+      await cancelSubscription(broker.mpPreapprovalId).catch(() => {});
     }
 
     const { url } = request;
@@ -61,6 +72,7 @@ export async function DELETE() {
     await updateBroker(broker.id, {
       subscriptionStatus: "cancelada",
     });
+    await downgradeCasesForInactiveBrokers(broker.id);
 
     return NextResponse.json({ success: true });
   } catch (err) {

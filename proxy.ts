@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { ADMIN_EMAILS } from "@/lib/auth";
 import { getCase } from "@/lib/cases";
 import { CASE_COOKIE } from "@/lib/session";
+import { verifyCaseSessionToken } from "@/lib/sessionToken";
 
 // "/" es la landing pública (marketing, dirigida al corredor) — ver
 // ARQUITECTURA.md sección 6. /icon, /apple-icon, /icons/* y
@@ -116,7 +117,8 @@ async function checkCaseAccess(
   pathname: string,
   userEmail?: string | null
 ) {
-  const caseId = request.cookies.get(CASE_COOKIE)?.value;
+  const token = request.cookies.get(CASE_COOKIE)?.value;
+  const caseId = token ? verifyCaseSessionToken(token) : null;
   const kase = caseId ? await getCase(caseId) : null;
   if (kase && kase.estado !== "archivado") {
     // Solo lectura (cerrado a mano, o impago en el período de gracia):
