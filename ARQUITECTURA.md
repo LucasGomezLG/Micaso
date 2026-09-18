@@ -157,6 +157,58 @@ uno con su propio acceso.
 > link real de RE/MAX: ambientes y zona se completaron solos, superficie
 > quedó vacía porque ese aviso puntual no la menciona (comportamiento
 > correcto, no un bug).
+>
+> **Arreglado el mismo día: "Actualizar desde el aviso" ignoraba un
+> cambio de precio.** El botón de refresh por casa (`HouseCard.tsx`,
+> `refreshFromSource`) ya existía desde Casa, pero solo completaba el
+> precio si la casa no tenía uno cargado — si el precio del aviso
+> original bajaba o subía después de guardada la casa, apretar el botón
+> no hacía nada y encima decía "No encontramos nada nuevo en el aviso",
+> lo cual era falso. Para una herramienta pensada para seguir
+> propiedades durante meses de búsqueda, un cambio de precio es
+> justamente el dato que más vale la pena no perderse. Ahora compara
+> contra el precio guardado y, si difiere, lo actualiza y muestra
+> "El precio cambió: US$ X → US$ Y". Sigue siendo manual (lo dispara la
+> persona, no hay chequeo automático en segundo plano) — automatizarlo
+> del todo necesitaría un cron y decidir con qué frecuencia pegarle a
+> cada sitio, justo lo que la sección 9 ya trata con cuidado por los
+> términos de uso. Probado de punta a punta con un caso real: una casa
+> cargada a US$ 90.000 con el link real de RE/MAX (que hoy publica
+> US$ 100.000) mostró el toast correcto y el precio en la tarjeta se
+> actualizó.
+>
+> **Sumado en el mismo arreglo: aviso push cuando cambia el precio.**
+> Hasta ahora Web Push (sección 6) solo avisaba a la familia por una
+> visita agendada o una casa nueva — un cambio de precio, que puede pasar
+> sin que nadie esté mirando la app en ese momento, no generaba ningún
+> aviso. `PATCH /api/houses/[id]` ahora compara el precio antes y después
+> del cambio (una lectura extra de `getHouses`, solo cuando el patch trae
+> `priceUsd` — no en cada cambio de estado o favorito) y, si de verdad
+> cambió, notifica "Cambio de precio: US$ X → US$ Y" — mismo mecanismo
+> (`notifyCaseClients`) que ya usan las otras dos notificaciones, sin
+> filtrar quién disparó el cambio (broker o familia), igual que la de
+> visitas ya hacía. No dispara si es la primera vez que se carga un
+> precio (no hay "antes" con qué compararlo) ni si el valor no cambió.
+>
+> **Chico, mismo día: el teléfono de contacto ahora se puede tocar para
+> llamar.** `house.contactoTelefono` (`HouseCard.tsx`) era texto plano —
+> había que copiarlo a mano para llamar a la inmobiliaria o al dueño.
+> Ahora es un link `tel:`, sin parsear ni validar el formato (el sistema
+> operativo del celular ya sabe interpretar cualquier formato que alguien
+> haya tipeado), solo se le sacan espacios/guiones para el `href`. El
+> texto visible no cambia.
+>
+> **Chico, mismo día: "Actualizar desde el aviso" podía borrar fotos
+> subidas a mano.** Misma función que el arreglo de precio de arriba
+> (`refreshFromSource`, `HouseCard.tsx`): si el aviso original ahora
+> tenía más fotos que las guardadas, el código **reemplazaba** el array
+> entero por las del scrape — si alguien había subido una foto propia
+> (sección 5, Vercel Blob) que no es parte del aviso, se perdía sin
+> aviso. Ahora suma las fotos nuevas del aviso a las que ya había en vez
+> de reemplazar, así nunca se pierde nada. Probado interceptando la
+> respuesta de `/api/scrape` con dos fotos nuevas contra una casa que ya
+> tenía una foto subida a mano: con el código viejo hubiera quedado en 2
+> (perdiendo la subida a mano), con el arreglo quedan las 3.
 
 ### Tipo de caso: no todos buscan lo mismo
 

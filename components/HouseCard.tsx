@@ -190,11 +190,19 @@ export default function HouseCard({
         return;
       }
       const patch: Partial<House> = {};
-      if (data.images?.length > house.images.length) patch.images = data.images;
+      // Sumar fotos nuevas del aviso sin pisar las que ya había — una
+      // reemplazo directo (como era antes) podía borrar fotos que alguien
+      // subió a mano si el aviso original agregaba de las suyas.
+      const newImages: string[] = (data.images ?? []).filter((img: string) => !house.images.includes(img));
+      if (newImages.length > 0) patch.images = [...house.images, ...newImages];
       if (data.title && house.title === house.url) patch.title = data.title;
-      if (data.priceUsd && !house.priceUsd) patch.priceUsd = data.priceUsd;
+      const priceChanged = data.priceUsd && data.priceUsd !== house.priceUsd;
+      if (priceChanged) patch.priceUsd = data.priceUsd;
       if (Object.keys(patch).length > 0) {
         await onChange(house.id, patch);
+        if (priceChanged && house.priceUsd) {
+          toast.success(`El precio cambió: ${formatUsd(house.priceUsd)} → ${formatUsd(data.priceUsd)}`);
+        }
       } else {
         toast.info("No encontramos nada nuevo en el aviso.");
       }
@@ -405,7 +413,15 @@ export default function HouseCard({
             <Phone size={13} />
             {house.contactoNombre}
             {house.contactoNombre && house.contactoTelefono && " · "}
-            {house.contactoTelefono}
+            {house.contactoTelefono && (
+              <a
+                href={`tel:${house.contactoTelefono.replace(/[^\d+]/g, "")}`}
+                className="underline underline-offset-2"
+                style={{ color: "var(--accent)" }}
+              >
+                {house.contactoTelefono}
+              </a>
+            )}
           </div>
         )}
 
