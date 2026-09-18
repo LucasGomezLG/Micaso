@@ -2,8 +2,8 @@ import Link from "next/link";
 import { CalendarDays, MapPin, Phone } from "lucide-react";
 import { getHouses } from "@/lib/store";
 import { getCaseId } from "@/lib/session";
-import { dayLabel, formatTime, formatUsd, todayAr } from "@/lib/format";
-import { House } from "@/lib/types";
+import { dayLabel, daysUntil, formatTime, formatUsd, todayAr } from "@/lib/format";
+import { House, STATUS_LABEL } from "@/lib/types";
 import AddToCalendarButton from "@/components/AddToCalendarButton";
 import EmptyState from "@/components/EmptyState";
 
@@ -127,6 +127,7 @@ function DayGroup({
   past?: boolean;
 }) {
   const isToday = !past && day === today;
+  const isTomorrow = !past && daysUntil(day) === 1;
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center gap-2.5">
@@ -139,6 +140,14 @@ function DayGroup({
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
             Hoy
+          </span>
+        )}
+        {isTomorrow && (
+          <span
+            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-xs"
+            style={{ background: "var(--gold-soft)", color: "var(--gold)" }}
+          >
+            Mañana
           </span>
         )}
         <span className="text-xs" style={{ color: "var(--ink-faint)" }}>
@@ -169,7 +178,7 @@ function DayGroup({
               </span>
               <div className="min-w-0 flex-1">
                 <Link
-                  href="/caso/casas"
+                  href={`/caso/casas#house-${house.id}`}
                   className="block truncate text-sm font-semibold hover:text-[var(--accent)] transition-colors"
                 >
                   {house.title}
@@ -199,7 +208,7 @@ function DayGroup({
                 </p>
               </div>
             </div>
-            {!past && (
+            {!past ? (
               <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto pt-1 sm:pt-0">
                 <AddToCalendarButton
                   house={house}
@@ -207,6 +216,32 @@ function DayGroup({
                   label="Calendario"
                   className="btn flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all hover:border-[var(--border-strong)] active:scale-95"
                 />
+              </div>
+            ) : house.status === "coordinada" ? (
+              <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto pt-1 sm:pt-0">
+                <Link
+                  href={`/caso/casas#house-${house.id}`}
+                  className="inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all hover:brightness-95 active:scale-95"
+                  style={{
+                    borderColor: "var(--status-coordinada)",
+                    color: "var(--status-coordinada)",
+                    background: "var(--status-coordinada-bg)",
+                  }}
+                >
+                  ¿Cómo les fue? Calificar →
+                </Link>
+              </div>
+            ) : (
+              <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto pt-1 sm:pt-0">
+                <span
+                  className="rounded-full px-2.5 py-0.5 text-xs font-medium"
+                  style={{
+                    background: `var(--status-${house.status}-bg, var(--paper))`,
+                    color: `var(--status-${house.status}, var(--ink-muted))`,
+                  }}
+                >
+                  {STATUS_LABEL[house.status]}
+                </span>
               </div>
             )}
           </div>

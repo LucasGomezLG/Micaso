@@ -50,14 +50,24 @@ export default function HousesMap({ houses }: { houses: House[] }) {
         const items = group.houses
           .map((h) => {
             const title = h.title.replace(/</g, "&lt;");
-            const titleHtml = h.url
-              ? `<a href="${h.url}" target="_blank" rel="noreferrer" style="font-weight:600;color:var(--accent);text-decoration:none;">${title}</a>`
-              : `<span style="font-weight:600;">${title}</span>`;
+            const originalLinkHtml = h.url
+              ? `<a href="${h.url}" target="_blank" rel="noreferrer" style="font-size:11px;color:var(--accent);text-decoration:underline;">Aviso ↗</a>`
+              : "";
             return `
-              <div style="padding:6px 0;border-top:1px solid var(--border);">
-                ${titleHtml}
-                <div style="font-size:12px;color:var(--ink-muted);">
-                  ${formatUsd(h.priceUsd)} · ${STATUS_LABEL[h.status]}
+              <div style="padding:8px 0;border-top:1px solid var(--border);">
+                <a href="/caso/casas#house-${h.id}" style="font-weight:600;font-size:13px;color:var(--ink);text-decoration:none;display:block;line-height:1.25;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--ink)'">
+                  ${title}
+                </a>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:4px;">
+                  <span style="font-family:var(--font-mono);font-weight:600;font-size:12px;color:var(--ink);">
+                    ${formatUsd(h.priceUsd)}
+                  </span>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:10px;padding:1px 6px;border-radius:6px;background:var(--status-${h.status}-bg, var(--paper));color:var(--status-${h.status}, var(--ink-muted));font-weight:600;">
+                      ${STATUS_LABEL[h.status]}
+                    </span>
+                    ${originalLinkHtml}
+                  </div>
                 </div>
               </div>`;
           })

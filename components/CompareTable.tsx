@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Calendar, Check, Pin, Star, X } from "lucide-react";
+import { Calendar, Check, Landmark, Phone, Pin, Star, X } from "lucide-react";
 import { House, LoanInfo } from "@/lib/types";
-import { formatDate, formatDateTime, formatUsd, proxiedImage } from "@/lib/format";
+import { formatDate, formatDateTime, formatUsd, proxiedImage, telHref } from "@/lib/format";
 import { cashNeededRange, pricePerM2 } from "@/lib/mortgage";
 import { apiErrorMessage } from "@/lib/http";
 import StatusBadge from "@/components/StatusBadge";
@@ -34,7 +35,7 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
     {
       label: "",
       render: (h) => (
-        <a href={h.url ?? "/caso/casas"} target={h.url ? "_blank" : undefined} rel="noreferrer" className="block h-24 w-36 overflow-hidden rounded-lg" style={{ background: "var(--accent-soft)" }}>
+        <a href={h.url ?? `/caso/casas#house-${h.id}`} target={h.url ? "_blank" : undefined} rel="noreferrer" className="block h-24 w-36 overflow-hidden rounded-lg" style={{ background: "var(--accent-soft)" }}>
           {h.images[0] && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={proxiedImage(h.images[0])!} alt={h.title} className="h-full w-full object-cover" />
@@ -45,7 +46,7 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
     {
       label: "Título",
       render: (h) => (
-        <a href={h.url ?? "/caso/casas"} target={h.url ? "_blank" : undefined} rel="noreferrer" className="font-semibold" style={{ color: "var(--accent)" }}>
+        <a href={h.url ?? `/caso/casas#house-${h.id}`} target={h.url ? "_blank" : undefined} rel="noreferrer" className="font-semibold" style={{ color: "var(--accent)" }}>
           {h.title}
         </a>
       ),
@@ -84,12 +85,15 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
         const fit =
           cash.high <= loan.ownFundsMaxUsd ? "gusto" : cash.low <= loan.ownFundsMaxUsd ? "pendiente" : "descartada";
         return (
-          <span
-            className="mono rounded-lg px-2 py-1 text-xs font-medium"
+          <Link
+            href={`/caso/calculadora?price=${h.priceUsd}`}
+            title="Ver en la calculadora"
+            className="mono rounded-lg px-2 py-1 text-xs font-medium transition-all hover:opacity-90 active:scale-95 inline-flex items-center gap-1"
             style={{ background: `var(--status-${fit}-bg)`, color: `var(--status-${fit})` }}
           >
             {formatUsd(cash.low)}–{formatUsd(cash.high)}
-          </span>
+            <span className="text-[10px] opacity-60">→</span>
+          </Link>
         );
       },
     },
@@ -126,7 +130,15 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
           <span className="text-xs">
             {h.contactoNombre}
             {h.contactoNombre && h.contactoTelefono && " · "}
-            {h.contactoTelefono}
+            {h.contactoTelefono && (
+              <a
+                href={telHref(h.contactoTelefono)}
+                className="underline underline-offset-2 hover:opacity-80"
+                style={{ color: "var(--accent)" }}
+              >
+                {h.contactoTelefono}
+              </a>
+            )}
           </span>
         ) : (
           "—"
@@ -209,7 +221,7 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
                 <div className="flex flex-1 flex-col gap-3 p-4">
                   {/* Título */}
                   <a
-                    href={h.url ?? "/caso/casas"}
+                    href={h.url ?? `/caso/casas#house-${h.id}`}
                     target={h.url ? "_blank" : undefined}
                     rel="noreferrer"
                     className="line-clamp-2 font-semibold leading-snug"
@@ -246,30 +258,76 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
                     </div>
                   </div>
 
+                  {/* Apto crédito en mobile */}
+                  <div className="flex items-center gap-1.5 text-xs font-medium">
+                    <Landmark
+                      size={12}
+                      style={{
+                        color:
+                          h.aptoCredito === "si"
+                            ? "var(--status-gusto)"
+                            : h.aptoCredito === "no"
+                              ? "var(--status-descartada)"
+                              : "var(--gold)",
+                      }}
+                    />
+                    <span style={{ color: "var(--ink-muted)" }}>
+                      {h.aptoCredito === "si"
+                        ? "Apto crédito: sí"
+                        : h.aptoCredito === "no"
+                          ? "Apto crédito: no"
+                          : "Apto crédito: sin dato"}
+                    </span>
+                  </div>
+
+                  {/* Contacto en mobile */}
+                  {(h.contactoNombre || h.contactoTelefono) && (
+                    <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--ink-muted)" }}>
+                      <Phone size={12} className="shrink-0" />
+                      <span>{h.contactoNombre}</span>
+                      {h.contactoNombre && h.contactoTelefono && <span>·</span>}
+                      {h.contactoTelefono && (
+                        <a
+                          href={telHref(h.contactoTelefono)}
+                          className="font-medium underline underline-offset-2"
+                          style={{ color: "var(--accent)" }}
+                        >
+                          {h.contactoTelefono}
+                        </a>
+                      )}
+                    </div>
+                  )}
+
                   {/* Plata de bolsillo */}
                   {cash && (
                     <div className="flex items-center justify-between text-xs">
                       <span style={{ color: "var(--ink-muted)" }}>Plata necesaria:</span>
-                      <span
-                        className="mono rounded-lg px-2 py-0.5 font-semibold"
+                      <Link
+                        href={`/caso/calculadora?price=${h.priceUsd}`}
+                        title="Ver en la calculadora"
+                        className="mono rounded-lg px-2 py-0.5 font-semibold transition-all hover:opacity-90 inline-flex items-center gap-1"
                         style={{ background: `var(--status-${fit}-bg)`, color: `var(--status-${fit})` }}
                       >
                         {formatUsd(cash.low)}–{formatUsd(cash.high)}
-                      </span>
+                        <span className="text-[10px] opacity-60">→</span>
+                      </Link>
                     </div>
                   )}
 
                   {/* Próxima visita o acción */}
                   {(h.visitaFecha || h.proximaAccion) && (
                     <div
-                      className="mt-auto flex flex-col gap-1 rounded-xl p-2.5 text-xs"
+                      className="mt-auto flex flex-col gap-1.5 rounded-xl p-2.5 text-xs"
                       style={{ background: "var(--accent-soft)", color: "var(--ink)" }}
                     >
                       {h.visitaFecha && (
-                        <span className="flex items-center gap-1.5 font-medium">
-                          <Calendar size={13} style={{ color: "var(--accent)" }} />
-                          Visita: {formatDateTime(h.visitaFecha)}
-                        </span>
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="flex items-center gap-1.5 font-medium">
+                            <Calendar size={13} style={{ color: "var(--accent)" }} />
+                            Visita: {formatDateTime(h.visitaFecha)}
+                          </span>
+                          <AddToCalendarButton house={h} variant="pill" title="Descargar o agendar visita" />
+                        </div>
                       )}
                       {h.proximaAccion && (
                         <span className="flex items-center gap-1.5" style={{ color: "var(--ink-muted)" }}>

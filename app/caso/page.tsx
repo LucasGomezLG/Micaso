@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, Pin } from "lucide-react";
+import { Check, ExternalLink, Pin } from "lucide-react";
 import { getCriteria, getHouses, countByStatus } from "@/lib/store";
 import { getCaseId } from "@/lib/session";
 import { getCase } from "@/lib/cases";
@@ -105,7 +105,7 @@ export default async function HomePage() {
                   className="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors hover:border-[var(--border-strong)]"
                   style={{ background: "var(--surface)", borderColor: "var(--border)" }}
                 >
-                  <Link href="/caso/casas" className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+                  <Link href={`/caso/casas#house-${house.id}`} className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{house.title}</p>
                       <p className="text-xs" style={{ color: "var(--ink-faint)" }}>
@@ -127,7 +127,9 @@ export default async function HomePage() {
                       </span>
                     )}
                   </Link>
-                  {hasUpcomingVisit(house, today) && <VisitaCoordinadaBadge house={house} />}
+                  {hasUpcomingVisit(house, today) && (
+                    <VisitaCoordinadaBadge house={house} label="Visita: " linkToAgenda />
+                  )}
                 </div>
               );
             })}
@@ -351,25 +353,37 @@ export default async function HomePage() {
         ) : (
           <div className="flex flex-col gap-2">
             {recent.map((house) => (
-              <a
+              <div
                 key={house.id}
-                href={house.url ?? "/caso/casas"}
-                target={house.url ? "_blank" : undefined}
-                rel="noreferrer"
                 className="flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors hover:border-[var(--border-strong)]"
                 style={{ background: "var(--surface)", borderColor: "var(--border)" }}
               >
-                <div className="min-w-0">
+                <Link
+                  href={`/caso/casas#house-${house.id}`}
+                  className="min-w-0 flex-1 transition-colors hover:text-[var(--accent)]"
+                >
                   <p className="truncate text-sm font-medium">{house.title}</p>
                   <p className="mono text-xs" style={{ color: "var(--ink-faint)" }}>
                     {house.zone ?? house.source} · agregó {house.addedBy} · {formatDate(house.addedAt)}
                   </p>
-                </div>
+                </Link>
                 <div className="flex shrink-0 items-center gap-3">
                   <span className="mono text-sm">{formatUsd(house.priceUsd)}</span>
                   <StatusBadge status={house.status} />
+                  {house.url && (
+                    <a
+                      href={house.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Ver aviso original en el portal"
+                      className="p-1 text-xs opacity-50 hover:opacity-100 transition-opacity"
+                      style={{ color: "var(--ink-muted)" }}
+                    >
+                      <ExternalLink size={14} />
+                    </a>
+                  )}
                 </div>
-              </a>
+              </div>
             ))}
           </div>
         )}

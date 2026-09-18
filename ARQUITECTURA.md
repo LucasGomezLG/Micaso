@@ -728,6 +728,14 @@ Lo mínimo que necesita el panel para ser útil desde el primer día:
 > Ver también la agenda (sección 3) y el super-admin (sección 7), que
 > tuvieron su propio hallazgo el mismo día.
 
+> **Auditoría de UX e implementado (18 sept 2026): bloque intensivo de seguridad visual, accesibilidad y velocidad percibida.**
+> - **Seguridad visual (contraseñas):** En el panel del corredor (`CaseRow`), super-admin (`AdminCaseCard`), y alta de caso (`CreateCaseModal`), la contraseña del caso ya no se muestra en texto plano por defecto. Se oculta como `••••••••` y requiere un click en un ícono de ojo (toggle) para revelarse — previene el riesgo pasivo de mostrar accesos sensibles al compartir pantalla o en un café.
+> - **Optimistic UI (React 19) en Checklist:** Tildar/destildar una tarea en `ChecklistClient` usa `useOptimistic` para una respuesta instantánea (sin delay percibido), mientras `PATCH` persiste de fondo. Se suma también un filtro "Ocultar completados" para limpiar el ruido visual.
+> - **Accesibilidad y Portales:** Modales pesados (`AddHouseModal`, `EditHouseModal`, `BriefEditor`, `CriteriaEditor`, además de `CreateCaseModal`) migrados a `<div>` con `createPortal(..., document.body)` para escapar del *stacking context* de Tailwind y prevenir recortes, con bloqueo de scroll (`overflow: hidden`) y listener para la tecla `Escape`. (No se usa el elemento nativo `<dialog>`.)
+> - **Mapa y Navegación:** El popup de propiedades en el mapa (`HousesMap`) suma título, precio y badge de estado con link hacia la tarjeta detallada (`#house-[id]`) — sin foto. La vista de agenda invita a calificar la visita ("¿Cómo les fue? Calificar →") si la fecha acaba de pasar. `VisitReview` acorta cada campo de la nota a 1 línea (`line-clamp-1`) si está colapsado.
+> - **Menú compartir:** En `HouseCard`, el botón de WhatsApp ahora abre un menú desplegable armado a mano (no hay componente `Popover` en el repo) con opciones separadas para "WhatsApp" o "Copiar enlace al portapapeles".
+> - **Métricas de lista:** `CaseList` gana ordenamiento dinámico ("Más recientes", "A–Z (Nombre)", "Más propiedades") usando un nuevo campo calculado `summaries`, y cada fila de caso muestra ahora el número total de propiedades ("{n} propiedades") y las pendientes de revisar ("{n} por revisar").
+
 > **Implementado (17 sept 2026): editar perfil (foto y nombre) desde el
 > celular.** En el header angosto del panel, `BrokerNameEditor` solo se
 > mostraba a partir de `sm:` (`hidden sm:inline-flex`) — pero esa misma

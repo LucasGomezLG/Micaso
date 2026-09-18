@@ -4,12 +4,12 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Bell, Check, Copy, LogIn, Pencil, Share2 } from "lucide-react";
+import { Bell, Check, Copy, Eye, EyeOff, LogIn, Pencil, Share2 } from "lucide-react";
 import { Case, CaseEstado, TipoCaso } from "@/lib/types";
 import type { CaseSummary } from "@/lib/store";
 import { daysAgoLabel } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/http";
-import { buildCaseShareMessage, getCanonicalLoginUrl, openWhatsapp } from "@/lib/whatsapp";
+import { buildCaseCredentialsText, buildCaseShareMessage, openWhatsapp } from "@/lib/whatsapp";
 
 const TIPO_LABEL: Record<TipoCaso, string> = {
   compra: "Compra",
@@ -49,6 +49,7 @@ export default function CaseRow({
   const [kase, setKase] = useState(initialCase);
   const [editing, setEditing] = useState(false);
   const [titulo, setTitulo] = useState(kase.titulo);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState<"rename" | "password" | "close" | "reopen" | "enter" | null>(null);
   const [confirmAction, setConfirmAction] = useState<"password" | "close" | "reopen" | null>(null);
 
@@ -85,14 +86,8 @@ export default function CaseRow({
     }
     const updated = (await res.json()).case;
     setKase(updated);
-    toast.success(`Nueva contraseña generada: ${updated.password}`, {
-      action: {
-        label: "Copiar",
-        onClick: () => {
-          navigator.clipboard.writeText(updated.password).catch(() => {});
-        },
-      },
-    });
+    setShowPassword(false);
+    toast.success("Contraseña regenerada — la anterior dejó de funcionar.");
   }
 
   async function cerrarCaso() {
@@ -163,9 +158,7 @@ export default function CaseRow({
   const [copiedCreds, setCopiedCreds] = useState(false);
 
   async function copiarCredenciales() {
-    const loginUrl = getCanonicalLoginUrl(kase.username, kase.password);
-    const texto = `Acceso Micaso para "${kase.titulo}":\nLink directo: ${loginUrl}\n\n🛡 Compartí este link solamente con las personas que te acompañen o ayuden en la búsqueda.\n\nUsuario: ${kase.username}\nContraseña: ${kase.password}`;
-    await navigator.clipboard.writeText(texto);
+    await navigator.clipboard.writeText(buildCaseCredentialsText(kase));
     setCopiedCreds(true);
     toast.success("Credenciales y link de acceso directo copiados");
     setTimeout(() => setCopiedCreds(false), 2000);
@@ -248,10 +241,13 @@ export default function CaseRow({
         {summary && (
           <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs" style={{ color: "var(--ink-muted)" }}>
             <span>
-              <span className="mono font-semibold" style={{ color: "var(--ink)" }}>{summary.pendientes}</span> pendientes
+              <span className="mono font-semibold" style={{ color: "var(--ink)" }}>{summary.totalHouses}</span> {summary.totalHouses === 1 ? "propiedad" : "propiedades"}
             </span>
             <span>
-              <span className="mono font-semibold" style={{ color: "var(--ink)" }}>{summary.destacadas}</span> destacadas
+              <span className="mono font-semibold" style={{ color: "var(--ink)" }}>{summary.pendientes}</span> por revisar
+            </span>
+            <span>
+              <span className="mono font-semibold" style={{ color: "var(--ink)" }}>{summary.destacadas}</span> favoritas
             </span>
             <span style={{ color: alert === "overdue" ? "var(--status-descartada)" : "var(--ink-muted)" }}>
               {summary.lastActivity ? `última actividad: ${daysAgoLabel(summary.lastActivity)}` : "sin propiedades cargadas"}
@@ -307,8 +303,20 @@ export default function CaseRow({
           <span style={{ color: "var(--ink-muted)" }}>
             Usuario <span className="mono select-all font-medium" style={{ color: "var(--ink)" }}>{kase.username}</span>
           </span>
-          <span style={{ color: "var(--ink-muted)" }}>
-            Clave <span className="mono select-all font-medium" style={{ color: "var(--ink)" }}>{kase.password}</span>
+          <span className="inline-flex items-center gap-1.5" style={{ color: "var(--ink-muted)" }}>
+            Clave{" "}
+            <span className="mono select-all font-medium" style={{ color: "var(--ink)" }}>
+              {showPassword ? kase.password : "••••••••"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+              aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+              className="p-0.5 rounded text-[var(--ink-faint)] hover:text-[var(--ink)] transition-colors cursor-pointer"
+            >
+              {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
+            </button>
           </span>
           <button
             type="button"

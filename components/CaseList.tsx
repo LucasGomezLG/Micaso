@@ -6,6 +6,7 @@ import { Case } from "@/lib/types";
 import type { CaseSummary } from "@/lib/store";
 import { AttentionItem } from "@/components/PanelDashboard";
 import CaseRow from "@/components/CaseRow";
+import Select from "@/components/Select";
 
 interface CaseListProps {
   cases: Case[];
@@ -14,10 +15,12 @@ interface CaseListProps {
 }
 
 type TabFilter = "todos" | "activos" | "cerrados";
+type CaseSort = "recientes" | "alfabetico" | "propiedades";
 
 export default function CaseList({ cases, summaries, attentionItems }: CaseListProps) {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<TabFilter>("activos");
+  const [sort, setSort] = useState<CaseSort>("recientes");
 
   function alertFor(caseId: string): "overdue" | "soon" | null {
     const hit = attentionItems.find((item) => item.caseId === caseId);
@@ -48,8 +51,28 @@ export default function CaseList({ cases, summaries, attentionItems }: CaseListP
       );
     }
 
-    return list;
-  }, [cases, tab, search]);
+    // Ordenamiento
+    const sorted = [...list];
+    if (sort === "alfabetico") {
+      sorted.sort((a, b) => a.titulo.localeCompare(b.titulo, "es-AR"));
+    } else if (sort === "propiedades") {
+      sorted.sort((a, b) => {
+        const countA = summaries[a.id]?.totalHouses ?? 0;
+        const countB = summaries[b.id]?.totalHouses ?? 0;
+        return countB - countA;
+      });
+    } else {
+      // Recientes (por última actividad o fecha de creación)
+      sorted.sort((a, b) => {
+        const actA = summaries[a.id]?.lastActivity ?? a.createdAt;
+        const actB = summaries[b.id]?.lastActivity ?? b.createdAt;
+        if (actA === actB) return 0;
+        return actA < actB ? 1 : -1;
+      });
+    }
+
+    return sorted;
+  }, [cases, tab, search, sort, summaries]);
 
   return (
     <div className="mt-8 flex flex-col gap-4">
@@ -133,36 +156,53 @@ export default function CaseList({ cases, summaries, attentionItems }: CaseListP
           </button>
         </div>
 
-        {/* Buscador de casos */}
-        <div className="relative w-full sm:max-w-xs">
-          <Search
-            size={14}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
-            style={{ color: "var(--ink-faint)" }}
-          />
-          <input
-            type="text"
-            placeholder="Buscar por caso o cliente…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border py-1.5 pl-8 pr-7 text-xs sm:text-sm outline-none transition-colors"
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <Select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as CaseSort)}
+            className="rounded-xl border py-1.5 px-2.5 text-xs sm:text-sm"
             style={{
               borderColor: "var(--border)",
               background: "var(--surface)",
               color: "var(--ink)",
             }}
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5"
+          >
+            <option value="recientes">Más recientes</option>
+            <option value="alfabetico">A–Z (Nombre)</option>
+            <option value="propiedades">Más propiedades</option>
+          </Select>
+
+          {/* Buscador de casos */}
+          <div className="relative flex-1 sm:w-60">
+            <Search
+              size={14}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
               style={{ color: "var(--ink-faint)" }}
-              aria-label="Limpiar búsqueda"
-            >
-              <X size={13} />
-            </button>
-          )}
+            />
+            <input
+              type="text"
+              placeholder="Buscar por caso o cliente…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-xl border py-1.5 pl-8 pr-7 text-xs sm:text-sm outline-none transition-colors"
+              style={{
+                borderColor: "var(--border)",
+                background: "var(--surface)",
+                color: "var(--ink)",
+              }}
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5"
+                style={{ color: "var(--ink-faint)" }}
+                aria-label="Limpiar búsqueda"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

@@ -10,7 +10,15 @@ import { openWhatsapp } from "@/lib/whatsapp";
 
 const STORAGE_KEY_PREFIX = "micaso-calculadora:";
 
-export default function CalculadoraClient({ loan, caseId }: { loan: LoanInfo; caseId: string }) {
+export default function CalculadoraClient({
+  loan,
+  caseId,
+  initialPropertyValue,
+}: {
+  loan: LoanInfo;
+  caseId: string;
+  initialPropertyValue?: number;
+}) {
   // Antes era una sola clave global ("casa-norte-calculadora", de cuando
   // esto era una app de un solo caso) — un corredor que entra a dos
   // casos distintos desde el mismo navegador (botón "Entrar al caso" en
@@ -22,7 +30,7 @@ export default function CalculadoraClient({ loan, caseId }: { loan: LoanInfo; ca
   const tnaDefault = parseFloat(loan.rateLabel.replace(",", ".")) || 7.5;
 
   const [mode, setMode] = useState<"credito" | "contado">(loan.hasCredit ? "credito" : "contado");
-  const [propertyValue, setPropertyValue] = useState(107000);
+  const [propertyValue, setPropertyValue] = useState(initialPropertyValue ?? 107000);
   const [ownFunds, setOwnFunds] = useState(
     Math.round((loan.ownFundsMinUsd + loan.ownFundsMaxUsd) / 2) || 100000
   );
@@ -32,13 +40,14 @@ export default function CalculadoraClient({ loan, caseId }: { loan: LoanInfo; ca
   const [income, setIncome] = useState<string>("");
   const [closingCostPct, setClosingCostPct] = useState(8.5);
 
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const saved = JSON.parse(raw);
         setTimeout(() => {
-          if (saved.propertyValue) setPropertyValue(saved.propertyValue);
+          if (saved.propertyValue && !initialPropertyValue) setPropertyValue(saved.propertyValue);
           if (saved.ownFunds) setOwnFunds(saved.ownFunds);
           if (saved.fx) setFx(saved.fx);
           if (saved.tna) setTna(saved.tna);
@@ -48,7 +57,7 @@ export default function CalculadoraClient({ loan, caseId }: { loan: LoanInfo; ca
         }, 0);
       }
     } catch {}
-  }, [STORAGE_KEY]);
+  }, [STORAGE_KEY, initialPropertyValue]);
 
   useEffect(() => {
     try {

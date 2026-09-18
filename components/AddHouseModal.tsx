@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { ClipboardPaste, X } from "lucide-react";
 import { proxiedImage } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/http";
 import { uploadHousePhoto } from "@/lib/photoUpload";
@@ -79,6 +79,36 @@ export default function AddHouseModal({
   useEffect(() => {
     urlInputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  async function pasteFromClipboard() {
+    try {
+      const text = await navigator.clipboard.readText();
+      const trimmed = text.trim();
+      if (trimmed) {
+        setDraft((d) => ({ ...d, url: trimmed }));
+        toast.success("Link pegado del portapapeles");
+      } else {
+        toast.info("El portapapeles está vacío.");
+      }
+    } catch {
+      toast.error("No se pudo leer el portapapeles. Pegalo manualmente.");
+    }
+  }
 
   const fetchPreview = useCallback(async (url: string) => {
     setFetching(true);
@@ -183,12 +213,32 @@ export default function AddHouseModal({
         style={{ background: "var(--surface)", borderColor: "var(--border)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="mb-4 text-base font-semibold">Agregar casa</h3>
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-base font-semibold">Agregar casa</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-xl leading-none transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+            style={{ color: "var(--ink-faint)" }}
+          >
+            ×
+          </button>
+        </div>
 
         <div className="flex flex-col gap-3 text-sm">
           {!draft.manual ? (
             <label className="flex flex-col gap-1">
-              <span className="eyebrow">Link del aviso</span>
+              <div className="flex items-center justify-between">
+                <span className="eyebrow">Link del aviso</span>
+                <button
+                  type="button"
+                  onClick={pasteFromClipboard}
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--accent)] hover:underline"
+                >
+                  <ClipboardPaste size={12} /> Pegar link copiado
+                </button>
+              </div>
               <input
                 ref={urlInputRef}
                 className="field"

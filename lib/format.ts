@@ -9,6 +9,15 @@ export function proxiedImage(url: string | null): string | null {
   return `/api/image?u=${encodeURIComponent(url)}`;
 }
 
+/** Convierte un teléfono de texto libre (puede traer más de un número,
+ * separadores, nombres) en un tel: URI válido — solo dígitos, con un
+ * '+' inicial opcional si el texto empezaba con uno. */
+export function telHref(raw: string): string {
+  const trimmed = raw.trim();
+  const prefix = trimmed.startsWith("+") ? "+" : "";
+  return `tel:${prefix}${trimmed.replace(/\D/g, "")}`;
+}
+
 export function formatUsd(value: number | null): string {
   if (value === null) return "—";
   return new Intl.NumberFormat("es-AR", {

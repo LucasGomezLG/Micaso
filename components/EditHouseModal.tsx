@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { House } from "@/lib/types";
@@ -37,6 +37,21 @@ export default function EditHouseModal({
   const [proximaAccionFecha, setProximaAccionFecha] = useState(house.proximaAccionFecha ?? "");
   const [visitaFecha, setVisitaFecha] = useState(house.visitaFecha ?? "");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
 
   async function onFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -87,7 +102,18 @@ export default function EditHouseModal({
         style={{ background: "var(--surface)", borderColor: "var(--border)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="mb-4 text-base font-semibold">Editar datos</h3>
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-base font-semibold">Editar datos</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-xl leading-none transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+            style={{ color: "var(--ink-faint)" }}
+          >
+            ×
+          </button>
+        </div>
 
         <div className="flex flex-col gap-3 text-sm">
           <p className="eyebrow -mb-1">Propiedad</p>
@@ -242,15 +268,27 @@ export default function EditHouseModal({
             </label>
           </div>
 
-          <label className="flex flex-col gap-1">
-            <span className="eyebrow">Fecha y hora de visita coordinada</span>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span className="eyebrow">Fecha y hora de visita coordinada</span>
+              {visitaFecha && (
+                <button
+                  type="button"
+                  onClick={() => setVisitaFecha("")}
+                  className="text-[11px] font-medium hover:underline"
+                  style={{ color: "var(--status-descartada)" }}
+                >
+                  Limpiar fecha
+                </button>
+              )}
+            </div>
             <input
               type="datetime-local"
               className="field"
               value={visitaFecha}
               onChange={(e) => setVisitaFecha(e.target.value)}
             />
-          </label>
+          </div>
 
           <div className="grid grid-cols-[1fr_auto] gap-3">
             <label className="flex flex-col gap-1">
@@ -262,15 +300,27 @@ export default function EditHouseModal({
                 placeholder="Ej: llamar a la inmobiliaria"
               />
             </label>
-            <label className="flex flex-col gap-1">
-              <span className="eyebrow">Vence</span>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-1">
+                <span className="eyebrow">Vence</span>
+                {proximaAccionFecha && (
+                  <button
+                    type="button"
+                    onClick={() => setProximaAccionFecha("")}
+                    className="text-[10px] font-medium hover:underline"
+                    style={{ color: "var(--status-descartada)" }}
+                  >
+                    Borrar
+                  </button>
+                )}
+              </div>
               <input
                 type="date"
                 className="field"
                 value={proximaAccionFecha}
                 onChange={(e) => setProximaAccionFecha(e.target.value)}
               />
-            </label>
+            </div>
           </div>
         </div>
 

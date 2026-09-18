@@ -101,3 +101,33 @@ export function buildVisitIcs(house: IcsHouse, caseUrl: string): string | null {
 
   return lines.map(foldLine).join("\r\n") + "\r\n";
 }
+
+/** Genera la URL de plantilla para agendar la visita directamente en Google Calendar. */
+export function buildGoogleCalendarUrl(house: IcsHouse, caseUrl: string): string | null {
+  if (!house.visitaFecha) return null;
+
+  const start = arNaiveToUtc(house.visitaFecha);
+  const end = new Date(start.getTime() + VISIT_DURATION_MINUTES * 60 * 1000);
+
+  const startStamp = toIcsUtcStamp(start);
+  const endStamp = toIcsUtcStamp(end);
+
+  const descriptionLines = [`Visita coordinada — ${house.title}`];
+  if (house.contactoNombre || house.contactoTelefono) {
+    descriptionLines.push(`Contacto: ${[house.contactoNombre, house.contactoTelefono].filter(Boolean).join(" · ")}`);
+  }
+  if (house.url) descriptionLines.push(`Aviso: ${house.url}`);
+  descriptionLines.push(`Ver en Micaso: ${caseUrl}`);
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `Visita: ${house.title}`,
+    dates: `${startStamp}/${endStamp}`,
+    details: descriptionLines.join("\n"),
+  });
+  if (house.zone) {
+    params.set("location", house.zone);
+  }
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}

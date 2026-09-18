@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useOptimistic, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Pencil, X } from "lucide-react";
+import { Check, Pencil, X } from "lucide-react";
 import { ChecklistItem, TipoCaso } from "@/lib/types";
 import { apiErrorMessage } from "@/lib/http";
 import Select from "@/components/Select";
@@ -24,6 +24,13 @@ export default function ChecklistClient({
   tipoCaso: TipoCaso;
 }) {
   const router = useRouter();
+  const [optimisticItems, setOptimisticItems] = useOptimistic(
+    items,
+    (state: ChecklistItem[], update: { id: string; patch: Partial<ChecklistItem> }) =>
+      state.map((item) => (item.id === update.id ? { ...item, ...update.patch } : item))
+  );
+
+  const [hideDone, setHideDone] = useState(false);
   const [pending, setPending] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState("");
@@ -34,16 +41,20 @@ export default function ChecklistClient({
   const [addingCategory, setAddingCategory] = useState(false);
 
   const groups = useMemo(() => {
-    const map = new Map<string, ChecklistItem[]>();
-    for (const item of items) {
-      if (!map.has(item.group)) map.set(item.group, []);
-      map.get(item.group)!.push(item);
+    const map = new Map<string, { all: ChecklistItem[]; visible: ChecklistItem[] }>();
+    for (const item of optimisticItems) {
+      if (!map.has(item.group)) map.set(item.group, { all: [], visible: [] });
+      const entry = map.get(item.group)!;
+      entry.all.push(item);
+      if (!hideDone || !item.done) {
+        entry.visible.push(item);
+      }
     }
     return Array.from(map.entries());
-  }, [items]);
+  }, [optimisticItems, hideDone]);
 
-  const done = items.filter((i) => i.done).length;
-  const progress = items.length ? Math.round((done / items.length) * 100) : 0;
+  const done = optimisticItems.filter((i) => i.done).length;
+  const progress = optimisticItems.length ? Math.round((done / optimisticItems.length) * 100) : 0;
 
   // Arranca en 0 y sube al progreso real después del primer render, para
   // que la barra se llene animada al entrar a la página (no solo cuando
@@ -56,21 +67,24 @@ export default function ChecklistClient({
 
   async function patch(id: string, body: Partial<ChecklistItem>) {
     setPending((s) => new Set(s).add(id));
-    const res = await fetch(`/api/checklist/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+    startTransition(async () => {
+      setOptimisticItems({ id, patch: body });
+      const res = await fetch(`/api/checklist/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      setPending((s) => {
+        const next = new Set(s);
+        next.delete(id);
+        return next;
+      });
+      if (!res.ok) {
+        toast.error(await apiErrorMessage(res, "No se pudo actualizar el ítem."));
+        return;
+      }
+      router.refresh();
     });
-    setPending((s) => {
-      const next = new Set(s);
-      next.delete(id);
-      return next;
-    });
-    if (!res.ok) {
-      toast.error(await apiErrorMessage(res, "No se pudo actualizar el ítem."));
-      return;
-    }
-    router.refresh();
   }
 
   function startEditing(item: ChecklistItem) {
@@ -148,9 +162,25 @@ export default function ChecklistClient({
       </div>
 
       <div>
-        <div className="flex items-center justify-between text-sm">
-          <span style={{ color: "var(--ink-muted)" }}>Progreso</span>
-          <span className="mono">{done}/{items.length}</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+          <div className="flex items-center gap-2">
+            <span style={{ color: "var(--ink-muted)" }}>Progreso</span>
+            <span className="mono font-semibold">{done}/{optimisticItems.length}</span>
+          </div>
+          {done > 0 && (
+            <button
+              type="button"
+              onClick={() => setHideDone((v) => !v)}
+              className="rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+              style={{
+                borderColor: hideDone ? "var(--accent)" : "var(--border)",
+                background: hideDone ? "var(--accent-soft)" : "transparent",
+                color: hideDone ? "var(--accent)" : "var(--ink-muted)",
+              }}
+            >
+              {hideDone ? "Mostrando solo pendientes" : "Ocultar completadas"}
+            </button>
+          )}
         </div>
         <div className="mt-2 h-2 overflow-hidden rounded-full" style={{ background: "var(--border)" }}>
           <div
@@ -161,15 +191,30 @@ export default function ChecklistClient({
       </div>
 
       <div className="flex flex-col gap-5">
-        {groups.map(([group, groupItems]) => (
+        {groups.map(([group, data]) => (
           <div
             key={group}
             className="rounded-2xl border p-5"
             style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
           >
-            <h2 className="mb-3 text-base font-semibold">{group}</h2>
-            <div className="flex flex-col divide-y" style={{ borderColor: "var(--border)" }}>
-              {groupItems.map((item) => (
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-base font-semibold">{group}</h2>
+              <span className="text-xs" style={{ color: "var(--ink-faint)" }}>
+                {data.all.filter((i) => i.done).length}/{data.all.length}
+              </span>
+            </div>
+
+            {data.visible.length === 0 ? (
+              <div
+                className="my-2 flex items-center gap-2 rounded-xl px-3 py-2 text-xs"
+                style={{ background: "var(--status-gusto-bg)", color: "var(--status-gusto)" }}
+              >
+                <Check size={14} />
+                <span>Todas las tareas de esta sección están completadas</span>
+              </div>
+            ) : (
+              <div className="flex flex-col divide-y" style={{ borderColor: "var(--border)" }}>
+                {data.visible.map((item) => (
                 <div key={item.id} className="flex flex-wrap items-center gap-3 py-2.5" style={{ opacity: pending.has(item.id) ? 0.6 : 1 }}>
                   <input
                     type="checkbox"
@@ -231,6 +276,7 @@ export default function ChecklistClient({
                 </div>
               ))}
             </div>
+          )}
 
             <div className="mt-3 flex gap-1.5 border-t pt-3" style={{ borderColor: "var(--border)" }}>
               <input

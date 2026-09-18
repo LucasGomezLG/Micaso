@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { SearchBrief } from "@/lib/types";
@@ -12,6 +13,22 @@ export default function BriefEditor({ brief }: { brief: SearchBrief }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(brief);
+
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
 
   async function save() {
     setSaving(true);
@@ -30,29 +47,44 @@ export default function BriefEditor({ brief }: { brief: SearchBrief }) {
     router.refresh();
   }
 
-  if (!open) {
-    return (
+  return (
+    <>
       <button
-        onClick={() => setOpen(true)}
-        className="text-xs font-medium"
+        type="button"
+        onClick={() => {
+          setForm(brief);
+          setOpen(true);
+        }}
+        className="text-xs font-medium cursor-pointer"
         style={{ color: "var(--accent)" }}
       >
         Editar
       </button>
-    );
-  }
 
-  return (
-    <div
-      className="animate-overlay fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-4 sm:items-center"
-      onClick={() => setOpen(false)}
-    >
-      <div
-        className="animate-modal-pop max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border p-5"
-        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="mb-4 text-base font-semibold">Editar lo que buscamos</h3>
+      {open &&
+        createPortal(
+          <div
+            className="animate-overlay fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+            style={{ background: "rgba(18, 24, 31, 0.65)", backdropFilter: "blur(2px)" }}
+            onClick={() => setOpen(false)}
+          >
+            <div
+              className="animate-modal-pop max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border p-5"
+              style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-base font-semibold">Editar lo que buscamos</h3>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Cerrar"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-xl leading-none transition-colors hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+                  style={{ color: "var(--ink-faint)" }}
+                >
+                  ×
+                </button>
+              </div>
         <div className="flex flex-col gap-5 text-sm">
           <TagList
             label="Imprescindible"
@@ -109,8 +141,11 @@ export default function BriefEditor({ brief }: { brief: SearchBrief }) {
           color: var(--ink);
         }
       `}</style>
-    </div>
-  );
+    </div>,
+    document.body
+  )}
+</>
+);
 }
 
 function TagList({

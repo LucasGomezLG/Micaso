@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -24,7 +26,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { AptoCredito, House, HouseStatus, LoanInfo, PIPELINE_STATUSES, STATUS_LABEL } from "@/lib/types";
-import { formatDate, formatUsd, isOverdue, proxiedImage } from "@/lib/format";
+import { formatDate, formatUsd, isOverdue, proxiedImage, telHref } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/http";
 import { openWhatsapp } from "@/lib/whatsapp";
 import { cashNeededRange, pricePerM2 } from "@/lib/mortgage";
@@ -91,6 +93,10 @@ export default function HouseCard({
   const [imgFailed, setImgFailed] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const isDiscarded = ["descartada", "no_gusto", "borrada"].includes(house.status);
   const currentImage = house.images[photoIndex] ?? house.images[0] ?? null;
   const showImage = currentImage && !imgFailed;
@@ -103,6 +109,22 @@ export default function HouseCard({
       }
     } catch {}
   }, [people]);
+
+  useEffect(() => {
+    if (!confirmDelete) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && !deleting) setConfirmDelete(false);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [confirmDelete, deleting]);
 
   async function postComment() {
     const text = commentText.trim();
@@ -215,14 +237,33 @@ export default function HouseCard({
 
   function compartirPorWhatsapp() {
     const precio = house.priceUsd !== null ? ` — ${formatUsd(house.priceUsd)}` : "";
-    const link = house.url ? `\n${house.url}` : "";
+    const link = house.url
+      ? `\n${house.url}`
+      : typeof window !== "undefined"
+      ? `\nVer en Micaso: ${window.location.origin}/caso/casas#house-${house.id}`
+      : "";
     const mensaje = `Mirá esta casa que guardé en Micaso: ${house.title}${precio}${link}`;
     openWhatsapp(mensaje);
   }
 
+  async function copiarFicha() {
+    const precio = house.priceUsd !== null ? ` — ${formatUsd(house.priceUsd)}` : "";
+    const portalLink = house.url ? `\nAviso: ${house.url}` : "";
+    const micasoLink = typeof window !== "undefined" ? `\nVer en Micaso: ${window.location.origin}/caso/casas#house-${house.id}` : "";
+    const texto = `${house.title}${precio}${portalLink}${micasoLink}`;
+    await navigator.clipboard.writeText(texto);
+    setCopiedLink(true);
+    toast.success("Ficha y enlace copiados al portapapeles");
+    setTimeout(() => {
+      setCopiedLink(false);
+      setShareOpen(false);
+    }, 1500);
+  }
+
   return (
     <div
-      className="flex flex-col overflow-hidden rounded-2xl border transition-all"
+      id={`house-${house.id}`}
+      className="scroll-mt-24 flex flex-col overflow-hidden rounded-2xl border transition-all"
       style={{
         background: "var(--surface)",
         borderColor: house.highlighted ? "var(--gold)" : "var(--border)",
@@ -235,7 +276,7 @@ export default function HouseCard({
           href={house.url ?? undefined}
           target={house.url ? "_blank" : undefined}
           rel="noreferrer"
-          className="block h-full w-full"
+          className="relative block h-full w-full"
         >
           {showImage ? (
             <>
@@ -415,7 +456,7 @@ export default function HouseCard({
             {house.contactoNombre && house.contactoTelefono && " · "}
             {house.contactoTelefono && (
               <a
-                href={`tel:${house.contactoTelefono.replace(/[^\d+]/g, "")}`}
+                href={telHref(house.contactoTelefono)}
                 className="underline underline-offset-2"
                 style={{ color: "var(--accent)" }}
               >
@@ -426,12 +467,15 @@ export default function HouseCard({
         )}
 
         {cash && cashFit && (
-          <div
-            className="mono inline-flex w-fit items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium"
+          <Link
+            href={`/caso/calculadora?price=${house.priceUsd}`}
+            title="Ver cálculo de cuota y gastos en la calculadora"
+            className="mono inline-flex w-fit items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium transition-all hover:opacity-90 active:scale-95"
             style={{ background: `var(--status-${cashFit}-bg)`, color: `var(--status-${cashFit})` }}
           >
             <Wallet size={13} /> {formatUsd(cash.low)}–{formatUsd(cash.high)} de bolsillo
-          </div>
+            <span className="text-[10px] opacity-60">→</span>
+          </Link>
         )}
 
         {(house.status === "gusto" || house.status === "no_gusto" || house.visitReview) && (
@@ -594,21 +638,8 @@ export default function HouseCard({
             </button>
             <button
               title="Eliminar definitivamente (no se puede deshacer)"
-              onClick={() => {
-                toast("¿Eliminar propiedad definitivamente?", {
-                  description: "Esta acción no se puede deshacer. Se borrará la ficha, fotos y comentarios para siempre.",
-                  duration: 10000,
-                  action: {
-                    label: "Sí, eliminar",
-                    onClick: () => onDelete(house.id),
-                  },
-                  cancel: {
-                    label: "Cancelar",
-                    onClick: () => {},
-                  },
-                });
-              }}
-              className="rounded-lg border px-2 py-1.5 text-xs"
+              onClick={() => setConfirmDelete(true)}
+              className="rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
               style={{ borderColor: "var(--border)", color: "var(--status-descartada)" }}
             >
               Eliminar definitivamente
@@ -640,14 +671,60 @@ export default function HouseCard({
                 <RefreshCw size={14} className={refreshing ? "animate-spin" : undefined} />
               </button>
             )}
-            <button
-              title="Compartir por WhatsApp"
-              onClick={compartirPorWhatsapp}
-              className="flex items-center justify-center rounded-lg border px-2 py-1.5"
-              style={{ borderColor: "var(--border)" }}
-            >
-              <Share2 size={14} />
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                title="Compartir propiedad"
+                onClick={() => setShareOpen((v) => !v)}
+                className="flex items-center justify-center rounded-lg border px-2 py-1.5 transition-colors hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+                style={{
+                  borderColor: shareOpen ? "var(--accent)" : "var(--border)",
+                  color: shareOpen ? "var(--accent)" : undefined,
+                }}
+              >
+                <Share2 size={14} />
+              </button>
+
+              {shareOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />
+                  <div
+                    className="animate-pop absolute bottom-full mb-2 right-0 z-50 flex min-w-[200px] flex-col gap-1 rounded-2xl border p-1.5 text-xs shadow-xl"
+                    style={{
+                      background: "var(--surface)",
+                      borderColor: "var(--border)",
+                      boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        compartirPorWhatsapp();
+                        setShareOpen(false);
+                      }}
+                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-left font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+                      style={{ color: "var(--ink)" }}
+                    >
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 text-xs">
+                        💬
+                      </span>
+                      <span>Compartir por WhatsApp</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={copiarFicha}
+                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-left font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+                      style={{ color: "var(--ink)" }}
+                    >
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sky-500/15 text-sky-600 text-xs">
+                        {copiedLink ? "✓" : "📋"}
+                      </span>
+                      <span>{copiedLink ? "¡Copiado!" : "Copiar datos y link"}</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
             <button
               title="Editar título, precio, zona, ambientes, cochera o imagen"
               onClick={() => setEditOpen(true)}
@@ -683,6 +760,54 @@ export default function HouseCard({
       {editOpen && (
         <EditHouseModal house={house} onClose={() => setEditOpen(false)} onChange={onChange} />
       )}
+
+      {confirmDelete &&
+        createPortal(
+          <div
+            className="animate-overlay fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(18, 24, 31, 0.65)", backdropFilter: "blur(2px)" }}
+            onClick={() => !deleting && setConfirmDelete(false)}
+          >
+            <div
+              className="animate-modal-pop my-auto w-full max-w-sm rounded-2xl border p-6"
+              style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-card)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold" style={{ color: "var(--ink)" }}>
+                ¿Eliminar propiedad definitivamente?
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--ink-muted)" }}>
+                Esta acción no se puede deshacer. Se borrará la ficha, fotos y comentarios de &ldquo;{house.title}&rdquo; para siempre.
+              </p>
+              <div className="mt-6 flex justify-end gap-2.5">
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={() => setConfirmDelete(false)}
+                  className="rounded-full px-4 py-2 text-xs font-semibold transition-colors"
+                  style={{ color: "var(--ink-muted)" }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={async () => {
+                    setDeleting(true);
+                    await onDelete(house.id);
+                    setDeleting(false);
+                    setConfirmDelete(false);
+                  }}
+                  className="rounded-full px-4 py-2 text-xs font-semibold transition-colors"
+                  style={{ background: "var(--status-descartada)", color: "#fff" }}
+                >
+                  {deleting ? "Eliminando…" : "Sí, eliminar definitivamente"}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

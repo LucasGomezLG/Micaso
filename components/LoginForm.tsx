@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import { MicasoMark } from "@/components/MicasoMark";
 
 export default function LoginForm() {
@@ -13,6 +14,7 @@ export default function LoginForm() {
 
   const [username, setUsername] = useState(initialUser);
   const [password, setPassword] = useState(initialPass);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [autoLoggingIn, setAutoLoggingIn] = useState(Boolean(initialUser && initialPass));
@@ -126,13 +128,24 @@ export default function LoginForm() {
             </label>
             <label className="mt-3 flex flex-col gap-1 text-sm">
               <span className="eyebrow">Contraseña</span>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="rounded-lg border px-3 py-2"
-                style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-lg border px-3 py-2 pr-10"
+                  style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                  title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[var(--ink-faint)] hover:text-[var(--ink)] transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </label>
             {error && (
               <p className="mt-2 text-xs" style={{ color: "var(--status-descartada)" }}>

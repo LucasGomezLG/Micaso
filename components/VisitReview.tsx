@@ -33,22 +33,53 @@ export default function VisitReview({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 text-left text-xs font-medium"
-        style={{ color: filled ? "var(--status-gusto)" : "var(--ink-faint)" }}
-      >
-        {filled ? (
-          <>
-            <ClipboardCheck size={13} /> Revisión de la visita
-          </>
-        ) : (
-          <>
-            <ClipboardList size={13} /> Completar revisión de la visita
-          </>
-        )}
-      </button>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="inline-flex items-center gap-1.5 text-left text-xs font-medium cursor-pointer"
+          style={{ color: filled ? "var(--status-gusto)" : "var(--ink-faint)" }}
+        >
+          {filled ? (
+            <>
+              <ClipboardCheck size={13} /> Revisión de la visita
+              <span className="text-[10px] text-[var(--accent)] underline ml-1">
+                {open ? "Cerrar" : "Editar"}
+              </span>
+            </>
+          ) : (
+            <>
+              <ClipboardList size={13} /> Completar revisión de la visita
+            </>
+          )}
+        </button>
+      </div>
+
+      {!open && filled && (
+        <div
+          onClick={() => setOpen(true)}
+          className="cursor-pointer rounded-xl border p-2 text-xs transition-colors hover:border-[var(--border-strong)] flex flex-col gap-1"
+          style={{ background: "var(--paper)", borderColor: "var(--border)" }}
+          title="Tocar para ver o editar revisión completa"
+        >
+          {house.visitReview?.bien && (
+            <p className="line-clamp-1" style={{ color: "var(--ink)" }}>
+              <strong style={{ color: "var(--status-gusto)" }}>✓ Bien:</strong> {house.visitReview.bien}
+            </p>
+          )}
+          {house.visitReview?.faltante && (
+            <p className="line-clamp-1" style={{ color: "var(--ink-muted)" }}>
+              <strong style={{ color: "var(--status-descartada)" }}>✗ Faltó:</strong> {house.visitReview.faltante}
+            </p>
+          )}
+          {house.visitReview?.aMejorar && (
+            <p className="line-clamp-1" style={{ color: "var(--ink-faint)" }}>
+              <strong style={{ color: "var(--gold)" }}>⚡ A mejorar:</strong> {house.visitReview.aMejorar}
+            </p>
+          )}
+        </div>
+      )}
 
       {open && (
         <div className="flex flex-col gap-2 rounded-lg p-2.5" style={{ background: "var(--paper)" }}>

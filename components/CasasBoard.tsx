@@ -465,8 +465,21 @@ export default function CasasBoard({
 
       {visible.length === 0 ? (
         <div className="py-12 text-center text-sm" style={{ color: "var(--ink-faint)" }}>
-          {searchQuery ? (
-            <p>No se encontraron propiedades para tu búsqueda.</p>
+          {searchQuery || zone !== "todas" ? (
+            <div className="flex flex-col items-center gap-2">
+              <p>No se encontraron propiedades para tu búsqueda o filtro.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setZone("todas");
+                }}
+                className="mt-2 rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+                style={{ borderColor: "var(--border)", color: "var(--accent)" }}
+              >
+                Restablecer búsqueda y filtros
+              </button>
+            </div>
           ) : stage === "favoritas" ? (
             <div className="flex flex-col items-center gap-2">
               <span className="text-2xl">⭐</span>

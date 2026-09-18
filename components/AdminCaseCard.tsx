@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Pencil } from "lucide-react";
+import { Eye, EyeOff, Pencil } from "lucide-react";
 import { Case, CaseEstado, TipoCaso } from "@/lib/types";
 import type { CaseSummary } from "@/lib/store";
 import { daysAgoLabel } from "@/lib/format";
@@ -242,10 +242,13 @@ export default function AdminCaseCard({
         {summary && (
           <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs" style={{ color: "var(--ink-muted)" }}>
             <span>
-              <span className="mono font-semibold" style={{ color: "var(--ink)" }}>{summary.pendientes}</span> pendientes
+              <span className="mono font-semibold" style={{ color: "var(--ink)" }}>{summary.totalHouses}</span> {summary.totalHouses === 1 ? "propiedad" : "propiedades"}
             </span>
             <span>
-              <span className="mono font-semibold" style={{ color: "var(--ink)" }}>{summary.destacadas}</span> destacadas
+              <span className="mono font-semibold" style={{ color: "var(--ink)" }}>{summary.pendientes}</span> por revisar
+            </span>
+            <span>
+              <span className="mono font-semibold" style={{ color: "var(--ink)" }}>{summary.destacadas}</span> favoritas
             </span>
             <span>{summary.lastActivity ? `última actividad: ${daysAgoLabel(summary.lastActivity)}` : "sin propiedades cargadas"}</span>
           </p>
@@ -255,24 +258,31 @@ export default function AdminCaseCard({
             Usuario <span className="mono">{kase.username}</span> · creado el {new Date(kase.createdAt).toLocaleDateString("es-AR")}
           </span>
           {!isArchivado && (
-            <button
-              type="button"
-              onClick={toggleVerContrasena}
-              disabled={revealing}
-              className="font-medium underline underline-offset-2"
-              style={{ color: "var(--accent)" }}
-            >
-              {revealing ? "Cargando…" : revealedPassword ? "Ocultar contraseña" : "Ver contraseña"}
-            </button>
-          )}
-          {revealedPassword && (
             <span className="inline-flex items-center gap-1.5">
+              <span>Clave</span>
               <span className="mono select-all font-medium" style={{ color: "var(--ink)" }}>
-                {revealedPassword}
+                {revealedPassword ? revealedPassword : "••••••••"}
               </span>
-              <button type="button" onClick={copiarContrasena} className="font-medium underline underline-offset-2" style={{ color: "var(--accent)" }}>
-                {copiedPassword ? "¡Copiado!" : "Copiar"}
+              <button
+                type="button"
+                onClick={toggleVerContrasena}
+                disabled={revealing}
+                title={revealedPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                aria-label={revealedPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                className="p-0.5 rounded text-[var(--ink-faint)] hover:text-[var(--ink)] transition-colors cursor-pointer"
+              >
+                {revealing ? "…" : revealedPassword ? <EyeOff size={13} /> : <Eye size={13} />}
               </button>
+              {revealedPassword && (
+                <button
+                  type="button"
+                  onClick={copiarContrasena}
+                  className="font-medium underline underline-offset-2"
+                  style={{ color: "var(--accent)" }}
+                >
+                  {copiedPassword ? "¡Copiado!" : "Copiar"}
+                </button>
+              )}
             </span>
           )}
         </p>
