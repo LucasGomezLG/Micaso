@@ -1277,8 +1277,10 @@ borrar copias viejas).
 
 > **Auditoría Integral de Arquitectura y Seguridad (18 sept 2026):** Se llevó a
 > cabo una auditoría exhaustiva en dos fases (Arquitectura Base + Red Team de Puntos Ciegos)
-> de todo el repositorio (ver informe técnico formal completo en
-> [AUDITORIA-2026-09-18.md](file:///d:/Micaso/AUDITORIA-2026-09-18.md)). Se identificaron:
+> de todo el repositorio (el informe técnico formal completo vivió en
+> `AUDITORIA-2026-09-18.md` y `AUDITORIA-2026-09-18_2.md` — borrados tras la
+> verificación y remediación de más abajo, que ya cubre lo que quedó vigente
+> de cada hallazgo). Se identificaron:
 > - **Fase 1:** 3 hallazgos críticos (falsificación de sesión e IDOR por cookie `case_id` sin firma HMAC,
 >   SSRF y evasión por DNS Rebinding en scraping/proxy, y condición de carrera en `dbUpdate`
 >   sobre Redis) y 4 hallazgos de severidad alta (almacenamiento monolítico $O(N)$ en `"cases"`,
