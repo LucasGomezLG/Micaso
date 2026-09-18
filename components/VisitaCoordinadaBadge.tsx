@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Calendar, CalendarDays } from "lucide-react";
 import { formatDateTime } from "@/lib/format";
