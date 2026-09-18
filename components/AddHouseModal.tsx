@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
-import { ClipboardPaste, X } from "lucide-react";
+import { ClipboardPaste, Sparkles, X } from "lucide-react";
 import { proxiedImage } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/http";
 import { uploadHousePhoto } from "@/lib/photoUpload";
+import { parseListingText } from "@/lib/listingText";
 import Select from "@/components/Select";
 
 const URL_PATTERN = /^https?:\/\/.+\..+/i;
@@ -58,6 +59,10 @@ export default function AddHouseModal({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [scrapeMsg, setScrapeMsg] = useState<string | null>(null);
+  const [isBlockedSite, setIsBlockedSite] = useState(false);
+  const [isScrapeError, setIsScrapeError] = useState(false);
+  const [showTextRecovery, setShowTextRecovery] = useState(false);
+  const [rawListingText, setRawListingText] = useState("");
   const lastFetchedUrl = useRef<string | null>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -110,9 +115,63 @@ export default function AddHouseModal({
     }
   }
 
+  function applyListingText(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      toast.info("Pegá el texto o descripción del aviso primero.");
+      return;
+    }
+    const result = parseListingText(trimmed, zones);
+    const found: string[] = [];
+
+    setDraft((d) => {
+      const next = { ...d };
+      if (result.priceUsd) {
+        next.priceUsd = String(result.priceUsd);
+        found.push(`US$ ${result.priceUsd.toLocaleString("es-AR")}`);
+      }
+      if (result.ambientes) {
+        next.ambientes = String(result.ambientes);
+        found.push(`${result.ambientes} amb`);
+      }
+      if (result.superficieM2) {
+        next.superficieM2 = String(result.superficieM2);
+        found.push(`${result.superficieM2} m²`);
+      }
+      if (result.zone) {
+        next.zone = result.zone;
+        found.push(result.zone);
+      }
+      return next;
+    });
+
+    if (found.length > 0) {
+      toast.success(`Datos detectados: ${found.join(" · ")}`);
+    } else {
+      toast.info("No detectamos precio ni ambientes en ese texto. Podés cargarlos a mano.");
+    }
+  }
+
+  async function pasteDescriptionFromClipboard() {
+    try {
+      const text = await navigator.clipboard.readText();
+      const trimmed = text.trim();
+      if (trimmed) {
+        setRawListingText(trimmed);
+        applyListingText(trimmed);
+      } else {
+        toast.info("El portapapeles está vacío.");
+      }
+    } catch {
+      toast.error("No se pudo leer el portapapeles. Pegalo manualmente en el recuadro.");
+    }
+  }
+
   const fetchPreview = useCallback(async (url: string) => {
     setFetching(true);
     setScrapeMsg(null);
+    setIsBlockedSite(false);
+    setIsScrapeError(false);
     try {
       const res = await fetch("/api/scrape", {
         method: "POST",
@@ -122,7 +181,13 @@ export default function AddHouseModal({
       const data = await res.json();
       if (data.error) {
         setScrapeMsg(data.error);
+        setIsScrapeError(true);
       } else {
+        const isBlocked = Boolean(data.blocked || data.notice);
+        setIsBlockedSite(isBlocked);
+        if (isBlocked) {
+          setShowTextRecovery(true);
+        }
         const zoneMatch = zones.find(
           (z) => z && (data.title as string | null)?.toLowerCase().includes(z.toLowerCase())
         );
@@ -139,6 +204,7 @@ export default function AddHouseModal({
       }
     } catch {
       setScrapeMsg("No se pudo leer el link.");
+      setIsScrapeError(true);
     } finally {
       setFetching(false);
     }
@@ -259,13 +325,16 @@ export default function AddHouseModal({
                 {!fetching && scrapeMsg && (
                   <>
                     <span>{scrapeMsg}</span>
-                    <button
-                      onClick={() => draft.url.trim() && fetchPreview(draft.url.trim())}
-                      className="font-medium underline"
-                      style={{ color: "var(--accent)" }}
-                    >
-                      Reintentar
-                    </button>
+                    {isScrapeError && !isBlockedSite && (
+                      <button
+                        type="button"
+                        onClick={() => draft.url.trim() && fetchPreview(draft.url.trim())}
+                        className="font-medium underline"
+                        style={{ color: "var(--accent)" }}
+                      >
+                        Reintentar
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -292,6 +361,70 @@ export default function AddHouseModal({
               >
                 Volver a pegar un link
               </button>
+            </div>
+          )}
+
+          {/* Segunda vuelta: recuperación de datos pegando el texto de la descripción */}
+          {(!draft.manual || showTextRecovery) && (
+            <div
+              className="rounded-xl border p-3 text-xs"
+              style={{
+                background: isBlockedSite ? "var(--accent-soft)" : "var(--paper)",
+                borderColor: isBlockedSite ? "var(--accent)" : "var(--border)",
+              }}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 font-medium" style={{ color: "var(--ink)" }}>
+                  <Sparkles size={13} style={{ color: "var(--accent)" }} />
+                  Segunda vuelta: autocompletar con texto del aviso
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowTextRecovery((v) => !v)}
+                  className="text-[11px] underline"
+                  style={{ color: "var(--ink-muted)" }}
+                >
+                  {showTextRecovery ? "Ocultar" : "Abrir"}
+                </button>
+              </div>
+
+              {showTextRecovery && (
+                <div className="mt-2.5 flex flex-col gap-2">
+                  <p style={{ color: "var(--ink-muted)" }}>
+                    Pegá acá la descripción o especificaciones del aviso para extraer precio, ambientes y m²:
+                  </p>
+                  <textarea
+                    className="field w-full text-xs"
+                    rows={2}
+                    placeholder="Ej: Oportunidad USD 140.000, 3 ambientes, 75 m², balcón..."
+                    value={rawListingText}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setRawListingText(val);
+                      if (val.trim()) applyListingText(val);
+                    }}
+                  />
+                  <div className="flex items-center justify-between gap-2 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={pasteDescriptionFromClipboard}
+                      className="inline-flex items-center gap-1 font-medium text-[var(--accent)] hover:underline"
+                    >
+                      <ClipboardPaste size={12} /> Pegar del portapapeles y procesar
+                    </button>
+                    {rawListingText.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => applyListingText(rawListingText)}
+                        className="rounded-md border px-2 py-1 font-medium hover:bg-black/5 dark:hover:bg-white/5"
+                        style={{ borderColor: "var(--border)", color: "var(--ink)" }}
+                      >
+                        Re-procesar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

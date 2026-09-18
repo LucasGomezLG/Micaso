@@ -122,8 +122,9 @@ async function checkCaseAccess(
     // Solo lectura (cerrado a mano, o impago en el período de gracia):
     // la familia sigue viendo su historial, pero no puede seguir
     // cargando casas, comentarios ni criterios nuevos. Ver
-    // ARQUITECTURA.md sección 6.
-    const isMutating = ["POST", "PUT", "PATCH", "DELETE"].includes(request.method);
+    // /api/scrape es un POST por el body JSON, pero no muta la base de datos de Redis
+    const isMutating =
+      pathname !== "/api/scrape" && ["POST", "PUT", "PATCH", "DELETE"].includes(request.method);
     if (isMutating && pathname.startsWith("/api/")) {
       if (kase.estado === "solo_lectura") {
         return NextResponse.json({ error: "Este caso está en modo solo lectura" }, { status: 403 });

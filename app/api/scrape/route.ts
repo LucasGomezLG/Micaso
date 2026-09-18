@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isSafeExternalUrl } from "@/lib/url-safety";
+import { guessAmbientesFromText, guessSuperficieFromText, guessPriceUsd } from "@/lib/listingText";
 
 function extractMeta(html: string, property: string): string | null {
   return extractMetaAll(html, property)[0] ?? null;
@@ -129,34 +130,6 @@ function guessFromJsonLd(html: string): JsonLdGuess {
   return { images: [], priceUsd: null, ambientes: null, superficieM2: null };
 }
 
-/** Busca "N ambientes"/"N amb" en el título o la descripción del aviso —
- * cubre los sitios que no traen `numberOfRooms` en JSON-LD, que en avisos
- * argentinos son la mayoría. Un solo número esperado; si el texto trae
- * más de una mención y no coinciden, mejor abstenerse que adivinar mal
- * (mismo criterio que `guessPriceFromEmbeddedJson`). */
-function guessAmbientesFromText(...texts: (string | null)[]): number | null {
-  const found = new Set<number>();
-  for (const text of texts) {
-    if (!text) continue;
-    for (const match of text.matchAll(/(\d{1,2})\s*amb(?:iente)?s?\b/gi)) {
-      found.add(Number(match[1]));
-    }
-  }
-  return found.size === 1 ? [...found][0] : null;
-}
-
-/** Mismo criterio que `guessAmbientesFromText`, para "NNN m2"/"NNN m²". */
-function guessSuperficieFromText(...texts: (string | null)[]): number | null {
-  const found = new Set<number>();
-  for (const text of texts) {
-    if (!text) continue;
-    for (const match of text.matchAll(/(\d{2,4})\s*m(?:2|²)\b/gi)) {
-      found.add(Number(match[1]));
-    }
-  }
-  return found.size === 1 ? [...found][0] : null;
-}
-
 /** Some sites (RE/MAX, etc.) don't put the price in text or JSON-LD at
  * all — it's only in a client-hydration JSON blob embedded in the page,
  * e.g. `"price":100000,...,"currency":{"value":"USD"}`. Look for a bare
@@ -179,19 +152,6 @@ function guessPriceFromEmbeddedJson(html: string): number | null {
   return candidates.size === 1 ? [...candidates][0] : null;
 }
 
-function guessPriceUsd(...texts: (string | null)[]): number | null {
-  for (const text of texts) {
-    if (!text) continue;
-    // Soporta USD, US$, U$S, U$D y como último recurso $ si no hay símbolo de dólar explícito
-    const match = text.match(/(?:USD|US\$|U\$S|U\$D|\$)\s?([\d.,]{4,})/i);
-    if (match) {
-      const digits = match[1].replace(/[.,](?=\d{3}\b)/g, "").replace(",", ".");
-      const value = parseFloat(digits);
-      if (!Number.isNaN(value) && value > 1000) return Math.round(value);
-    }
-  }
-  return null;
-}
 
 /** Sitios/rutas donde no se autocompleta porque el sitio no lo permite
  * (robots.txt o términos de uso) — verificado 15 sept 2026, ver
@@ -274,6 +234,7 @@ function blockedAutoFillResponse(blockedUrl: URL) {
     priceUsd: null,
     ambientes: guess.ambientes,
     superficieM2: null,
+    blocked: true,
     notice:
       "Este sitio no permite autocompletar foto ni precio — completamos lo que pudimos sacar del link, cargá el resto a mano.",
   };

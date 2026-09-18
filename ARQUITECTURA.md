@@ -209,6 +209,10 @@ uno con su propio acceso.
 > respuesta de `/api/scrape` con dos fotos nuevas contra una casa que ya
 > tenía una foto subida a mano: con el código viejo hubiera quedado en 2
 > (perdiendo la subida a mano), con el arreglo quedan las 3.
+>
+> **Implementado el mismo día (18 sept 2026): recuperación de datos en dos vueltas.**
+> - **Sin botón "Reintentar" para sitios bloqueados:** Si el link pertenece a un portal bloqueado por ToS (MercadoLibre, ZonaProp, ArgenProp), el botón "Reintentar" desaparece por completo ya que volver a intentar siempre resultaría en el mismo bloqueo. Solo se ofrece reintentar ante fallos de red o errores inesperados.
+> - **Segunda vuelta local por texto de descripción:** Si el portal no permite scraping o la propiedad se carga a mano, `AddHouseModal` abre una caja de autocompletado donde el usuario pega el texto o descripción del aviso copiado del portal. El módulo `lib/listingText.ts` procesa el texto en el navegador: extrae el precio en dólares (priorizando USD sobre expensas en pesos), la cantidad de ambientes y los m² totales, y matchea la zona contra las zonas de interés del caso, autocompletando los campos del formulario sin necesidad de hacer requests al servidor ni violar ToS.
 
 ### Tipo de caso: no todos buscan lo mismo
 
