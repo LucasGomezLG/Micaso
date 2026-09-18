@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useOptimistic, startTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -101,6 +101,16 @@ export default function CasasBoard({
   people: string[];
 }) {
   const router = useRouter();
+  const [optimisticHouses, addOptimisticHousePatch] = useOptimistic(
+    houses,
+    (state: House[], action: { type: "update" | "delete"; id: string; patch?: Partial<House> }) => {
+      if (action.type === "delete") {
+        return state.filter((h) => h.id !== action.id);
+      }
+      return state.map((h) => (h.id === action.id ? { ...h, ...action.patch } : h));
+    }
+  );
+
   const initial = useMemo(() => getInitialState(initialStatus), [initialStatus]);
   const [stage, setStage] = useState<StageId>(initial.stage);
   const [subStatus, setSubStatus] = useState<"todas" | HouseStatus>(initial.subStatus);
@@ -109,13 +119,13 @@ export default function CasasBoard({
   const [searchQuery, setSearchQuery] = useState("");
   const [showAdd, setShowAdd] = useState(false);
 
-  const activeHouses = useMemo(() => houses.filter((h) => h.status !== "borrada"), [houses]);
+  const activeHouses = useMemo(() => optimisticHouses.filter((h) => h.status !== "borrada"), [optimisticHouses]);
   const destacadasCount = useMemo(() => activeHouses.filter((h) => h.highlighted).length, [activeHouses]);
 
   const counts = useMemo(() => {
     const byStatus = { todas: activeHouses.length, borrada: 0 } as Record<string, number>;
     for (const status of PIPELINE_STATUSES) byStatus[status] = 0;
-    for (const house of houses) {
+    for (const house of optimisticHouses) {
       byStatus[house.status] = (byStatus[house.status] || 0) + 1;
     }
 
@@ -130,7 +140,7 @@ export default function CasasBoard({
     };
 
     return { byStatus, byStage };
-  }, [houses, activeHouses, destacadasCount]);
+  }, [optimisticHouses, activeHouses, destacadasCount]);
 
   const visible = useMemo(() => {
     let list: House[];
@@ -139,15 +149,15 @@ export default function CasasBoard({
     } else if (stage === "favoritas") {
       list = activeHouses.filter((h) => h.highlighted);
     } else if (stage === "borrada") {
-      list = houses.filter((h) => h.status === "borrada");
+      list = optimisticHouses.filter((h) => h.status === "borrada");
     } else {
       const activeStage = STAGES.find((s) => s.id === stage);
       if (!activeStage) {
         list = activeHouses;
       } else if (subStatus !== "todas" && activeStage.statuses.includes(subStatus)) {
-        list = houses.filter((h) => h.status === subStatus);
+        list = optimisticHouses.filter((h) => h.status === subStatus);
       } else {
-        list = houses.filter((h) => activeStage.statuses.includes(h.status));
+        list = optimisticHouses.filter((h) => activeStage.statuses.includes(h.status));
       }
     }
 
@@ -170,7 +180,7 @@ export default function CasasBoard({
       return a.addedAt < b.addedAt ? 1 : -1;
     });
     return list;
-  }, [houses, activeHouses, stage, subStatus, zone, sort, searchQuery]);
+  }, [optimisticHouses, activeHouses, stage, subStatus, zone, sort, searchQuery]);
 
   function handleSelectStage(newStage: StageId) {
     setStage(newStage);
@@ -180,28 +190,40 @@ export default function CasasBoard({
   const currentStageDef = STAGES.find((s) => s.id === stage);
 
   async function handleChange(id: string, patch: Partial<House>): Promise<boolean> {
-    const res = await fetch(`/api/houses/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
+    return new Promise<boolean>((resolve) => {
+      startTransition(async () => {
+        addOptimisticHousePatch({ type: "update", id, patch });
+        const res = await fetch(`/api/houses/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        });
+        if (!res.ok) {
+          toast.error(await apiErrorMessage(res, "No se pudo guardar el cambio."));
+          resolve(false);
+          return;
+        }
+        router.refresh();
+        resolve(true);
+      });
     });
-    if (!res.ok) {
-      toast.error(await apiErrorMessage(res, "No se pudo guardar el cambio."));
-      return false;
-    }
-    router.refresh();
-    return true;
   }
 
   async function handleDelete(id: string): Promise<boolean> {
-    const res = await fetch(`/api/houses/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      toast.error(await apiErrorMessage(res, "No se pudo eliminar la propiedad."));
-      return false;
-    }
-    toast.success("Casa eliminada para siempre.");
-    router.refresh();
-    return true;
+    return new Promise<boolean>((resolve) => {
+      startTransition(async () => {
+        addOptimisticHousePatch({ type: "delete", id });
+        const res = await fetch(`/api/houses/${id}`, { method: "DELETE" });
+        if (!res.ok) {
+          toast.error(await apiErrorMessage(res, "No se pudo eliminar la propiedad."));
+          resolve(false);
+          return;
+        }
+        toast.success("Casa eliminada para siempre.");
+        router.refresh();
+        resolve(true);
+      });
+    });
   }
 
   return (

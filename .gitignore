@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# service worker generado por Serwist a partir de app/sw.ts (ver next.config.ts)
+/public/sw.js
+
 # production
 /build
 
