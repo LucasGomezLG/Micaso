@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Home, Building2, Calculator, CalendarDays, CheckSquare, Sparkles } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Home, Building2, Calculator, CalendarDays, CheckSquare, Sparkles, LogOut } from "lucide-react";
 import { TipoCaso } from "@/lib/types";
 import { MicasoMark } from "@/components/MicasoMark";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -41,10 +41,21 @@ export default function Nav({
   isDemo?: boolean;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const links =
     tipoCaso === "compra"
       ? BASE_LINKS.flatMap((link) => (link.href === "/caso/agenda" ? [CALCULADORA_LINK, link] : [link]))
       : BASE_LINKS;
+
+  async function handleLogout() {
+    if (isDemo) {
+      router.push("/");
+      return;
+    }
+    await fetch("/api/caso/logout", { method: "POST" });
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <>
@@ -62,9 +73,9 @@ export default function Nav({
               <span>Estás explorando el caso de demostración interactivo</span>
             </div>
             <div className="flex items-center gap-3">
-              <Link href="/" className="hover:underline text-[11px]" style={{ color: "var(--ink-muted)" }}>
+              <button onClick={handleLogout} className="hover:underline text-[11px]" style={{ color: "var(--ink-muted)" }}>
                 ← Volver al inicio
-              </Link>
+              </button>
               <Link
                 href="/panel/login"
                 className="btn rounded-full px-3 py-1 font-semibold text-[11px]"
@@ -131,6 +142,17 @@ export default function Nav({
             </nav>
             <InstallAppButton />
             <ThemeToggle />
+            {!viewingAsBroker && (
+              <button
+                onClick={handleLogout}
+                className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                title="Cerrar sesión"
+                style={{ color: "var(--ink-muted)" }}
+              >
+                <LogOut size={18} />
+                <span className="sr-only">Cerrar sesión</span>
+              </button>
+            )}
           </div>
         </div>
       </header>

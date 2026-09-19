@@ -81,19 +81,21 @@ export default function PushNotificationPrompt() {
         applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
       });
 
-      // Guardar suscripción asociada a este caseId
       const saveRes = await fetch("/api/case/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subscription: subscription.toJSON() }),
       });
 
-      if (!saveRes.ok) throw new Error("No se pudo registrar la suscripción");
+      if (!saveRes.ok) {
+        const errorData = await saveRes.json().catch(() => ({}));
+        throw new Error(errorData.error || "No se pudo registrar la suscripción");
+      }
 
       toast.success("¡Avisos activados! Te notificaremos las novedades de tu búsqueda en este celular.");
       setDismissed(true);
-    } catch {
-      toast.error("No se pudieron activar las notificaciones en este navegador.");
+    } catch (err: any) {
+      toast.error(err.message || "No se pudieron activar las notificaciones en este navegador.");
     } finally {
       setLoading(false);
     }
