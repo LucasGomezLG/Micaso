@@ -2,7 +2,7 @@ import { cache } from "react";
 import { DEV_BROKER_ID } from "./auth";
 import { getBroker, listAllBrokers } from "./brokers";
 import { decryptSecret, encryptSecret, timingSafeStringEqual } from "./crypto";
-import { dbDelete, dbGet, dbUpdate } from "./db";
+import { dbDelete, dbGet, dbMultiGet, dbSet, dbUpdate } from "./db";
 import { DEMO_CASE_ID } from "./seed";
 import { Case, PLAN_CASE_LIMIT, TipoCaso } from "./types";
 
@@ -16,8 +16,18 @@ function decryptCase(kase: Case): Case {
   return { ...kase, password: decryptSecret(kase.password) };
 }
 
-const CASES_KEY = "cases";
+// Esquema de claves (migración ARC-01/DAT-01, sept 2026): antes "cases"
+// era un único blob JSON con todos los casos de todos los corredores —
+// cada lectura/escritura de un caso puntual descargaba y volvía a
+// guardar el JSON de toda la plataforma, y dos escrituras concurrentes a
+// casos distintos competían por la misma clave (ver ARQUITECTURA.md,
+// adenda de esta migración). Ahora cada caso vive en su propia clave,
+// mismo patrón que ya usan houses/checklist/criteria por caso
+// (lib/store.ts) y payments por corredor (lib/brokers.ts).
+const caseKey = (caseId: string) => `case:${caseId}:meta`;
 const brokerCasesKey = (brokerId: string) => `broker:${brokerId}:cases`;
+const ALL_CASE_IDS_KEY = "all_case_ids";
+const caseUsernameKey = (username: string) => `case_username:${username}`;
 
 // Sin caracteres ambiguos (0/O, 1/I/l) — se lee y se tipea a mano al
 // compartir por WhatsApp.
@@ -38,21 +48,33 @@ async function addToBrokerIndex(brokerId: string, caseId: string): Promise<void>
   });
 }
 
+async function addToAllCaseIds(caseId: string): Promise<void> {
+  await dbUpdate<string[]>(ALL_CASE_IDS_KEY, (current) => {
+    const ids = current ?? [];
+    return ids.includes(caseId) ? ids : [caseId, ...ids];
+  });
+}
+
+async function removeFromAllCaseIds(caseId: string): Promise<void> {
+  await dbUpdate<string[]>(ALL_CASE_IDS_KEY, (current) => (current ?? []).filter((id) => id !== caseId));
+}
+
 /** Se asegura de que el caso demo (la búsqueda real de Lucas y Abril,
  * migrada desde D:\Casa) siempre exista, con las mismas credenciales que
  * ya se usaban (usuario "casa", clave "1234") — así nadie queda afuera
  * la primera vez que corre este código nuevo. Ver ARQUITECTURA.md
- * sección 8, "No es solo agregar código". El chequeo y la creación
- * pasan por dbUpdate para que no compita con otra escritura concurrente
- * a la misma clave "cases" (ver lib/db.ts). */
-async function getAllCases(): Promise<Record<string, Case>> {
+ * sección 8, "No es solo agregar código". El chequeo y la creación pasan
+ * por dbUpdate para que no compita con otra escritura concurrente a la
+ * misma clave (ver lib/db.ts) — a diferencia de la versión anterior, acá
+ * solo compite consigo misma (la clave de ESTE caso), no con la de
+ * cualquier otro caso de la plataforma. */
+async function ensureDemoCaseSeed(): Promise<Case> {
   let createdDemo = false;
-  const cases = await dbUpdate<Record<string, Case>>(CASES_KEY, (current) => {
-    const cases = current ?? {};
-    if (cases[DEMO_CASE_ID]) return cases;
+  const kase = await dbUpdate<Case>(caseKey(DEMO_CASE_ID), (current) => {
+    if (current) return current;
     createdDemo = true;
     const now = new Date().toISOString();
-    const demoCase: Case = {
+    return {
       id: DEMO_CASE_ID,
       brokerId: DEV_BROKER_ID,
       titulo: "Lucas y Abril",
@@ -65,10 +87,15 @@ async function getAllCases(): Promise<Record<string, Case>> {
       createdAt: now,
       updatedAt: now,
     };
-    return { ...cases, [DEMO_CASE_ID]: demoCase };
   });
-  if (createdDemo) await addToBrokerIndex(DEV_BROKER_ID, DEMO_CASE_ID);
-  return cases;
+  if (createdDemo) {
+    await Promise.all([
+      addToBrokerIndex(DEV_BROKER_ID, DEMO_CASE_ID),
+      addToAllCaseIds(DEMO_CASE_ID),
+      dbSet(caseUsernameKey("casa"), DEMO_CASE_ID),
+    ]);
+  }
+  return kase;
 }
 
 /** Tope de casos activos simultáneos del plan (ARQUITECTURA.md sección
@@ -109,13 +136,14 @@ export async function createCase(
   const now = new Date().toISOString();
   const cleanedPeople = Array.from(new Set(people.map((p) => p.trim()).filter(Boolean)));
   const plainPassword = randomCode(12);
+  const username = randomCode(6).toLowerCase();
   const kase: Case = {
     id: crypto.randomUUID(),
     brokerId,
     titulo,
     tipoCaso,
     estado: "activo",
-    username: randomCode(6).toLowerCase(),
+    username,
     password: encryptSecret(plainPassword),
     people: cleanedPeople,
     soloLecturaDesde: null,
@@ -123,28 +151,35 @@ export async function createCase(
     createdAt: now,
     updatedAt: now,
   };
-  await dbUpdate<Record<string, Case>>(CASES_KEY, (current) => ({ ...(current ?? {}), [kase.id]: kase }));
-  await addToBrokerIndex(brokerId, kase.id);
+  // Clave nueva — no hay ninguna escritura concurrente posible contra
+  // este mismo caseId recién generado, así que dbSet directo alcanza
+  // (a diferencia de updateCase, que sí necesita dbUpdate).
+  await dbSet(caseKey(kase.id), kase);
+  await Promise.all([
+    addToBrokerIndex(brokerId, kase.id),
+    addToAllCaseIds(kase.id),
+    dbSet(caseUsernameKey(username), kase.id),
+  ]);
   return { ...kase, password: plainPassword };
 }
 
 export async function listCasesForBroker(brokerId: string): Promise<Case[]> {
-  const [cases, ids] = await Promise.all([getAllCases(), dbGet<string[]>(brokerCasesKey(brokerId))]);
-  return (ids ?? [])
-    .map((id) => cases[id])
-    .filter((c): c is Case => Boolean(c))
+  const ids = await dbGet<string[]>(brokerCasesKey(brokerId));
+  if (!ids || ids.length === 0) return [];
+  const cases = await dbMultiGet<Case>(ids.map(caseKey));
+  return cases
+    .filter((c): c is Case => c !== null)
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
     .map(decryptCase);
 }
 
 export const getCase = cache(async function getCase(caseId: string): Promise<Case | null> {
-  const cases = await getAllCases();
-  // hasOwnProperty en vez de cases[caseId]: caseId ahora también llega
-  // directo desde path params de rutas de superadmin (ver
-  // app/api/superadmin/cases/[id]/*) — con caseId === "__proto__" el
-  // acceso por corchetes devuelve Object.prototype heredado, no undefined.
-  const kase = Object.prototype.hasOwnProperty.call(cases, caseId) ? cases[caseId] : null;
-  return kase ? decryptCase(kase) : null;
+  const kase = await dbGet<Case>(caseKey(caseId));
+  if (kase) return decryptCase(kase);
+  // Único caso con sembrado perezoso — cualquier otro caseId inexistente
+  // simplemente no existe.
+  if (caseId === DEMO_CASE_ID) return decryptCase(await ensureDemoCaseSeed());
+  return null;
 });
 
 /** Único punto donde se verifica que un caso pertenezca a un corredor
@@ -167,17 +202,26 @@ export async function getCaseForBroker(caseId: string, brokerId: string): Promis
  * si el JSON descargado se filtra, lo que queda expuesto es texto
  * cifrado, no la contraseña real de cada caso. */
 export async function listAllCases(): Promise<Case[]> {
-  const cases = await getAllCases();
-  return Object.values(cases);
+  const ids = await dbGet<string[]>(ALL_CASE_IDS_KEY);
+  if (!ids || ids.length === 0) return [];
+  const cases = await dbMultiGet<Case>(ids.map(caseKey));
+  return cases.filter((c): c is Case => c !== null);
 }
 
 /** Compara la contraseña ingresada contra la del caso encontrado por
  * username, ya desencriptada, con `timingSafeStringEqual` (ver
  * lib/crypto.ts) en vez de `===` — evita filtrar por cuánto tarda la
- * respuesta si el ingresado coincide con el principio de la clave real. */
+ * respuesta si el ingresado coincide con el principio de la clave real.
+ * `case_username:{username}` es un lookup directo (antes era un scan
+ * lineal de todos los casos de todos los corredores). */
 export async function getCaseByCredentials(username: string, password: string): Promise<Case | null> {
-  const cases = await getAllCases();
-  const candidate = Object.values(cases).find((c) => c.username === username);
+  // Garantiza que el login del caso demo funcione en un deploy nuevo sin
+  // haber pasado antes por getCase — mismo motivo que el chequeo de
+  // updateCase de abajo.
+  await ensureDemoCaseSeed();
+  const caseId = await dbGet<string>(caseUsernameKey(username));
+  if (!caseId) return null;
+  const candidate = await dbGet<Case>(caseKey(caseId));
   if (!candidate) return null;
   const storedPassword = decryptSecret(candidate.password);
   if (!timingSafeStringEqual(storedPassword, password)) return null;
@@ -185,22 +229,12 @@ export async function getCaseByCredentials(username: string, password: string): 
 }
 
 async function updateCase(caseId: string, patch: Partial<Case>): Promise<Case | null> {
-  // Se asegura de que el índice ya exista (y el caso demo esté creado)
-  // antes de la escritura atómica — updateCase no puede inventar un caso
-  // que nunca existió, solo modificar uno ya presente.
-  await getAllCases();
-  const result = await dbUpdate<Record<string, Case>>(CASES_KEY, (current) => {
-    const cases = current ?? {};
-    // hasOwnProperty, no cases[caseId]: con caseId === "__proto__" el
-    // acceso por corchetes devuelve el Object.prototype heredado (un
-    // objeto "truthy") en vez de undefined, y este mutador terminaría
-    // creando/pisando un caso fantasma bajo esa clave.
-    if (!Object.prototype.hasOwnProperty.call(cases, caseId)) return cases;
-    const existing = cases[caseId];
-    const updated: Case = { ...existing, ...patch, id: existing.id, updatedAt: new Date().toISOString() };
-    return { ...cases, [caseId]: updated };
-  });
-  return Object.prototype.hasOwnProperty.call(result, caseId) ? result[caseId] : null;
+  // Solo importa para el caso demo — cualquier otro caseId que no exista
+  // simplemente no se actualiza (dbUpdate abajo devuelve null y listo).
+  if (caseId === DEMO_CASE_ID) await ensureDemoCaseSeed();
+  return dbUpdate<Case | null>(caseKey(caseId), (current) =>
+    current === null ? null : { ...current, ...patch, id: current.id, updatedAt: new Date().toISOString() }
+  );
 }
 
 export async function renameCase(caseId: string, brokerId: string, titulo: string): Promise<Case | null> {
@@ -277,23 +311,23 @@ export async function reopenCase(caseId: string, brokerId: string): Promise<Case
 }
 
 /** Borrado definitivo de un caso — a diferencia de closeCase (que solo
- * cambia el estado a solo_lectura), esto saca al caso de "cases" y del
- * índice del corredor. Pensado para limpiar casos de prueba desde
- * /superadmin (ver app/api/superadmin/cases/[id]/route.ts, DELETE).
- * Irreversible a propósito, no hay soft-delete. No borra las casas,
- * checklist ni criterios del caso — eso vive en lib/store.ts
- * (deleteCaseData), el caller llama a las dos. */
+ * cambia el estado a solo_lectura), esto borra la clave del caso y lo
+ * saca de todos sus índices (el del corredor, el global de todos los
+ * casos, y el de login por username). Pensado para limpiar casos de
+ * prueba desde /superadmin, y ahora también desde el panel del corredor
+ * una vez cerrado (ver app/api/panel/cases/[id]/route.ts). Irreversible
+ * a propósito, no hay soft-delete. No borra las casas, checklist ni
+ * criterios del caso — eso vive en lib/store.ts (deleteCaseData), el
+ * caller llama a las dos. */
 export async function deleteCase(caseId: string, brokerId: string): Promise<boolean> {
   const kase = await getCaseForBroker(caseId, brokerId);
   if (!kase) return false;
-  await dbUpdate<Record<string, Case>>(CASES_KEY, (current) => {
-    const cases = current ?? {};
-    if (!Object.prototype.hasOwnProperty.call(cases, caseId)) return cases;
-    const next = { ...cases };
-    delete next[caseId];
-    return next;
-  });
-  await dbUpdate<string[]>(brokerCasesKey(brokerId), (current) => (current ?? []).filter((id) => id !== caseId));
+  await dbDelete(caseKey(caseId));
+  await Promise.all([
+    dbUpdate<string[]>(brokerCasesKey(brokerId), (current) => (current ?? []).filter((id) => id !== caseId)),
+    removeFromAllCaseIds(caseId),
+    dbDelete(caseUsernameKey(kase.username)),
+  ]);
   return true;
 }
 
@@ -318,53 +352,61 @@ const GRACE_PERIOD_DAYS = 90;
  * gracia antes de archivarse (ver archiveStaleReadOnlyCases). Pensado
  * para correr desde el cron diario (igual que el archivado) y también
  * apenas el webhook de Mercado Pago marca a un corredor puntual como
- * atrasado/cancelado, para no esperar hasta el próximo cron. */
+ * atrasado/cancelado, para no esperar hasta el próximo cron.
+ *
+ * Con un `brokerId` puntual (el caso común, disparado por el webhook)
+ * solo toca el índice de ESE corredor — nunca descarga ni recorre casos
+ * de nadie más. Sin `brokerId` (el cron diario, que tiene que revisar a
+ * todos) recorre los corredores inactivos uno por uno; el costo sigue
+ * siendo proporcional a cuántos corredores/casos hay que bajar, no al
+ * tamaño total de la plataforma. */
 export async function downgradeCasesForInactiveBrokers(brokerId?: string): Promise<string[]> {
   const brokers = brokerId ? [await getBroker(brokerId)].filter((b): b is NonNullable<typeof b> => b !== null) : await listAllBrokers();
-  const inactiveBrokerIds = new Set(
-    brokers
-      .filter(
-        (b) =>
-          b.subscriptionStatus === "atrasada" ||
-          b.subscriptionStatus === "cancelada" ||
-          (b.subscriptionStatus === "prueba" && new Date() > new Date(b.trialEndsAt))
-      )
-      .map((b) => b.id)
-  );
-  if (inactiveBrokerIds.size === 0) return [];
+  const inactiveBrokerIds = brokers
+    .filter(
+      (b) =>
+        b.subscriptionStatus === "atrasada" ||
+        b.subscriptionStatus === "cancelada" ||
+        (b.subscriptionStatus === "prueba" && new Date() > new Date(b.trialEndsAt))
+    )
+    .map((b) => b.id);
+  if (inactiveBrokerIds.length === 0) return [];
 
   const downgraded: string[] = [];
-  await dbUpdate<Record<string, Case>>(CASES_KEY, (current) => {
-    const cases = current ?? {};
-    const next = { ...cases };
-    for (const kase of Object.values(cases)) {
-      if (kase.estado !== "activo" || !inactiveBrokerIds.has(kase.brokerId)) continue;
+  for (const inactiveBrokerId of inactiveBrokerIds) {
+    const ids = await dbGet<string[]>(brokerCasesKey(inactiveBrokerId));
+    if (!ids || ids.length === 0) continue;
+    const cases = await dbMultiGet<Case>(ids.map(caseKey));
+    for (const kase of cases) {
+      if (!kase || kase.estado !== "activo") continue;
+      await updateCase(kase.id, { estado: "solo_lectura", soloLecturaDesde: new Date().toISOString() });
       downgraded.push(kase.id);
-      next[kase.id] = { ...kase, estado: "solo_lectura", soloLecturaDesde: new Date().toISOString(), updatedAt: new Date().toISOString() };
     }
-    return next;
-  });
+  }
   return downgraded;
 }
 
 /** Archiva los casos que llevan más de 90 días en solo_lectura (cierre
  * manual o, más adelante, impago) — pensado para correr una vez por día
- * desde app/api/cron/archive-stale-cases/route.ts (Vercel Cron). Una
- * sola escritura atómica sobre "cases" para no competir con otra
- * mutación concurrente. Devuelve los IDs que efectivamente archivó. */
+ * desde app/api/cron/archive-stale-cases/route.ts (Vercel Cron). Recorre
+ * `all_case_ids` en vez de un blob único, resolviendo los casos de a
+ * lote con dbMultiGet en lugar de descargar todo en una sola respuesta
+ * gigante — este es el único recorrido que sí necesita mirar todos los
+ * casos de la plataforma (es un barrido por criterio, no por corredor
+ * puntual), pero ya no paga el costo de traer y volver a guardar un JSON
+ * enorme para hacerlo. Devuelve los IDs que efectivamente archivó. */
 export async function archiveStaleReadOnlyCases(): Promise<string[]> {
   const cutoff = Date.now() - GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000;
+  const ids = await dbGet<string[]>(ALL_CASE_IDS_KEY);
+  if (!ids || ids.length === 0) return [];
+  const cases = await dbMultiGet<Case>(ids.map(caseKey));
   const archived: string[] = [];
-  await dbUpdate<Record<string, Case>>(CASES_KEY, (current) => {
-    const cases = current ?? {};
-    const next = { ...cases };
-    for (const kase of Object.values(cases)) {
-      if (kase.estado !== "solo_lectura" || !kase.soloLecturaDesde) continue;
-      if (new Date(kase.soloLecturaDesde).getTime() > cutoff) continue;
-      archived.push(kase.id);
-      next[kase.id] = { ...kase, estado: "archivado", updatedAt: new Date().toISOString() };
-    }
-    return next;
-  });
+  for (const kase of cases) {
+    if (!kase) continue;
+    if (kase.estado !== "solo_lectura" || !kase.soloLecturaDesde) continue;
+    if (new Date(kase.soloLecturaDesde).getTime() > cutoff) continue;
+    await updateCase(kase.id, { estado: "archivado" });
+    archived.push(kase.id);
+  }
   return archived;
 }

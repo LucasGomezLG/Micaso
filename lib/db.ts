@@ -194,6 +194,25 @@ export async function dbPeekCount(key: string): Promise<number> {
   });
 }
 
+/** Resuelve varias claves en un solo viaje — a diferencia de disparar un
+ * `dbGet` por clave con `Promise.all` (que igual manda N requests HTTP
+ * separadas a Upstash), esto usa `MGET`, una sola request para todas.
+ * Pensado para resolver una lista de IDs (el índice de casos de un
+ * corredor, por ejemplo) a sus objetos completos sin que el costo crezca
+ * con la cantidad de IDs. El orden del resultado respeta el de `keys`, y
+ * una clave inexistente devuelve `null` en su posición. */
+export async function dbMultiGet<T>(keys: string[]): Promise<(T | null)[]> {
+  if (keys.length === 0) return [];
+  if (redis) {
+    const values = await redis.mget<T[]>(...keys);
+    return values.map((v) => v ?? null);
+  }
+  return withLocalStoreLock(async () => {
+    const store = await readLocalStore();
+    return keys.map((key) => (store[key] as T) ?? null);
+  });
+}
+
 export async function dbDelete(key: string): Promise<void> {
   if (redis) {
     await redis.del(key);

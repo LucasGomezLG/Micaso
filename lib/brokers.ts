@@ -1,10 +1,18 @@
 import { cache } from "react";
 import { auth } from "@/auth";
 import { ADMIN_EMAILS, DEV_BROKER_ID, FOUNDER_EMAIL } from "./auth";
-import { dbGet, dbUpdate } from "./db";
+import { dbDelete, dbGet, dbMultiGet, dbUpdate } from "./db";
 import { Broker, PaymentRecord } from "./types";
 
-const BROKERS_KEY = "brokers";
+// Esquema de claves (migración ARC-01/DAT-01, sept 2026): antes
+// "brokers" era un único blob JSON con todos los corredores — ver el
+// mismo comentario en lib/cases.ts, que tenía exactamente el mismo
+// problema con "cases". `DELETED_BROKERS_KEY` queda como blob único a
+// propósito: son tombstones de bajas manuales desde /superadmin, una
+// lista chica y acotada que no crece con la plataforma (a diferencia de
+// "brokers", que crecía con cada corredor nuevo).
+const brokerKey = (id: string) => `broker:${id}:meta`;
+const ALL_BROKER_IDS_KEY = "all_broker_ids";
 const TRIAL_DAYS = 14;
 
 /** IDs de corredores borrados a mano desde /superadmin — un tombstone,
@@ -53,22 +61,24 @@ function normalizeBroker(broker: MaybeLegacyBroker): Broker {
   };
 }
 
-function normalizeBrokers(brokers: Record<string, Broker>): Record<string, Broker> {
-  const normalized: Record<string, Broker> = {};
-  for (const [id, broker] of Object.entries(brokers)) {
-    normalized[id] = normalizeBroker(broker);
-  }
-  return normalized;
+async function addToAllBrokerIds(id: string): Promise<void> {
+  await dbUpdate<string[]>(ALL_BROKER_IDS_KEY, (current) => {
+    const ids = current ?? [];
+    return ids.includes(id) ? ids : [id, ...ids];
+  });
 }
 
-async function getAllBrokers(): Promise<Record<string, Broker>> {
-  const brokers = await dbGet<Record<string, Broker>>(BROKERS_KEY);
-  return normalizeBrokers(brokers ?? {});
+async function removeFromAllBrokerIds(id: string): Promise<void> {
+  await dbUpdate<string[]>(ALL_BROKER_IDS_KEY, (current) => (current ?? []).filter((existing) => existing !== id));
 }
 
 /** Crea el corredor la primera vez que entra con Google; en los logins
  * siguientes devuelve el que ya existe tal cual (no pisa nombreMarca ni
- * imagenUrl con lo último de Google — son editables a mano después). */
+ * imagenUrl con lo último de Google — son editables a mano después). El
+ * chequeo y la creación pasan por dbUpdate sobre la clave de ESTE
+ * corredor puntual, para que dos requests casi simultáneas del primer
+ * login de alguien no se pisen entre sí (antes competían con la clave
+ * "brokers" completa, compartida por todo el mundo). */
 export async function getOrCreateBroker(
   email: string,
   googleName: string | null | undefined,
@@ -76,13 +86,12 @@ export async function getOrCreateBroker(
 ): Promise<Broker> {
   const id = resolveBrokerId(email);
   let created = false;
-  const brokers = await dbUpdate<Record<string, Broker>>(BROKERS_KEY, (current) => {
-    const brokers = current ?? {};
-    if (Object.prototype.hasOwnProperty.call(brokers, id)) return brokers;
+  const broker = await dbUpdate<Broker>(brokerKey(id), (current) => {
+    if (current) return current;
     created = true;
     const now = new Date();
     const trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
-    const broker: Broker = {
+    return {
       id,
       email,
       nombreMarca: googleName || email,
@@ -93,30 +102,28 @@ export async function getOrCreateBroker(
       mpPreapprovalId: null,
       createdAt: now.toISOString(),
     };
-    return { ...brokers, [id]: broker };
   });
-  // Una creación real (a mano desde /superadmin, o un corredor nuevo de
-  // verdad) saca cualquier tombstone previo — si alguna vez se lo borró y
-  // ahora un admin lo vuelve a dar de alta a propósito, no debería seguir
-  // bloqueado (ver isBrokerDeleted, usado por getCurrentBroker).
   if (created) {
-    await dbUpdate<Record<string, true>>(DELETED_BROKERS_KEY, (current) => {
-      if (!current || !Object.prototype.hasOwnProperty.call(current, id)) return current ?? {};
-      const next = { ...current };
-      delete next[id];
-      return next;
-    });
+    // Una creación real (a mano desde /superadmin, o un corredor nuevo de
+    // verdad) saca cualquier tombstone previo — si alguna vez se lo borró y
+    // ahora un admin lo vuelve a dar de alta a propósito, no debería seguir
+    // bloqueado (ver isBrokerDeleted, usado por getCurrentBroker).
+    await Promise.all([
+      addToAllBrokerIds(id),
+      dbUpdate<Record<string, true>>(DELETED_BROKERS_KEY, (current) => {
+        if (!current || !Object.prototype.hasOwnProperty.call(current, id)) return current ?? {};
+        const next = { ...current };
+        delete next[id];
+        return next;
+      }),
+    ]);
   }
-  return normalizeBroker(brokers[id]);
+  return normalizeBroker(broker);
 }
 
 export const getBroker = cache(async function getBroker(id: string): Promise<Broker | null> {
-  const brokers = await getAllBrokers();
-  // hasOwnProperty en vez de brokers[id]: `id` puede venir directo de un
-  // path param (ver app/superadmin/brokers/[id]/page.tsx) — con
-  // id === "__proto__", el acceso por corchetes devuelve Object.prototype
-  // (heredado, no undefined) en vez de "no existe".
-  return Object.prototype.hasOwnProperty.call(brokers, id) ? brokers[id] : null;
+  const broker = await dbGet<Broker>(brokerKey(id));
+  return broker ? normalizeBroker(broker) : null;
 });
 
 /** Edita a mano lo que `getOrCreateBroker` trajo de Google —
@@ -128,16 +135,9 @@ export async function updateBroker(
   id: string,
   patch: Partial<Pick<Broker, "nombreMarca" | "imagenUrl" | "plan" | "subscriptionStatus" | "trialEndsAt" | "mpPreapprovalId">>
 ): Promise<Broker | null> {
-  const brokers = await dbUpdate<Record<string, Broker>>(BROKERS_KEY, (current) => {
-    const brokers = current ?? {};
-    // hasOwnProperty, no brokers[id]: con id === "__proto__" el acceso
-    // por corchetes devuelve el Object.prototype heredado (un objeto
-    // "truthy") en vez de undefined — ver el mismo fix en lib/cases.ts.
-    if (!Object.prototype.hasOwnProperty.call(brokers, id)) return brokers;
-    const existing = brokers[id];
-    return { ...brokers, [id]: { ...normalizeBroker(existing), ...patch } };
-  });
-  return Object.prototype.hasOwnProperty.call(brokers, id) ? brokers[id] : null;
+  return dbUpdate<Broker | null>(brokerKey(id), (current) =>
+    current === null ? null : { ...normalizeBroker(current), ...patch }
+  );
 }
 
 /** El corredor de la sesión actual (Auth.js) — null si no hay sesión.
@@ -179,25 +179,25 @@ export async function getCurrentAdminEmail(): Promise<string | null> {
  * antes cada uno de sus casos con deleteCase + deleteCaseData, para no
  * acoplar este archivo a lib/cases.ts (que ya importa de este). */
 export async function deleteBroker(id: string): Promise<boolean> {
-  let existed = false;
-  await dbUpdate<Record<string, Broker>>(BROKERS_KEY, (current) => {
-    const brokers = current ?? {};
-    if (!Object.prototype.hasOwnProperty.call(brokers, id)) return brokers;
-    existed = true;
-    const next = { ...brokers };
-    delete next[id];
-    return next;
-  });
-  if (existed) {
-    await dbUpdate<Record<string, true>>(DELETED_BROKERS_KEY, (current) => ({ ...(current ?? {}), [id]: true }));
-  }
-  return existed;
+  const existing = await dbGet<Broker>(brokerKey(id));
+  if (!existing) return false;
+  await dbDelete(brokerKey(id));
+  await Promise.all([
+    removeFromAllBrokerIds(id),
+    dbUpdate<Record<string, true>>(DELETED_BROKERS_KEY, (current) => ({ ...(current ?? {}), [id]: true })),
+  ]);
+  return true;
 }
 
 /** Todos los corredores, más recientes primero — para /superadmin. */
 export async function listAllBrokers(): Promise<Broker[]> {
-  const brokers = await getAllBrokers();
-  return Object.values(brokers).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  const ids = await dbGet<string[]>(ALL_BROKER_IDS_KEY);
+  if (!ids || ids.length === 0) return [];
+  const brokers = await dbMultiGet<Broker>(ids.map(brokerKey));
+  return brokers
+    .filter((b): b is Broker => b !== null)
+    .map(normalizeBroker)
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 }
 
 const brokerPaymentsKey = (brokerId: string) => `broker:${brokerId}:payments`;

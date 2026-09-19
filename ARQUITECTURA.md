@@ -1350,6 +1350,51 @@ borrar copias viejas).
 > consistentes) y **ARC-02** (capa de servicios) quedan como deuda menor
 > de calidad de código, no de seguridad — no bloquean nada.
 
+> **ARC-01/DAT-01 implementado y probado en local (19 sept 2026).**
+> `lib/cases.ts` y `lib/brokers.ts` dejaron de guardar todo en un blob
+> único (`"cases"`, `"brokers"`) — cada caso vive en `case:{caseId}:meta`
+> y cada corredor en `broker:{brokerId}:meta`, mismo patrón que ya usaban
+> `houses`/`checklist`/`criteria` (`lib/store.ts`) y las suscripciones
+> push (`lib/push.ts`). Se sumaron dos índices globales (`all_case_ids`,
+> `all_broker_ids`, mismo patrón que el índice `broker:{id}:cases` que ya
+> existía) para reemplazar `Object.values(blob)` en los listados
+> completos y los barridos del cron, y un índice de login
+> (`case_username:{username} -> caseId`) que reemplaza el scan lineal que
+> tenía `getCaseByCredentials`. `lib/db.ts` suma `dbMultiGet` (usa `MGET`
+> de Redis) para resolver varios IDs de un índice en un solo viaje en vez
+> de N requests HTTP separadas. Ningún caller externo se tocó — las
+> firmas exportadas de `cases.ts`/`brokers.ts` quedaron iguales.
+>
+> Efecto práctico: leer o escribir un caso puntual ya no depende de
+> cuántos casos/corredores tenga la plataforma, y una escritura
+> concurrente solo puede pisar a otra si apuntan al mismo caso o al mismo
+> corredor — mismo nivel de riesgo, ya aceptado, que houses/checklist/
+> criteria. Deliberadamente sin tocar: `deleted_broker_ids` (tombstones,
+> chico y acotado) y estructuras nativas `SADD`/`redis.multi()` (el
+> cliente REST de Upstash no expone WATCH, así que un CAS real no está
+> disponible igual, y el achique del radio de la carrera ya alcanza el
+> nivel aceptado en el resto del código).
+>
+> Probado con dos test files nuevos (`test/cases.test.mts`,
+> `test/brokers.test.mts`: sembrado perezoso del caso demo, CRUD
+> completo, los tres índices nuevos, login por username,
+> `downgradeCasesForInactiveBrokers` con y sin `brokerId`,
+> `archiveStaleReadOnlyCases`) más toda la suite existente (59/59),
+> `tsc --noEmit`, `eslint` y `npm run build` limpios, y un ensayo
+> end-to-end contra el store local: `scripts/migrate-cases-brokers.mts`
+> (nuevo, no destructivo — lee el blob viejo y escribe las claves nuevas
+> sin borrar nada) corrido contra los datos reales de dev, seguido de
+> login de ambos casos reales, panel, superadmin, y el ciclo completo
+> crear/renombrar/cerrar/reabrir/borrar caso y crear/borrar corredor —
+> todo contra el server de dev real, no solo los tests.
+>
+> **Pendiente, a propósito:** ejecutar `scripts/migrate-cases-brokers.mts`
+> contra Redis de producción y desplegar este código. Es nuevamente un
+> paso aparte, gateado por decisión explícita — el script es no
+> destructivo (las claves viejas quedan de respaldo, rollback trivial
+> redesplegando el código anterior) pero toca la base de datos real con
+> los dos casos ya reales que tiene Micaso hoy.
+
 **Barrido de "quedó pensado para un solo caso" (14 sept 2026) — dos
 bugs reales encontrados y resueltos**
 Además de la auditoría de aislamiento de arriba (¿puede un caso/corredor
