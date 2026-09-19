@@ -102,10 +102,13 @@ export default async function HomePage() {
               return (
                 <div
                   key={house.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors hover:border-[var(--border-strong)]"
+                  className="flex flex-col gap-2 rounded-xl border px-4 py-3 transition-colors hover:border-[var(--border-strong)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
                   style={{ background: "var(--surface)", borderColor: "var(--border)" }}
                 >
-                  <Link href={`/caso/casas#house-${house.id}`} className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+                  <Link
+                    href={`/caso/casas#house-${house.id}`}
+                    className="flex min-w-0 flex-col gap-2 sm:flex-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3"
+                  >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{house.title}</p>
                       <p className="truncate text-xs" style={{ color: "var(--ink-faint)" }}>
@@ -114,7 +117,7 @@ export default async function HomePage() {
                     </div>
                     {house.proximaAccion && (
                       <span
-                        className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium"
+                        className="inline-flex w-fit items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium"
                         style={{
                           background: vencida ? "var(--status-descartada-bg)" : "var(--status-pendiente-bg)",
                           color: vencida ? "var(--status-descartada)" : "var(--status-pendiente)",
@@ -355,12 +358,12 @@ export default async function HomePage() {
             {recent.map((house) => (
               <div
                 key={house.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors hover:border-[var(--border-strong)]"
+                className="flex flex-col gap-2 rounded-xl border px-4 py-3 transition-colors hover:border-[var(--border-strong)] sm:flex-row sm:items-center sm:justify-between"
                 style={{ background: "var(--surface)", borderColor: "var(--border)" }}
               >
                 <Link
                   href={`/caso/casas#house-${house.id}`}
-                  className="min-w-0 flex-1 transition-colors hover:text-[var(--accent)]"
+                  className="min-w-0 transition-colors hover:text-[var(--accent)] sm:flex-1"
                 >
                   <p className="truncate text-sm font-medium">{house.title}</p>
                   <p className="mono truncate text-xs" style={{ color: "var(--ink-faint)" }}>

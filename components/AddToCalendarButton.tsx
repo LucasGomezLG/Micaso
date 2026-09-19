@@ -22,12 +22,19 @@ export default function AddToCalendarButton({
   title,
   variant = "default",
   label,
+  fullWidth = false,
 }: {
   house: IcsHouse;
   className?: string;
   title?: string;
   variant?: "default" | "pill";
   label?: string;
+  /** El botón (y su contenedor, que por default se achica a su
+   * contenido) pasan a ocupar todo el ancho disponible — pensado para
+   * mobile, donde un botón chico flotando a un costado se ve huérfano.
+   * Los demás usos (CompareTable, VisitaCoordinadaBadge) no lo pasan y
+   * siguen igual. */
+  fullWidth?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
@@ -107,7 +114,7 @@ export default function AddToCalendarButton({
   const accessibleLabel = title ?? "Agregar visita al calendario";
 
   return (
-    <div ref={containerRef} className="relative inline-flex items-center">
+    <div ref={containerRef} className={fullWidth ? "relative flex w-full items-center" : "relative inline-flex items-center"}>
       {variant === "pill" ? (
         <button
           type="button"

@@ -209,12 +209,16 @@ function DayGroup({
               </div>
             </div>
             {!past ? (
-              <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto pt-1 sm:pt-0">
+              <div
+                className="flex w-full shrink-0 items-center gap-2 border-t pt-2.5 sm:w-auto sm:self-auto sm:border-t-0 sm:pt-0"
+                style={{ borderColor: "var(--border)" }}
+              >
                 <AddToCalendarButton
                   house={house}
                   title="Descargar evento .ics para agregar a tu calendario"
                   label="Calendario"
-                  className="btn flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all hover:border-[var(--border-strong)] active:scale-95"
+                  fullWidth
+                  className="btn flex w-full items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all hover:border-[var(--border-strong)] active:scale-95 sm:w-auto"
                 />
               </div>
             ) : house.status === "coordinada" ? (
