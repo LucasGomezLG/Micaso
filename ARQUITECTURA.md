@@ -774,6 +774,30 @@ Lo mínimo que necesita el panel para ser útil desde el primer día:
 > columna del grid) no alcanzó, y solo se detectó con la segunda
 > captura.
 
+> **Segunda vuelta del mismo día: el `truncate`/`flex-wrap` de arriba no
+> alcanzó para "Propiedades en seguimiento" ni "Próximas visitas y
+> acciones" — hizo falta rediseñar la fila, no solo taparle el síntoma.**
+> Con capturas nuevas de celular real se vio que el título seguía
+> truncando a una sola letra (`"P..."`, `"Venta ..."`). La causa real:
+> el `Link` del título tenía `min-w-0`, que le permite achicarse **sin
+> límite** — con eso, `flex-wrap` nunca llega a activarse, porque
+> siempre "entra" en el renglón si se lo aprieta lo suficiente. El
+> arreglo de verdad fue estructural: las dos filas pasan a `flex-col`
+> por default (cada bloque — título/zona, y precio/badge/ícono — en su
+> propia línea completa) y `sm:flex-row` recién a partir de pantallas
+> grandes, en vez de confiar en que `flex-wrap` decida solo cuándo
+> cortar. De paso, el botón "Calendario" de la agenda (`app/caso/agenda/
+> page.tsx`) quedaba flotando chico a un costado en mobile — se le sumó
+> un prop `fullWidth` a `AddToCalendarButton` (default `false`, no
+> afecta a los otros tres usos del componente) para que ocupe todo el
+> ancho con una línea divisoria arriba, en vez de flotar solo.
+>
+> **Lección repetida:** en este entorno, sin forma de abrir un
+> navegador, un `truncate`/`min-w-0` puesto en el lugar equivocado del
+> árbol *parece* correcto leyendo el código y compila sin errores, pero
+> solo una captura real de mobile lo termina de confirmar o lo
+> desmiente.
+
 > **Auditoría de UX e implementado (18 sept 2026): bloque intensivo de seguridad visual, accesibilidad y velocidad percibida.**
 > - **Seguridad visual (contraseñas):** En el panel del corredor (`CaseRow`), super-admin (`AdminCaseCard`), y alta de caso (`CreateCaseModal`), la contraseña del caso ya no se muestra en texto plano por defecto. Se oculta como `••••••••` y requiere un click en un ícono de ojo (toggle) para revelarse — previene el riesgo pasivo de mostrar accesos sensibles al compartir pantalla o en un café.
 > - **Optimistic UI (React 19) en Checklist:** Tildar/destildar una tarea en `ChecklistClient` usa `useOptimistic` para una respuesta instantánea (sin delay percibido), mientras `PATCH` persiste de fondo. Se suma también un filtro "Ocultar completados" para limpiar el ruido visual.
