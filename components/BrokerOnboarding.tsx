@@ -184,10 +184,10 @@ export default function BrokerOnboarding({ broker }: { broker: Broker }) {
 
           <div className="grid gap-8 md:grid-cols-2">
             {/* Formulario de marca */}
-            <div className="flex flex-col gap-5">
+            <div className="flex min-w-0 flex-col gap-5">
               <div className="flex flex-col gap-2">
                 <span className="eyebrow">Tu foto o logo comercial</span>
-                <div className="flex items-center gap-4">
+                <div className="flex min-w-0 items-center gap-4">
                   <div
                     className="group relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2"
                     style={{
@@ -214,7 +214,7 @@ export default function BrokerOnboarding({ broker }: { broker: Broker }) {
                     </button>
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex min-w-0 flex-col gap-1.5">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
@@ -258,7 +258,7 @@ export default function BrokerOnboarding({ broker }: { broker: Broker }) {
             </div>
 
             {/* Preview interactivo en tiempo real */}
-            <div className="flex flex-col gap-2">
+            <div className="flex min-w-0 flex-col gap-2">
               <span className="eyebrow" style={{ color: "var(--ink-muted)" }}>
                 Vista previa: Así te verá cada familia en su celular
               </span>
