@@ -890,6 +890,18 @@ demasiados corredores para tocarlos a mano de a uno.
 > cambio que "no hace nada" a pesar de leerse bien, restart antes de
 > seguir buscando el bug en el código.
 
+> **Implementado (19 sept 2026): el corredor también puede borrar su
+> propio caso, no solo super-admin.** Hasta ahora "Eliminar caso" solo
+> existía en `/superadmin` (pensado para limpiar cuentas de prueba). Se
+> suma `DELETE /api/panel/cases/[id]`, con una diferencia a propósito
+> respecto a la versión de super-admin: exige que el caso ya esté en
+> `solo_lectura`/`archivado` (devuelve 400 si está `activo`) — así
+> "Borrar" nunca es un atajo accidental frente a "Cerrar caso", tiene que
+> pasar por ahí primero. Mismo guard de ownership que el resto del panel
+> (`getCaseForBroker`, 404 si el caso no es del corredor logueado), mismo
+> modal de confirmación centrado que cerrar/reabrir/regenerar clave en
+> `CaseRow`. Reutiliza `deleteCase`/`deleteCaseData`, sin cambios ahí.
+
 ## 8. Qué cambia respecto al código de Casa
 
 Es una extensión del código existente de `D:\Casa`, no una reescritura.
@@ -921,6 +933,21 @@ serviría de base para este proyecto):
 > corredora), en vez de quedar aparte. Vale la pena planear esa migración
 > puntual cuando llegue el momento, para no perder el historial ya
 > construido.
+
+> **Migrado (19 sept 2026).** Quedó bajo `dev-broker` (la cuenta de
+> Lucas), no bajo Carolina como se especulaba arriba — hoy Carolina
+> todavía no tiene cuenta real en Micaso (nunca inició sesión), así que
+> no había a qué corredor real asignárselo. `D:\Casa` (`home-blush-one.
+> vercel.app`) sigue en pie y en uso — este import fue de solo lectura
+> desde ahí, no una baja. Datos extraídos a mano del RSC payload de las
+> páginas en vivo (no había endpoint JSON para el checklist), adaptados
+> a los dos campos que Micaso sumó desde que `D:\Casa` se congeló como
+> punto de partida (`House.lat`/`lng`, en `null` — se geocodifican solos
+> después; `LoanInfo.hasCredit`/`bankName`, completados como `true`/
+> `"BBVA"`, inferido del propio contenido exportado). Resultado: 50 casas
+> (41 activas + 9 en la papelera), 14 items de checklist y los criterios
+> de crédito/búsqueda, probados primero en local y confirmados después
+> contra producción leyendo las claves reales.
 
 > **Sumado sin estar planeado (14 sept 2026): notificaciones toast.**
 > `sonner` reemplaza los fallos silenciosos de `fetch()` — antes, si un
@@ -1388,12 +1415,14 @@ borrar copias viejas).
 > crear/renombrar/cerrar/reabrir/borrar caso y crear/borrar corredor —
 > todo contra el server de dev real, no solo los tests.
 >
-> **Pendiente, a propósito:** ejecutar `scripts/migrate-cases-brokers.mts`
-> contra Redis de producción y desplegar este código. Es nuevamente un
-> paso aparte, gateado por decisión explícita — el script es no
-> destructivo (las claves viejas quedan de respaldo, rollback trivial
-> redesplegando el código anterior) pero toca la base de datos real con
-> los dos casos ya reales que tiene Micaso hoy.
+> **Migrado y desplegado a producción (19 sept 2026).** Se tomó un
+> respaldo de lectura de `cases`/`brokers` aparte antes de tocar nada,
+> se corrió `scripts/migrate-cases-brokers.mts` contra el Redis real
+> (verificado: 2 casos y 1 corredor migrados y con contenido idéntico al
+> original) y recién ahí se desplegó el código nuevo. Las claves viejas
+> (`cases`, `brokers`) siguen en Redis, sin tocar, como respaldo — se
+> pueden borrar más adelante a mano una vez que haya confianza total en
+> el esquema nuevo, no antes.
 
 **Barrido de "quedó pensado para un solo caso" (14 sept 2026) — dos
 bugs reales encontrados y resueltos**
