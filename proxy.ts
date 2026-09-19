@@ -52,41 +52,50 @@ function isUnder(pathname: string, prefixes: string[]): boolean {
 export const proxy = auth(async (request) => {
   const { pathname } = request.nextUrl;
 
+  // Dev mock user support
+  const devEmail =
+    process.env.NODE_ENV !== "production" ? request.cookies.get("micaso_dev_user")?.value : null;
+  const userEmail = request.auth?.user?.email || devEmail;
+
   // Si entran explícitamente a /login (ej. clickeando de nuevo el link de WhatsApp)
-  // revisamos si ya tienen sesión activa para *ese mismo caso* y los pasamos de largo.
-  if (pathname === "/login") {
+  // o a / (abriendo la PWA desde el celular), revisamos si ya tienen sesión activa.
+  if (pathname === "/login" || pathname === "/") {
     const caseCookie = request.cookies.get(CASE_COOKIE)?.value;
     const loggedCaseId = caseCookie ? verifyCaseSessionToken(caseCookie) : null;
     
     if (loggedCaseId) {
       const kase = await getCase(loggedCaseId);
       if (kase && kase.estado !== "archivado") {
-        const magicToken = request.nextUrl.searchParams.get("t");
-        const hasCredentialsParams = request.nextUrl.searchParams.has("u") && request.nextUrl.searchParams.has("p");
-        
-        let shouldRedirectToCaso = false;
-        
-        if (!magicToken && !hasCredentialsParams) {
-          shouldRedirectToCaso = true; // /login sin parámetros, ya logueado
-        } else if (magicToken) {
-          const targetCaseId = verifyMagicLinkToken(magicToken);
-          if (targetCaseId === loggedCaseId) {
-            shouldRedirectToCaso = true; // El link de WhatsApp es para el mismo caso activo
+        if (pathname === "/") {
+          // Si el cliente entra a la raíz (ej. abriendo la app instalada PWA)
+          // lo mandamos directo a su caso para que no vea la landing de marketing.
+          // Si es un corredor logueado (userEmail), lo dejamos ver la landing si quiere.
+          if (!userEmail) {
+            return NextResponse.redirect(new URL("/caso", request.url));
           }
-        }
-        
-        if (shouldRedirectToCaso) {
-          const targetUrl = request.nextUrl.searchParams.get("next") || "/caso";
-          return NextResponse.redirect(new URL(targetUrl, request.url));
+        } else if (pathname === "/login") {
+          const magicToken = request.nextUrl.searchParams.get("t");
+          const hasCredentialsParams = request.nextUrl.searchParams.has("u") && request.nextUrl.searchParams.has("p");
+          
+          let shouldRedirectToCaso = false;
+          
+          if (!magicToken && !hasCredentialsParams) {
+            shouldRedirectToCaso = true; // /login sin parámetros, ya logueado
+          } else if (magicToken) {
+            const targetCaseId = verifyMagicLinkToken(magicToken);
+            if (targetCaseId === loggedCaseId) {
+              shouldRedirectToCaso = true; // El link de WhatsApp es para el mismo caso activo
+            }
+          }
+          
+          if (shouldRedirectToCaso) {
+            const targetUrl = request.nextUrl.searchParams.get("next") || "/caso";
+            return NextResponse.redirect(new URL(targetUrl, request.url));
+          }
         }
       }
     }
   }
-
-  // Dev mock user support
-  const devEmail =
-    process.env.NODE_ENV !== "production" ? request.cookies.get("micaso_dev_user")?.value : null;
-  const userEmail = request.auth?.user?.email || devEmail;
 
   // Si ya tiene sesión activa de Google y va a /panel/login o /login:
   // no volver a pedirle login de Google, mandarlo directo a su panel o destino
