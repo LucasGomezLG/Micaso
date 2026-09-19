@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { ADMIN_EMAILS } from "@/lib/auth";
 import { getCase } from "@/lib/cases";
 import { CASE_COOKIE } from "@/lib/session";
-import { verifyCaseSessionToken } from "@/lib/sessionToken";
+import { verifyCaseSessionToken, verifyMagicLinkToken } from "@/lib/sessionToken";
 
 // "/" es la landing pública (marketing, dirigida al corredor) — ver
 // ARQUITECTURA.md sección 6. /icon, /apple-icon, /icons/* y
@@ -49,8 +49,39 @@ function isUnder(pathname: string, prefixes: string[]): boolean {
   return prefixes.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
-export const proxy = auth((request) => {
+export const proxy = auth(async (request) => {
   const { pathname } = request.nextUrl;
+
+  // Si entran explícitamente a /login (ej. clickeando de nuevo el link de WhatsApp)
+  // revisamos si ya tienen sesión activa para *ese mismo caso* y los pasamos de largo.
+  if (pathname === "/login") {
+    const caseCookie = request.cookies.get(CASE_COOKIE)?.value;
+    const loggedCaseId = caseCookie ? verifyCaseSessionToken(caseCookie) : null;
+    
+    if (loggedCaseId) {
+      const kase = await getCase(loggedCaseId);
+      if (kase && kase.estado !== "archivado") {
+        const magicToken = request.nextUrl.searchParams.get("t");
+        const hasCredentialsParams = request.nextUrl.searchParams.has("u") && request.nextUrl.searchParams.has("p");
+        
+        let shouldRedirectToCaso = false;
+        
+        if (!magicToken && !hasCredentialsParams) {
+          shouldRedirectToCaso = true; // /login sin parámetros, ya logueado
+        } else if (magicToken) {
+          const targetCaseId = verifyMagicLinkToken(magicToken);
+          if (targetCaseId === loggedCaseId) {
+            shouldRedirectToCaso = true; // El link de WhatsApp es para el mismo caso activo
+          }
+        }
+        
+        if (shouldRedirectToCaso) {
+          const targetUrl = request.nextUrl.searchParams.get("next") || "/caso";
+          return NextResponse.redirect(new URL(targetUrl, request.url));
+        }
+      }
+    }
+  }
 
   // Dev mock user support
   const devEmail =
