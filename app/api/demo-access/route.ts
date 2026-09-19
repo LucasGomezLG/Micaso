@@ -6,12 +6,16 @@ import { DEMO_CASE_ID } from "@/lib/seed";
 
 export async function GET(request: Request) {
   const cookieStore = await cookies();
+  const expires = new Date();
+  expires.setDate(expires.getDate() + 90);
+
   cookieStore.set(CASE_COOKIE, createCaseSessionToken(DEMO_CASE_ID), {
     path: "/",
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 24 * 90, // 90 days
+    expires,
   });
 
   return NextResponse.redirect(new URL("/caso", request.url));

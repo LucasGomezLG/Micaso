@@ -30,6 +30,9 @@ export async function POST(
   // Al entrar al caso, marca las novedades como vistas por el corredor
   await markCaseSeenByBroker(id, broker.id);
 
+  const expires = new Date();
+  expires.setDate(expires.getDate() + 90);
+
   const res = NextResponse.json({ ok: true });
   res.cookies.set(CASE_COOKIE, createCaseSessionToken(kase.id), {
     httpOnly: true,
@@ -37,6 +40,7 @@ export async function POST(
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 90,
+    expires,
   });
   return res;
 }

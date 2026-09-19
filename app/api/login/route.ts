@@ -47,6 +47,9 @@ export async function POST(request: NextRequest) {
 
   await clearAttempts("case-login", ip);
 
+  const expires = new Date();
+  expires.setDate(expires.getDate() + 90);
+
   const res = NextResponse.json({ ok: true });
   res.cookies.set(CASE_COOKIE, createCaseSessionToken(kase.id), {
     httpOnly: true,
@@ -54,6 +57,7 @@ export async function POST(request: NextRequest) {
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 90, // 90 días
+    expires,
   });
   return res;
 }
