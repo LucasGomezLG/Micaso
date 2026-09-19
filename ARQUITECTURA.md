@@ -693,6 +693,16 @@ Lo mínimo que necesita el panel para ser útil desde el primer día:
 > solo el service worker — el trade-off elegido mientras el soporte de
 > Serwist para Turbopack siga así de inmaduro.
 
+> **Aclaración (19 sept 2026): la PWA nunca hay que reinstalarla para
+> recibir un deploy nuevo.** `app/sw.ts` configura `skipWaiting: true` +
+> `clientsClaim: true` — el service worker nuevo se activa y toma control
+> apenas el navegador lo detecta (chequeo automático, típicamente al
+> abrir o volver a primer plano), sin esperar a que se cierren todas las
+> pestañas/instancias abiertas como pasaría por default. En la práctica,
+> la próxima vez que alguien abra o vuelva a la app después de un deploy
+> ya ve la versión nueva sola; como mucho, si la tenía abierta justo en
+> el momento del deploy, hace falta cerrarla y volver a abrirla una vez.
+
 > **Implementado (16 sept 2026): panel usable en mobile de punta a
 > punta.** El header con el email del corredor, las tabs de `CaseList` y
 > la fila de cada caso desbordaban horizontalmente en mobile —
@@ -731,6 +741,38 @@ Lo mínimo que necesita el panel para ser útil desde el primer día:
 >
 > Ver también la agenda (sección 3) y el super-admin (sección 7), que
 > tuvieron su propio hallazgo el mismo día.
+
+> **Bugs de mobile encontrados y arreglados (19 sept 2026), con capturas
+> reales de celular.** Los tres eran la misma clase de problema de
+> Tailwind/flexbox: un hijo con texto potencialmente largo sin
+> `min-w-0`/`truncate`, así que en pantalla angosta en vez de recortarse
+> prolijo empuja el layout o se corta a mitad de palabra.
+> - **Inicio del caso, "Propiedades en seguimiento"** (`app/caso/page.tsx`):
+>   la fila título/precio/badge no tenía `flex-wrap`, así que en mobile
+>   competían por el mismo renglón y el título quedaba con casi nada de
+>   ancho (truncaba a `"P..."`). Se sumó `flex-wrap` (mismo patrón que ya
+>   usaba la sección de "Próximas visitas" un poco más arriba) y
+>   `truncate` a la línea de zona/autor/fecha, que tampoco lo tenía.
+> - **Inicio del caso, "Próximas visitas y acciones"**: la línea de
+>   zona/fuente (`house.zone ?? house.source`) no tenía `truncate` —
+>   con una fuente larga (`"MercadoLibre"`) quedaba pisada por el badge
+>   de la visita al lado en vez de cortarse.
+> - **Onboarding del corredor, Paso 1** (`components/BrokerOnboarding.tsx`):
+>   la columna del `grid md:grid-cols-2` no tenía `min-w-0` — un item de
+>   grid, igual que uno de flex, no se achica por debajo de su ancho
+>   natural por default. El texto de ayuda "JPG, PNG o WebP. Se ajusta
+>   automáticamente." se cortaba a mitad de palabra en vez de wrappear.
+>   Hizo falta `min-w-0` en la columna del grid, no alcanzaba con
+>   ponerlo más adentro en el árbol — la restricción de ancho tiene que
+>   estar en el nivel donde realmente se define el ancho disponible.
+>
+> Verificado por Lucas con capturas reales del emulador de mobile del
+> navegador (Galaxy A55, 360×800), no solo por lectura de código — este
+> entorno no tiene forma de abrir un navegador para confirmar renderizado
+> visual. Eso importó de verdad: el primer intento del arreglo de
+> onboarding (`min-w-0` puesto más adentro en el árbol, sin tocar la
+> columna del grid) no alcanzó, y solo se detectó con la segunda
+> captura.
 
 > **Auditoría de UX e implementado (18 sept 2026): bloque intensivo de seguridad visual, accesibilidad y velocidad percibida.**
 > - **Seguridad visual (contraseñas):** En el panel del corredor (`CaseRow`), super-admin (`AdminCaseCard`), y alta de caso (`CreateCaseModal`), la contraseña del caso ya no se muestra en texto plano por defecto. Se oculta como `••••••••` y requiere un click en un ícono de ojo (toggle) para revelarse — previene el riesgo pasivo de mostrar accesos sensibles al compartir pantalla o en un café.
