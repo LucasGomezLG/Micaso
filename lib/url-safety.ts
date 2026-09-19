@@ -17,7 +17,11 @@ export function isSafeExternalUrl(url: URL): boolean {
   return /^https?:$/.test(url.protocol) && !BLOCKED_HOSTS.test(url.hostname);
 }
 
-function isPrivateIp(ip: string): boolean {
+/** Exportada solo para test/url-safety.test.mts — el sandbox donde corre
+ * este repo no tiene salida de red real (ver ese archivo), así que la
+ * única forma de probar de verdad esta clasificación es contra la
+ * función pura, no contra un `fetch`/`dns.lookup` real. */
+export function isPrivateIp(ip: string): boolean {
   if (!net.isIP(ip)) return true;
 
   if (net.isIPv4(ip)) {
@@ -33,8 +37,19 @@ function isPrivateIp(ip: string): boolean {
 
   const lower = ip.toLowerCase();
   if (lower === "::1" || lower === "::") return true;
-  if (lower.startsWith("fe80:") || lower.startsWith("fc00:") || lower.startsWith("fd00:")) return true; // link-local / ULA
   if (lower.startsWith("::ffff:")) return isPrivateIp(lower.slice("::ffff:".length)); // IPv4-mapped IPv6
+
+  // fe80::/10 (link-local) y fc00::/7 (unique local / ULA) son RANGOS, no
+  // un prefijo de string fijo — "fe80:"/"fc00:" solo cubre el primer
+  // valor de cada rango y deja pasar el resto (ej. fe9a::, febf::,
+  // fd12:3456::, todas privadas igual). Los grupos de IPv6 son hex de
+  // hasta 4 dígitos con ceros a la izquierda IMPLÍCITOS (no al final):
+  // el primer grupo, tomado como número de 16 bits, tiene que enmascarar
+  // contra el ancho real del rango (/10 y /7 respectivamente), no
+  // compararse como texto.
+  const firstGroup = parseInt(lower.split(":")[0] || "0", 16) || 0;
+  if ((firstGroup & 0xffc0) === 0xfe80) return true; // fe80::/10
+  if ((firstGroup & 0xfe00) === 0xfc00) return true; // fc00::/7
   return false;
 }
 
@@ -51,10 +66,17 @@ function isPrivateIp(ip: string): boolean {
  * justifica hoy. Igual sube mucho la vara: bloquea el caso simple y
  * realista (dominio que resuelve fijo a una IP privada, o una IP puesta
  * directo en formato numérico raro). */
-export async function isSafeResolvedUrl(url: URL): Promise<boolean> {
+type DnsLookupAll = (hostname: string, options: { all: true }) => Promise<{ address: string; family: number }[]>;
+
+const defaultLookup: DnsLookupAll = (hostname, options) => dns.lookup(hostname, options);
+
+export async function isSafeResolvedUrl(
+  url: URL,
+  lookup: DnsLookupAll = defaultLookup
+): Promise<boolean> {
   if (!isSafeExternalUrl(url)) return false;
   try {
-    const records = await dns.lookup(url.hostname, { all: true });
+    const records = await lookup(url.hostname, { all: true });
     if (!records || records.length === 0) return false;
     return records.every((r) => !isPrivateIp(r.address));
   } catch {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCriteria, updateCriteria } from "@/lib/store";
 import { getCaseIdFromRequest } from "@/lib/session";
+import { criteriaPatchSchema, parseJsonBody } from "@/lib/schemas";
 
 export async function GET(request: NextRequest) {
   const caseId = getCaseIdFromRequest(request);
@@ -10,12 +11,8 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   const caseId = getCaseIdFromRequest(request);
-  let patch: { loan?: Record<string, unknown>; brief?: Record<string, unknown> };
-  try {
-    patch = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
-  const criteria = await updateCriteria(caseId, patch);
+  const parsed = await parseJsonBody(request, criteriaPatchSchema);
+  if ("error" in parsed) return parsed.error;
+  const criteria = await updateCriteria(caseId, parsed.data);
   return NextResponse.json({ criteria });
 }

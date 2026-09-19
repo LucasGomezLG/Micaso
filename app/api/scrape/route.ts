@@ -3,6 +3,7 @@ import { isSafeExternalUrl, isSafeResolvedUrl } from "@/lib/url-safety";
 import { guessAmbientesFromText, guessSuperficieFromText, guessPriceUsd } from "@/lib/listingText";
 import { checkAndConsumeQuota } from "@/lib/rateLimit";
 import { getCaseIdFromRequest } from "@/lib/session";
+import { parseJsonBody, scrapeRequestSchema } from "@/lib/schemas";
 
 function extractMeta(html: string, property: string): string | null {
   return extractMetaAll(html, property)[0] ?? null;
@@ -360,15 +361,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let url: unknown;
-  try {
-    ({ url } = await request.json());
-  } catch {
-    return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
-  if (!url || typeof url !== "string") {
-    return NextResponse.json({ error: "Falta la URL" }, { status: 400 });
-  }
+  const parsedBody = await parseJsonBody(request, scrapeRequestSchema);
+  if ("error" in parsedBody) return parsedBody.error;
+  const { url } = parsedBody.data;
+
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -385,7 +381,7 @@ export async function POST(request: NextRequest) {
   try {
     const fetched = await fetchHtml(parsed);
     if ("error" in fetched) {
-      return NextResponse.json({ error: fetched.error }, { status: 200 });
+      return NextResponse.json({ error: fetched.error }, { status: 502 });
     }
     if ("blockedUrl" in fetched) {
       return NextResponse.json(blockedAutoFillResponse(fetched.blockedUrl));
@@ -425,7 +421,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json(
       { error: "No se pudo leer el link (puede bloquear bots)." },
-      { status: 200 }
+      { status: 502 }
     );
   }
 }

@@ -3,6 +3,7 @@ import { getCaseByCredentials } from "@/lib/cases";
 import { CASE_COOKIE } from "@/lib/session";
 import { createCaseSessionToken } from "@/lib/sessionToken";
 import { clearAttempts, isRateLimited, recordFailedAttempt } from "@/lib/rateLimit";
+import { caseLoginSchema, parseJsonBody } from "@/lib/schemas";
 
 function getClientIp(request: NextRequest): string {
   const forwarded = request.headers.get("x-forwarded-for");
@@ -19,17 +20,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: { username?: string; password?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
-
-  if (!body.username || !body.password) {
+  const parsed = await parseJsonBody(request, caseLoginSchema);
+  if ("error" in parsed) {
     await recordFailedAttempt("case-login", ip);
-    return NextResponse.json({ error: "Usuario o contraseña incorrectos" }, { status: 401 });
+    return parsed.error;
   }
+  const body = parsed.data;
 
   const kase = await getCaseByCredentials(body.username, body.password);
   if (!kase || kase.estado === "archivado") {

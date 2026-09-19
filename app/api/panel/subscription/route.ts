@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentBroker, updateBroker } from "@/lib/brokers";
 import { downgradeCasesForInactiveBrokers } from "@/lib/cases";
 import { cancelSubscription, createSubscriptionCheckout } from "@/lib/mercadopago";
+import { parseJsonBody, subscriptionCreateSchema } from "@/lib/schemas";
 
 export async function POST(request: Request) {
   const broker = await getCurrentBroker();
@@ -9,13 +10,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  const parsed = await parseJsonBody(request, subscriptionCreateSchema);
+  if ("error" in parsed) return parsed.error;
+  const { plan } = parsed.data;
+
   try {
-    const { plan } = await request.json();
-
-    if (plan !== "para_arrancar" && plan !== "para_tu_cartera") {
-      return NextResponse.json({ error: "Plan inválido" }, { status: 400 });
-    }
-
     // Si ya tenía una suscripción activa (cambio de plan, o reintento de
     // checkout sin haber cancelado antes), cancelarla primero — si no,
     // Mercado Pago termina cobrando las dos por separado cada mes. Un
@@ -35,7 +34,7 @@ export async function POST(request: Request) {
     const { initPoint } = await createSubscriptionCheckout({
       brokerId: broker.id,
       email: broker.email,
-      plan: plan as "para_arrancar" | "para_tu_cartera",
+      plan,
       backUrl,
     });
 

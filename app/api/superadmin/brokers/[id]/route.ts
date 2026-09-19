@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { deleteBroker, getBroker, getCurrentAdminEmail, updateBroker } from "@/lib/brokers";
 import { deleteBrokerCaseIndex, deleteCase, listCasesForBroker } from "@/lib/cases";
 import { deleteCaseData } from "@/lib/store";
-import { Plan, SubscriptionStatus } from "@/lib/types";
-
-const VALID_PLANS: Plan[] = ["para_arrancar", "para_tu_cartera", "volumen_alto"];
-const VALID_STATUSES: SubscriptionStatus[] = ["prueba", "activa", "atrasada", "cancelada"];
+import { adminBrokerPatchSchema, parseJsonBody } from "@/lib/schemas";
 
 /** Edición manual de plan/estado de cobro/prueba desde /superadmin — a
  * falta de Mercado Pago conectado (ver ARQUITECTURA.md sección 7). */
@@ -19,40 +16,10 @@ export async function PATCH(
   }
 
   const { id } = await ctx.params;
-  let body: { plan?: string; subscriptionStatus?: string; trialEndsAt?: string; nombreMarca?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request, adminBrokerPatchSchema);
+  if ("error" in parsed) return parsed.error;
 
-  const patch: Partial<{ plan: Plan; subscriptionStatus: SubscriptionStatus; trialEndsAt: string; nombreMarca: string }> = {};
-  if (body.nombreMarca !== undefined) {
-    if (typeof body.nombreMarca !== "string" || !body.nombreMarca.trim()) {
-      return NextResponse.json({ error: "Falta el nombre" }, { status: 400 });
-    }
-    patch.nombreMarca = body.nombreMarca.trim();
-  }
-  if (body.plan !== undefined) {
-    if (!VALID_PLANS.includes(body.plan as Plan)) {
-      return NextResponse.json({ error: "Plan inválido" }, { status: 400 });
-    }
-    patch.plan = body.plan as Plan;
-  }
-  if (body.subscriptionStatus !== undefined) {
-    if (!VALID_STATUSES.includes(body.subscriptionStatus as SubscriptionStatus)) {
-      return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
-    }
-    patch.subscriptionStatus = body.subscriptionStatus as SubscriptionStatus;
-  }
-  if (body.trialEndsAt !== undefined) {
-    if (Number.isNaN(Date.parse(body.trialEndsAt))) {
-      return NextResponse.json({ error: "Fecha inválida" }, { status: 400 });
-    }
-    patch.trialEndsAt = body.trialEndsAt;
-  }
-
-  const updated = await updateBroker(id, patch);
+  const updated = await updateBroker(id, parsed.data);
   if (!updated) {
     return NextResponse.json({ error: "Corredor no encontrado" }, { status: 404 });
   }

@@ -148,7 +148,7 @@ async function mutateHouses(caseId: string, mutate: (houses: House[]) => House[]
 
 export async function addHouse(
   caseId: string,
-  input: Pick<House, "addedBy"> & Partial<House>
+  input: Pick<House, "addedBy"> & Partial<Omit<House, "comments" | "checklist">> & { initialComments?: string[] }
 ): Promise<House> {
   const now = new Date().toISOString();
   const house: House = {
@@ -166,14 +166,18 @@ export async function addHouse(
     superficieM2: input.superficieM2 ?? null,
     aptoCredito: input.aptoCredito ?? "no_se",
     images: input.images ?? [],
-    // Nunca del body de entrada: POST /api/houses pasa el body casi tal
-    // cual (ver app/api/houses/route.ts) — si se confiara en
-    // input.comments/checklist, cualquiera con sesión del caso podría
-    // inyectar comentarios "ya escritos" con autor y fecha arbitrarios
-    // (ej. atribuirle una frase falsa al corredor) en vez de agregarlos
-    // de a uno por los endpoints dedicados (addComment, etc.), que sí
-    // fijan el autor y la fecha del lado del servidor.
-    comments: [],
+    // Nota inicial opcional (ej. "notas" al cargar la casa a mano en
+    // AddHouseModal) — a diferencia de un `comments: HouseComment[]` en
+    // el body (lo que aceptaba antes), acá solo se recibe el TEXTO:
+    // autor, id y fecha los pone este servidor, no el caller. Confiar en
+    // un comentario ya armado del body permitiría inyectar uno con autor
+    // y fecha arbitrarios (ej. atribuirle una frase falsa al corredor)
+    // en vez de pasar por los endpoints dedicados (addComment, etc.),
+    // que sí fijan esos campos acá mismo.
+    comments: (input.initialComments ?? [])
+      .map((text) => text.trim())
+      .filter(Boolean)
+      .map((text) => ({ id: crypto.randomUUID(), author: input.addedBy, text, createdAt: now })),
     checklist: [],
     status: input.status ?? "pendiente",
     highlighted: input.highlighted ?? false,

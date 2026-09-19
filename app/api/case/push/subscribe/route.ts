@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCaseIdFromRequest } from "@/lib/session";
 import { getPublicVapidKey, removeCaseSubscription, saveCaseSubscription } from "@/lib/push";
+import { parseJsonBody, pushSubscribeSchema, pushUnsubscribeSchema } from "@/lib/schemas";
 
 /** Devuelve la clave pública VAPID para que el cliente pueda suscribirse */
 export async function GET() {
@@ -28,22 +29,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: { subscription?: unknown };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request, pushSubscribeSchema);
+  if ("error" in parsed) return parsed.error;
 
-  const sub = body.subscription as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
-  if (!sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
-    return NextResponse.json({ error: "Suscripción incompleta" }, { status: 400 });
-  }
-
-  await saveCaseSubscription(caseId, {
-    endpoint: sub.endpoint,
-    keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth },
-  });
+  await saveCaseSubscription(caseId, parsed.data.subscription);
   return NextResponse.json({ ok: true });
 }
 
@@ -60,15 +49,11 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  let body: { endpoint?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request, pushUnsubscribeSchema);
+  if ("error" in parsed) return parsed.error;
 
-  if (body.endpoint) {
-    await removeCaseSubscription(caseId, body.endpoint);
+  if (parsed.data.endpoint) {
+    await removeCaseSubscription(caseId, parsed.data.endpoint);
   }
 
   return NextResponse.json({ ok: true });

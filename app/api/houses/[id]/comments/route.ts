@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addComment } from "@/lib/store";
 import { getCaseIdFromRequest } from "@/lib/session";
+import { houseCommentCreateSchema, parseJsonBody } from "@/lib/schemas";
 
 export async function POST(
   request: NextRequest,
@@ -8,20 +9,10 @@ export async function POST(
 ) {
   const caseId = getCaseIdFromRequest(request);
   const { id } = await ctx.params;
-  let body: { author?: string; text?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
-  const text = body.text?.trim();
-  if (!body.author || !text) {
-    return NextResponse.json(
-      { error: "Faltan campos obligatorios: author, text" },
-      { status: 400 }
-    );
-  }
-  const house = await addComment(caseId, id, body.author, text);
+  const parsed = await parseJsonBody(request, houseCommentCreateSchema);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data;
+  const house = await addComment(caseId, id, body.author, body.text);
   if (!house) {
     return NextResponse.json({ error: "No encontrada" }, { status: 404 });
   }

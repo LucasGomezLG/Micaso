@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addHouse, getHouses } from "@/lib/store";
-import { House } from "@/lib/types";
 import { getCaseIdFromRequest } from "@/lib/session";
 import { getCase, updatePeople } from "@/lib/cases";
 import { getCurrentBroker } from "@/lib/brokers";
 import { notifyCaseClients } from "@/lib/push";
 import { geocodeZone } from "@/lib/geocode";
+import { houseCreateSchema, parseJsonBody } from "@/lib/schemas";
 
 export async function GET(request: NextRequest) {
   const caseId = getCaseIdFromRequest(request);
@@ -15,35 +15,33 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const caseId = getCaseIdFromRequest(request);
-  let body: Partial<House>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
-  if (!body?.addedBy?.trim()) {
-    return NextResponse.json({ error: "Falta el campo obligatorio: addedBy" }, { status: 400 });
-  }
-  if (!body?.url && !body?.title?.trim()) {
+  const parsed = await parseJsonBody(request, houseCreateSchema);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data;
+
+  if (!body.url && !body.title) {
     return NextResponse.json(
       { error: "Falta el link del aviso o, para carga manual, el título" },
       { status: 400 }
     );
   }
+
+  let lat: number | undefined;
+  let lng: number | undefined;
   if (body.zone) {
     const coords = await geocodeZone(body.zone);
     if (coords) {
-      body.lat = coords.lat;
-      body.lng = coords.lng;
+      lat = coords.lat;
+      lng = coords.lng;
     }
   }
 
-  const house = await addHouse(caseId, body as Pick<House, "addedBy"> & Partial<House>);
+  const house = await addHouse(caseId, { ...body, lat, lng });
 
   // Si el nombre de quien agregó la casa no figura todavía en la lista
   // de personas del caso, sumarlo automáticamente para que quede
   // disponible en futuros comentarios y asignaciones.
-  const author = body.addedBy.trim();
+  const author = body.addedBy;
   const kase = await getCase(caseId);
   if (kase && !kase.people.includes(author)) {
     await updatePeople(caseId, [...kase.people, author]);

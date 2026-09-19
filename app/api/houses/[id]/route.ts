@@ -4,6 +4,7 @@ import { getCaseIdFromRequest } from "@/lib/session";
 import { notifyCaseClients } from "@/lib/push";
 import { formatUsd } from "@/lib/format";
 import { geocodeZone } from "@/lib/geocode";
+import { housePatchSchema, parseJsonBody } from "@/lib/schemas";
 
 export async function PATCH(
   request: NextRequest,
@@ -11,12 +12,9 @@ export async function PATCH(
 ) {
   const caseId = getCaseIdFromRequest(request);
   const { id } = await ctx.params;
-  let patch: Record<string, unknown>;
-  try {
-    patch = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request, housePatchSchema);
+  if ("error" in parsed) return parsed.error;
+  const patch: typeof parsed.data & { lat?: number; lng?: number } = { ...parsed.data };
 
   // Si el patch trae un precio nuevo, guardar el anterior para poder avisar
   // del cambio — se pierde después de `updateHouse`, así que hay que leerlo

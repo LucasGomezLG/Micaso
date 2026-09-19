@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentAdminEmail } from "@/lib/brokers";
 import { deleteCase, getCase, renameCase } from "@/lib/cases";
 import { deleteCaseData } from "@/lib/store";
+import { adminCaseRenameSchema, parseJsonBody } from "@/lib/schemas";
 
 export async function PATCH(
   request: NextRequest,
@@ -18,18 +19,10 @@ export async function PATCH(
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
 
-  let body: { titulo?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
-  const titulo = body.titulo?.trim();
-  if (!titulo) {
-    return NextResponse.json({ error: "Falta el título" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request, adminCaseRenameSchema);
+  if ("error" in parsed) return parsed.error;
 
-  const updated = await renameCase(id, kase.brokerId, titulo);
+  const updated = await renameCase(id, kase.brokerId, parsed.data.titulo);
   return NextResponse.json({ case: updated });
 }
 

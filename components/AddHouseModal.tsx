@@ -242,9 +242,7 @@ export default function AddHouseModal({
         ambientes: draft.ambientes ? Number(draft.ambientes) : null,
         superficieM2: draft.superficieM2 ? Number(draft.superficieM2) : null,
         cochera: draft.cochera,
-        comments: draft.notes.trim()
-          ? [{ id: crypto.randomUUID(), author: draft.addedBy, text: draft.notes.trim(), createdAt: new Date().toISOString() }]
-          : [],
+        initialComments: draft.notes.trim() ? [draft.notes.trim()] : undefined,
         addedBy: draft.addedBy,
       }),
     });

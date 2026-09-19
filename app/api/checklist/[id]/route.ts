@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteChecklistItem, updateChecklistItem } from "@/lib/store";
 import { getCaseIdFromRequest } from "@/lib/session";
+import { checklistItemPatchSchema, parseJsonBody } from "@/lib/schemas";
 
 export async function PATCH(
   request: NextRequest,
@@ -8,13 +9,9 @@ export async function PATCH(
 ) {
   const caseId = getCaseIdFromRequest(request);
   const { id } = await ctx.params;
-  let patch: Record<string, unknown>;
-  try {
-    patch = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
-  const item = await updateChecklistItem(caseId, id, patch);
+  const parsed = await parseJsonBody(request, checklistItemPatchSchema);
+  if ("error" in parsed) return parsed.error;
+  const item = await updateChecklistItem(caseId, id, parsed.data);
   if (!item) {
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }

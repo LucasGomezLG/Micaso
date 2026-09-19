@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentAdminEmail, getOrCreateBroker } from "@/lib/brokers";
+import { adminBrokerCreateSchema, parseJsonBody } from "@/lib/schemas";
 
 /** Alta manual de un corredor sin pasar por su propio login de Google —
  * pensado para dar de alta a Carolina antes de que la landing esté
@@ -12,18 +13,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  let body: { email?: string; nombreMarca?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
-  const email = body.email?.trim().toLowerCase();
-  const nombreMarca = body.nombreMarca?.trim();
-  if (!email || !nombreMarca) {
-    return NextResponse.json({ error: "Falta el email o el nombre" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request, adminBrokerCreateSchema);
+  if ("error" in parsed) return parsed.error;
 
-  const broker = await getOrCreateBroker(email, nombreMarca, null);
+  const broker = await getOrCreateBroker(parsed.data.email, parsed.data.nombreMarca, null);
   return NextResponse.json({ broker }, { status: 201 });
 }

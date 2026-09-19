@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addHouseChecklistItem } from "@/lib/store";
 import { getCaseIdFromRequest } from "@/lib/session";
+import { houseChecklistItemCreateSchema, parseJsonBody } from "@/lib/schemas";
 
 export async function POST(
   request: NextRequest,
@@ -8,17 +9,9 @@ export async function POST(
 ) {
   const caseId = getCaseIdFromRequest(request);
   const { id } = await ctx.params;
-  let body: { text?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
-  const text = body.text?.trim();
-  if (!text) {
-    return NextResponse.json({ error: "Falta el campo obligatorio: text" }, { status: 400 });
-  }
-  const house = await addHouseChecklistItem(caseId, id, text);
+  const parsed = await parseJsonBody(request, houseChecklistItemCreateSchema);
+  if ("error" in parsed) return parsed.error;
+  const house = await addHouseChecklistItem(caseId, id, parsed.data.text);
   if (!house) {
     return NextResponse.json({ error: "No encontrada" }, { status: 404 });
   }

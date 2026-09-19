@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentBroker } from "@/lib/brokers";
 import { getCaseForBroker, renameCase } from "@/lib/cases";
+import { caseRenameSchema, parseJsonBody } from "@/lib/schemas";
 
 export async function PATCH(
   request: NextRequest,
@@ -16,17 +17,9 @@ export async function PATCH(
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
 
-  let body: { titulo?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
-  const titulo = body.titulo?.trim();
-  if (!titulo) {
-    return NextResponse.json({ error: "Falta el título" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request, caseRenameSchema);
+  if ("error" in parsed) return parsed.error;
 
-  const updated = await renameCase(id, broker.id, titulo);
+  const updated = await renameCase(id, broker.id, parsed.data.titulo);
   return NextResponse.json({ case: updated });
 }

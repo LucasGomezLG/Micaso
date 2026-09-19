@@ -1,21 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCaseIdFromRequest } from "@/lib/session";
 import { updatePeople } from "@/lib/cases";
+import { parseJsonBody, peoplePatchSchema } from "@/lib/schemas";
 
 export async function PATCH(request: NextRequest) {
   const caseId = getCaseIdFromRequest(request);
 
-  let body: { people?: unknown };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Solicitud inválida" }, { status: 400 });
-  }
-  if (!Array.isArray(body.people) || !body.people.every((p) => typeof p === "string")) {
-    return NextResponse.json({ error: "Falta la lista de personas" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request, peoplePatchSchema);
+  if ("error" in parsed) return parsed.error;
 
-  const kase = await updatePeople(caseId, body.people);
+  const kase = await updatePeople(caseId, parsed.data.people);
   if (!kase) {
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
