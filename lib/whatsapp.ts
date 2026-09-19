@@ -56,15 +56,6 @@ export function buildCaseShareMessage(kase: {
   ].join("\n");
 }
 
-export function buildCaseCredentialsText(kase: {
-  titulo: string;
-  username: string;
-  password: string;
-}): string {
-  const loginUrl = getCanonicalLoginUrl(kase.username, kase.password);
-  return `Acceso Micaso para "${kase.titulo}":\nLink directo: ${loginUrl}\n\n🛡 Compartí este link solamente con las personas que te acompañen o ayuden en la búsqueda.\n\nUsuario: ${kase.username}\nContraseña: ${kase.password}`;
-}
-
 export function openWhatsapp(text: string): void {
   const encoded = encodeURIComponent(text);
   // iPadOS 13+ manda un user-agent de escritorio ("Macintosh...") sin

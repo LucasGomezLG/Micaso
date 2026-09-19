@@ -49,6 +49,10 @@ next-env.d.ts
 /🏡 haganlo x ellos/
 /🏡 haganlo x ellos.zip
 
+# export de D:\Casa (datos reales, comentarios/contactos) + script de
+# import puntual — no es parte de la app, se usa una vez y listo
+/migracion/
+
 # local dev data store (fallback when no Redis is configured)
 /.data/
 

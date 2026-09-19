@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, Copy, Eye, EyeOff, LogIn, Share2 } from "lucide-react";
 import { Case, TipoCaso } from "@/lib/types";
-import { buildCaseCredentialsText, buildCaseShareMessage, openWhatsapp } from "@/lib/whatsapp";
+import { buildCaseShareMessage, openWhatsapp } from "@/lib/whatsapp";
 import { useModalScrollLock } from "@/lib/hooks";
 import Select from "@/components/Select";
 
@@ -174,7 +174,7 @@ export default function CreateCaseModal({ label = "+ Nuevo caso", disabledReason
                     <button
                       type="button"
                       onClick={async () => {
-                        await navigator.clipboard.writeText(buildCaseCredentialsText(createdCase));
+                        await navigator.clipboard.writeText(buildCaseShareMessage(createdCase));
                         setCopied(true);
                         toast.success("Credenciales y link copiados");
                         setTimeout(() => setCopied(false), 2000);

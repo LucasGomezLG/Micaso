@@ -9,7 +9,7 @@ import { Case, CaseEstado, TipoCaso } from "@/lib/types";
 import type { CaseSummary } from "@/lib/store";
 import { daysAgoLabel } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/http";
-import { buildCaseCredentialsText, buildCaseShareMessage, openWhatsapp } from "@/lib/whatsapp";
+import { buildCaseShareMessage, openWhatsapp } from "@/lib/whatsapp";
 
 const TIPO_LABEL: Record<TipoCaso, string> = {
   compra: "Compra",
@@ -50,8 +50,8 @@ export default function CaseRow({
   const [editing, setEditing] = useState(false);
   const [titulo, setTitulo] = useState(kase.titulo);
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState<"rename" | "password" | "close" | "reopen" | "enter" | null>(null);
-  const [confirmAction, setConfirmAction] = useState<"password" | "close" | "reopen" | null>(null);
+  const [loading, setLoading] = useState<"rename" | "password" | "close" | "reopen" | "delete" | "enter" | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"password" | "close" | "reopen" | "delete" | null>(null);
 
   async function saveTitulo() {
     const next = titulo.trim();
@@ -118,8 +118,21 @@ export default function CaseRow({
     router.refresh();
   }
 
+  async function borrarCaso() {
+    setConfirmAction(null);
+    setLoading("delete");
+    const res = await fetch(`/api/panel/cases/${kase.id}`, { method: "DELETE" });
+    setLoading(null);
+    if (!res.ok) {
+      toast.error(await apiErrorMessage(res, "No se pudo borrar el caso."));
+      return;
+    }
+    toast.success("Caso borrado.");
+    router.refresh();
+  }
+
   const CONFIRM_CONFIG: Record<
-    "password" | "close" | "reopen",
+    "password" | "close" | "reopen" | "delete",
     { title: string; description: string; confirmLabel: string; onConfirm: () => void; danger?: boolean }
   > = {
     password: {
@@ -141,6 +154,13 @@ export default function CaseRow({
       confirmLabel: "Sí, reabrir",
       onConfirm: reabrirCaso,
     },
+    delete: {
+      title: "¿Borrar este caso definitivamente?",
+      description: "No se puede deshacer. Se borran también todas sus propiedades, el checklist y los criterios.",
+      confirmLabel: "Sí, borrar caso",
+      onConfirm: borrarCaso,
+      danger: true,
+    },
   };
 
   async function entrarComoCaso() {
@@ -158,7 +178,7 @@ export default function CaseRow({
   const [copiedCreds, setCopiedCreds] = useState(false);
 
   async function copiarCredenciales() {
-    await navigator.clipboard.writeText(buildCaseCredentialsText(kase));
+    await navigator.clipboard.writeText(buildCaseShareMessage(kase));
     setCopiedCreds(true);
     toast.success("Credenciales y link de acceso directo copiados");
     setTimeout(() => setCopiedCreds(false), 2000);
@@ -291,6 +311,13 @@ export default function CaseRow({
                 {loading === "reopen" ? "Reabriendo…" : "Reabrir caso"}
               </button>
             )}
+          </div>
+        )}
+        {kase.estado !== "activo" && (
+          <div className="mt-2 flex flex-wrap gap-4 text-xs">
+            <button type="button" onClick={() => setConfirmAction("delete")} disabled={loading !== null} style={{ color: "var(--status-descartada)" }}>
+              {loading === "delete" ? "Borrando…" : "Borrar caso"}
+            </button>
           </div>
         )}
       </div>
