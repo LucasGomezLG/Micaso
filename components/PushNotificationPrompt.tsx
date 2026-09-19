@@ -75,6 +75,13 @@ export default function PushNotificationPrompt() {
       if (!keyRes.ok) throw new Error("No se pudo obtener la clave VAPID");
       const { publicKey } = await keyRes.json();
 
+      // Limpiar suscripciones viejas (si cambiaron las llaves VAPID en el servidor, 
+      // intentar suscribir con una llave nueva tira "Registration failed - push service error")
+      const existingSub = await registration.pushManager.getSubscription();
+      if (existingSub) {
+        await existingSub.unsubscribe();
+      }
+
       // Suscribir dispositivo a través del PushManager
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
