@@ -314,16 +314,16 @@ a {
 /* components/HousesMap.tsx: el popup de Leaflet viene blanco fijo por
  * defecto — lo alineamos a los tokens del sistema para que respete el
  * modo oscuro en vez de desentonar con el resto del panel. */
-.leaflet-popup-content-wrapper {
+.leaflet-container .leaflet-popup-content-wrapper {
   background: var(--surface);
   color: var(--ink);
   border-radius: 14px;
   box-shadow: var(--shadow-card);
 }
-.leaflet-popup-tip {
+.leaflet-container .leaflet-popup-tip {
   background: var(--surface);
 }
-.leaflet-popup-close-button {
+.leaflet-container .leaflet-popup-close-button {
   color: var(--ink-faint) !important;
 }
 
