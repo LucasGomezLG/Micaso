@@ -25,9 +25,7 @@ export async function GET(request: NextRequest) {
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-        Referer: `${url.origin}/`,
+        "User-Agent": "MicasoBot/1.0 (+https://www.micaso.com.ar/bot; luccaass96@gmail.com)",
         Accept: "image/*",
       },
     });

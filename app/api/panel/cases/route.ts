@@ -24,7 +24,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const kase = await createCase(broker.id, body.titulo, tipoCaso, initialPeople);
-    return NextResponse.json({ case: kase }, { status: 201 });
+    const { createMagicLinkToken } = await import("@/lib/sessionToken");
+    const kaseWithToken = { ...kase, magicLinkToken: createMagicLinkToken(kase.id) };
+    return NextResponse.json({ case: kaseWithToken }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "No se pudo crear el caso.";
     return NextResponse.json({ error: message }, { status: 400 });

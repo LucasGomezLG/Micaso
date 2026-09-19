@@ -21,9 +21,8 @@ export async function POST(request: Request) {
     // error al cancelar en MP no debería trabar el flujo (mejor dejar
     // pasar a que el corredor pueda suscribirse igual y resolver el
     // duplicado a mano después, que dejarlo sin poder pagar nunca).
-    if (broker.mpPreapprovalId && broker.subscriptionStatus === "activa") {
-      await cancelSubscription(broker.mpPreapprovalId).catch(() => {});
-    }
+    // NOTA LEGAL (CON-03): Cancelación preventiva suspendida. Conservar
+    // la suscripción anterior y cancelarla solo en el webhook al confirmar.
 
     const { url } = request;
     const origin = new URL(url).origin;

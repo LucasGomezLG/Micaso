@@ -255,11 +255,7 @@ function stripDisallowedQuery(url: URL): URL {
 }
 
 const USER_AGENTS = [
-  // Most sites special-case this UA to serve a full page for link previews.
-  "Mozilla/5.0 (compatible; facebookexternalhit/1.1; +http://www.facebook.com/externalhit_uatext.php)",
-  // Some sites do the opposite and block known crawler UAs — a plain
-  // desktop browser UA gets through those.
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+  "MicasoBot/1.0 (+https://www.micaso.com.ar/bot; luccaass96@gmail.com)",
 ];
 
 const MAX_REDIRECT_HOPS = 5;

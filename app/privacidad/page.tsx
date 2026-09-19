@@ -162,7 +162,7 @@ export default function PrivacidadPage() {
               6. Conservación, archivo y derecho al olvido
             </h2>
             <p className="mt-2 text-justify" style={{ color: "var(--ink-muted)" }}>
-              Los datos vinculados a un caso se conservan mientras la búsqueda permanezca en estado activo. Tras el cierre voluntario o conclusión del caso, se mantiene una copia de consulta en solo lectura por un período de gracia de hasta noventa (90) días corridos para resguardo de los involucrados.
+              Los datos vinculados a un caso se conservan mientras la búsqueda permanezca en estado activo. Tras el cierre voluntario o conclusión del caso, se mantiene una copia de consulta en solo lectura por un período de gracia de hasta noventa (90) días corridos para resguardo de los involucrados. Cumplido dicho plazo, el caso pasa al estado de archivo y se mantiene en resguardo hasta que el titular o el Corredor soliciten su supresión definitiva, o hasta la ejecución de tareas programadas de depuración de almacenamiento.
             </p>
             <p className="mt-2 text-justify" style={{ color: "var(--ink-muted)" }}>
               Cualquiera de los integrantes autorizados o el Corredor interviniente pueden solicitar en cualquier momento la supresión inmediata y definitiva del caso y de todos los registros históricos asociados, aplicando el derecho al olvido.

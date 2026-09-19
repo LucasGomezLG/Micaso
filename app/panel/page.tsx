@@ -59,7 +59,9 @@ function buildAttentionData(
 
 export default async function PanelPage() {
   const [broker, adminEmail] = await Promise.all([getCurrentBroker(), getCurrentAdminEmail()]);
-  const cases = broker ? await listCasesForBroker(broker.id) : [];
+  const { createMagicLinkToken } = await import("@/lib/sessionToken");
+  const casesRaw = broker ? await listCasesForBroker(broker.id) : [];
+  const cases = casesRaw.map((c) => ({ ...c, magicLinkToken: createMagicLinkToken(c.id) }));
   const activeCases = cases.filter((c) => c.estado === "activo");
   const activos = activeCases.length;
 

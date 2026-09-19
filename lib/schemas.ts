@@ -187,8 +187,17 @@ export const peoplePatchSchema = z.object({
 // ---------------------------------------------------------------------
 
 export const caseLoginSchema = z.object({
-  username: requiredString("Usuario o contraseña incorrectos"),
-  password: requiredString("Usuario o contraseña incorrectos"),
+  username: z.string().optional(),
+  password: z.string().optional(),
+  token: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.token && data.token.trim().length > 0) return;
+  if (!data.username || !data.password || data.username.trim() === "" || data.password.trim() === "") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Usuario o contraseña incorrectos",
+    });
+  }
 });
 
 // ---------------------------------------------------------------------

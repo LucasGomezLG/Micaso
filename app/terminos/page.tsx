@@ -146,7 +146,7 @@ export default function TerminosPage() {
               <strong>Cancelación sin penalidad:</strong> El Suscriptor puede cancelar su suscripción en cualquier momento desde su panel. La cancelación surte efectos a partir de la finalización del período mensual vigente ya abonado, sin cargos punitorios ni reembolsos retroactivos proporcionales.
             </p>
             <p className="mt-2 text-justify" style={{ color: "var(--ink-muted)" }}>
-              <strong>Mora y ciclo de vida de los datos:</strong> En caso de falta de pago o conclusión del período de prueba sin suscripción activa, la cuenta pasará a la modalidad de <em>solo lectura</em> por un plazo de gracia de noventa (90) días corridos, permitiendo la consulta del historial. Expirado dicho plazo, los casos pasarán al estado de baja o archivo definitivo, facultando a Micaso a proceder con la depuración del almacenamiento para resguardo de la seguridad informática.
+              <strong>Mora y ciclo de vida de los datos:</strong> En caso de falta de pago o conclusión del período de prueba sin suscripción activa, la cuenta pasará a la modalidad de <em>solo lectura</em> por un plazo de gracia de noventa (90) días corridos, permitiendo la consulta del historial. Expirado dicho plazo, los casos pasarán al estado de archivo (quedando desactivados e inaccesibles para nuevas operaciones) y se conservarán en resguardo hasta tanto el Corredor o la Familia soliciten formalmente su supresión y eliminación definitiva, o bien hasta que Micaso ejecute procesos periódicos de depuración de almacenamiento.
             </p>
           </section>
 

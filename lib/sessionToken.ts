@@ -58,3 +58,34 @@ export function verifyCaseSessionToken(token: string): string | null {
   if (!timingSafeEqual(sigBuf, expectedBuf)) return null;
   return caseId;
 }
+
+const MAGIC_LINK_MAX_AGE_MS = 15 * 24 * 60 * 60 * 1000; // 15 días para Magic Links
+
+function signMagicLink(caseId: string, issuedAt: number): string {
+  const hmac = createHmac("sha256", getSecret());
+  hmac.update(`magic.${caseId}.${issuedAt}`);
+  return hmac.digest("base64url");
+}
+
+/** Genera un token de uso temporal (15 días) para acceder al caso
+ * vía enlace directo (Magic Link) desde WhatsApp, evitando contraseñas en URLs. */
+export function createMagicLinkToken(caseId: string): string {
+  const issuedAt = Date.now();
+  return `${caseId}.${issuedAt}.${signMagicLink(caseId, issuedAt)}`;
+}
+
+/** Valida el token del Magic Link y devuelve el caseId si es válido. */
+export function verifyMagicLinkToken(token: string): string | null {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [caseId, issuedAtStr, signature] = parts;
+  const issuedAt = Number(issuedAtStr);
+  if (!caseId || Number.isNaN(issuedAt) || Date.now() - issuedAt > MAGIC_LINK_MAX_AGE_MS) return null;
+
+  const expected = signMagicLink(caseId, issuedAt);
+  const sigBuf = Buffer.from(signature);
+  const expectedBuf = Buffer.from(expected);
+  if (sigBuf.length !== expectedBuf.length) return null;
+  if (!timingSafeEqual(sigBuf, expectedBuf)) return null;
+  return caseId;
+}

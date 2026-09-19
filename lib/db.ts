@@ -128,17 +128,41 @@ export async function dbSet<T>(key: string, value: T): Promise<void> {
  * clave para decidir el nuevo valor, resolvelos ANTES de llamar a
  * dbUpdate y pasáselos ya calculados a `mutate`.
  *
- * En Redis no es una transacción real (no hay WATCH/MULTI acá) — dos
- * requests concurrentes en producción podrían todavía pisarse. Es un
- * riesgo menor que el del fallback local (Vercel rara vez sirve dos
- * requests al mismo tiempo para el mismo caso) pero sigue abierto; ver
- * ARQUITECTURA.md sección 9. */
+ * Actualizado (Fase 3 - CON-04): En Redis ahora usa un mecanismo
+ * de Spin-Lock (NX + EX) para garantizar exclusión mutua, previniendo
+ * condiciones de carrera entre Vercel Serverless Functions. */
 export async function dbUpdate<T>(key: string, mutate: (current: T | null) => T): Promise<T> {
   if (redis) {
-    const current = await redis.get<T>(key);
-    const next = mutate(current ?? null);
-    await redis.set(key, next);
-    return next;
+    const lockKey = `${key}:lock`;
+    const lockToken = crypto.randomUUID();
+    let locked = false;
+    const startTime = Date.now();
+
+    // Spin-lock: Intentamos adquirir el lock por hasta 5 segundos (CON-04)
+    while (Date.now() - startTime < 5000) {
+      const acquired = await redis.set(lockKey, lockToken, { nx: true, ex: 5 });
+      if (acquired) {
+        locked = true;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+
+    if (!locked) {
+      throw new Error(`Timeout adquiriendo lock concurrente en Redis para la clave: ${key}`);
+    }
+
+    try {
+      const current = await redis.get<T>(key);
+      const next = mutate(current ?? null);
+      await redis.set(key, next);
+      return next;
+    } finally {
+      const currentLock = await redis.get(lockKey);
+      if (currentLock === lockToken) {
+        await redis.del(lockKey);
+      }
+    }
   }
   return withLocalStoreLock(async () => {
     const store = await readLocalStore();

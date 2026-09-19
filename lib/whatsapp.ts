@@ -28,17 +28,19 @@ function canonicalOrigin(): string {
   return origin;
 }
 
-export function getCanonicalLoginUrl(username: string, password: string): string {
-  const params = new URLSearchParams({ u: username, p: password });
+export function getCanonicalLoginUrl(magicLinkToken: string): string {
+  const params = new URLSearchParams({ t: magicLinkToken });
   return `${canonicalOrigin()}/login?${params.toString()}`;
 }
 
 export function buildCaseShareMessage(kase: {
   titulo: string;
-  username: string;
-  password: string;
+  magicLinkToken?: string;
 }): string {
-  const loginUrl = getCanonicalLoginUrl(kase.username, kase.password);
+  if (!kase.magicLinkToken) {
+    throw new Error("Se requiere magicLinkToken para compartir el caso de forma segura (CON-02)");
+  }
+  const loginUrl = getCanonicalLoginUrl(kase.magicLinkToken);
 
   return [
     `¡Hola! Ya podés seguir la búsqueda de "${kase.titulo}" en Micaso.`,
@@ -47,10 +49,6 @@ export function buildCaseShareMessage(kase: {
     loginUrl,
     "",
     "🛡 *Compartí este link solamente con las personas que te acompañen o ayuden en la búsqueda.*",
-    "",
-    "(Tus datos de acceso por si entrás desde otro dispositivo:",
-    `Usuario: ${kase.username}`,
-    `Contraseña: ${kase.password})`,
     "",
     "Ahí vas a ver el presupuesto, las propiedades que vamos viendo, las visitas coordinadas y todo lo que vaya haciendo falta — todo junto, en un solo lugar.",
   ].join("\n");

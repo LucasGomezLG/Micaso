@@ -1,4 +1,4 @@
-import { dbGet, dbSet } from "./db";
+import { dbGet, dbSet, dbIncrWithTtl } from "./db";
 import { ZoneCoord } from "./zoneCoords";
 
 const GEOCODE_CACHE_KEY = (zone: string) => `geo:zone:${zone.trim().toLowerCase()}`;
@@ -24,6 +24,24 @@ export async function geocodeZone(zone: string): Promise<ZoneCoord | null> {
   const cached = await dbGet<ZoneCoord>(cacheKey);
   if (cached !== null) return cached;
 
+  // Throttling: máximo 1 petición por segundo global a Nominatim (CON-07 / #10).
+  // Intentamos hasta 3 veces (3 segundos) si hay mucha concurrencia.
+  let allowed = false;
+  for (let i = 0; i < 3; i++) {
+    const count = await dbIncrWithTtl("ratelimit:nominatim:global", 1);
+    if (count <= 1) {
+      allowed = true;
+      break;
+    }
+    // Si count > 1, otro request está consumiendo este segundo. Esperamos 1000ms.
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  if (!allowed) {
+    console.warn("Geocode omitido: limitador de frecuencia excedido (1 req/s) tras reintentos.");
+    return null;
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 2500);
   try {
@@ -31,7 +49,7 @@ export async function geocodeZone(zone: string): Promise<ZoneCoord | null> {
     const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
       signal: controller.signal,
       headers: {
-        "User-Agent": "MicasoApp/1.0 (+https://www.micaso.com.ar; contacto@micaso.com.ar)",
+        "User-Agent": "MicasoApp/1.0 (+https://www.micaso.com.ar; luccaass96@gmail.com)",
       },
     });
 

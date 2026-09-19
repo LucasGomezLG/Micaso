@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
@@ -11,54 +11,49 @@ export default function LoginForm() {
   const searchParams = useSearchParams();
   const initialUser = searchParams.get("u") || "";
   const initialPass = searchParams.get("p") || "";
+  const initialToken = searchParams.get("t") || "";
+  const [magicToken, setMagicToken] = useState(initialToken);
 
   const [username, setUsername] = useState(initialUser);
   const [password, setPassword] = useState(initialPass);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [autoLoggingIn, setAutoLoggingIn] = useState(Boolean(initialUser && initialPass));
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
-  async function performLogin(u: string, p: string, isAuto = false) {
+  async function performLogin() {
+    if (!acceptedTerms) {
+      setError("Tenés que aceptar los Términos y la Política de privacidad para continuar.");
+      return;
+    }
     setLoading(true);
-    if (isAuto) setAutoLoggingIn(true);
     setError(null);
     try {
+      const payload = magicToken ? { token: magicToken } : { username, password };
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: u, password: p }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
-        // router.replace para que los parámetros ?u=...&p=... no queden en el historial del navegador
+        // router.replace para que los parámetros no queden en el historial del navegador
         router.replace(searchParams.get("next") || "/caso");
         router.refresh();
       } else {
         const data = await res.json().catch(() => ({}));
         setError(data.error || "No se pudo entrar.");
-        setAutoLoggingIn(false);
+        setMagicToken(""); // Limpiamos el token fallido para permitir login manual
         setLoading(false);
       }
     } catch {
       setError("Error de conexión al intentar ingresar.");
-      setAutoLoggingIn(false);
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    if (initialUser && initialPass) {
-      // setTimeout defiere el setState fuera del cuerpo síncrono del
-      // efecto — llamarlo directo acá dispara el error de lint
-      // react-hooks/set-state-in-effect (cascading renders).
-      setTimeout(() => performLogin(initialUser, initialPass, true), 0);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    performLogin(username, password, false);
+    performLogin();
   }
 
   return (
@@ -95,23 +90,37 @@ export default function LoginForm() {
           Acceso a tu caso — entrá con el usuario y la contraseña que te compartió tu corredor.
         </p>
 
-        {autoLoggingIn ? (
-          <div className="my-8 flex flex-col items-center justify-center text-center gap-3 py-4">
-            <span
-              className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
-              style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }}
-            />
-            <div>
-              <p className="text-sm font-semibold" style={{ color: "var(--ink)" }}>
-                Ingresando a tu caso…
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: "var(--ink-muted)" }}>
-                Acceso directo verificado
-              </p>
-            </div>
+        {magicToken ? (
+          <div
+            className="mt-4 rounded-xl border p-3 text-xs leading-relaxed"
+            style={{
+              borderColor: "var(--accent-soft-border)",
+              background: "var(--accent-soft)",
+              color: "var(--ink)",
+            }}
+          >
+            👋 <strong>¡Hola!</strong> Tu corredor te compartió este acceso seguro. Marcá la casilla para aceptar los términos e ingresar a tu caso.
           </div>
         ) : (
           <>
+            {error && initialToken && (
+               <div className="mb-4 text-xs font-medium" style={{ color: "var(--status-descartada)" }}>
+                 El link seguro expiró o es inválido. Por favor ingresá las credenciales manualmente o pedile a tu corredor un nuevo link.
+               </div>
+            )}
+            {initialUser && initialPass && !initialToken && (
+              <div
+                className="mt-4 rounded-xl border p-3 text-xs leading-relaxed"
+                style={{
+                  borderColor: "var(--accent-soft-border)",
+                  background: "var(--accent-soft)",
+                  color: "var(--ink)",
+                }}
+              >
+                👋 <strong>¡Hola!</strong> Tu corredor ya configuró tu acceso directo. Marcá la casilla para aceptar los términos e ingresar a tu caso.
+              </div>
+            )}
+
             <label className="mt-5 flex flex-col gap-1 text-sm">
               <span className="eyebrow">Usuario</span>
               <input
@@ -149,21 +158,42 @@ export default function LoginForm() {
                 </button>
               </div>
             </label>
-            {error && (
-              <p className="mt-2 text-xs" style={{ color: "var(--status-descartada)" }}>
-                {error}
-              </p>
-            )}
-            <button
-              type="submit"
-              disabled={loading || !username || !password}
-              className="btn btn-primary mt-4 w-full rounded-full px-4 py-2 text-sm font-semibold"
-              style={{ background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, var(--gold)))", color: "var(--accent-ink)" }}
-            >
-              {loading ? "Entrando…" : "Entrar"}
-            </button>
           </>
         )}
+        {error && (
+          <p className="mt-2 text-xs" style={{ color: "var(--status-descartada)" }}>
+            {error}
+          </p>
+        )}
+
+        <label className="mt-4 flex items-start gap-2.5 text-xs cursor-pointer select-none">
+          <input
+            type="checkbox"
+            required
+            checked={acceptedTerms}
+            onChange={(e) => setAcceptedTerms(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-[var(--border)] accent-[var(--accent)] cursor-pointer"
+          />
+          <span style={{ color: "var(--ink-muted)" }} className="leading-snug">
+            He leído y acepto los{" "}
+            <Link href="/terminos" target="_blank" className="underline underline-offset-2 hover:text-[var(--ink)]" style={{ color: "var(--ink)" }}>
+              Términos de servicio
+            </Link>{" "}
+            y la{" "}
+            <Link href="/privacidad" target="_blank" className="underline underline-offset-2 hover:text-[var(--ink)]" style={{ color: "var(--ink)" }}>
+              Política de privacidad
+            </Link>.
+          </span>
+        </label>
+
+        <button
+          type="submit"
+          disabled={loading || (!magicToken && (!username || !password)) || !acceptedTerms}
+          className="btn btn-primary mt-4 w-full rounded-full px-4 py-2.5 text-sm font-semibold transition-opacity disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+          style={{ background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, var(--gold)))", color: "var(--accent-ink)" }}
+        >
+          {loading ? "Entrando…" : "Entrar a mi caso"}
+        </button>
 
         <div className="mt-4 border-t pt-3 text-center flex flex-col gap-2" style={{ borderColor: "var(--border)" }}>
           <Link
@@ -181,17 +211,6 @@ export default function LoginForm() {
             ¿Querés probar la app? Ver caso demo interactivo →
           </a>
         </div>
-
-        <p className="mt-4 text-center text-[11px] leading-relaxed" style={{ color: "var(--ink-faint)" }}>
-          El uso de tu caso se rige por la{" "}
-          <Link href="/privacidad" className="underline underline-offset-2" style={{ color: "var(--ink-muted)" }}>
-            Política de privacidad
-          </Link>{" "}
-          y los{" "}
-          <Link href="/terminos" className="underline underline-offset-2" style={{ color: "var(--ink-muted)" }}>
-            Términos de servicio
-          </Link>.
-        </p>
       </form>
     </div>
   );

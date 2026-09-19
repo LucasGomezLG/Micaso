@@ -201,6 +201,7 @@ export interface Case {
   estado: CaseEstado;
   username: string;
   password: string;
+  magicLinkToken?: string;
   /** Nombres de la familia — empieza vacío al crear el caso; se edita
    * desde adentro del caso (components/PeopleEditor.tsx, app/api/case/
    * people), no desde el panel del corredor. Alimenta los selectores de

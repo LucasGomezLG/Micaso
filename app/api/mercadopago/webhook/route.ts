@@ -24,6 +24,11 @@ export async function POST(request: Request) {
     // esto puesto así, la firma de un webhook legítimo de Mercado Pago
     // nunca iba a coincidir el día que MP_WEBHOOK_SECRET se configurara
     // en producción.
+    if (!MP_WEBHOOK_SECRET) {
+      console.error("FATAL: MP_WEBHOOK_SECRET no configurado");
+      return NextResponse.json({ error: "Webhook signing secret missing" }, { status: 500 });
+    }
+
     if (MP_WEBHOOK_SECRET) {
       if (!signatureHeader || !reqId) {
         console.error("Webhook de Mercado Pago sin headers de firma");

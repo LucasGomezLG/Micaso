@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentBroker, updateBroker } from "@/lib/brokers";
+import { getCurrentBroker, updateBroker, deleteBroker } from "@/lib/brokers";
+import { cancelSubscription } from "@/lib/mercadopago";
 import { brokerProfilePatchSchema, parseJsonBody } from "@/lib/schemas";
 
 export async function PATCH(request: NextRequest) {
@@ -13,4 +14,24 @@ export async function PATCH(request: NextRequest) {
 
   const updated = await updateBroker(broker.id, parsed.data);
   return NextResponse.json({ broker: updated });
+}
+
+export async function DELETE() {
+  const broker = await getCurrentBroker();
+  if (!broker) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  try {
+    if (broker.mpPreapprovalId && broker.subscriptionStatus === "activa") {
+      await cancelSubscription(broker.mpPreapprovalId).catch((err) => {
+        console.error("Error cancelando suscripción en MP durante la baja:", err);
+      });
+    }
+    await deleteBroker(broker.id);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Error al eliminar cuenta:", err);
+    return NextResponse.json({ error: "No se pudo eliminar la cuenta" }, { status: 500 });
+  }
 }

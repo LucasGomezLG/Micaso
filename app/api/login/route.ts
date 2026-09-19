@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCaseByCredentials } from "@/lib/cases";
+import { getCaseByCredentials, getCase } from "@/lib/cases";
 import { CASE_COOKIE } from "@/lib/session";
-import { createCaseSessionToken } from "@/lib/sessionToken";
+import { createCaseSessionToken, verifyMagicLinkToken } from "@/lib/sessionToken";
 import { clearAttempts, isRateLimited, recordFailedAttempt } from "@/lib/rateLimit";
 import { caseLoginSchema, parseJsonBody } from "@/lib/schemas";
 
@@ -27,10 +27,22 @@ export async function POST(request: NextRequest) {
   }
   const body = parsed.data;
 
-  const kase = await getCaseByCredentials(body.username, body.password);
+  let kase = null;
+
+  if (body.token) {
+    const caseId = verifyMagicLinkToken(body.token);
+    if (caseId) {
+      kase = await getCase(caseId);
+    }
+  } else if (body.username && body.password) {
+    kase = await getCaseByCredentials(body.username, body.password);
+  } else {
+    return NextResponse.json({ error: "Credenciales o token incompletos" }, { status: 400 });
+  }
+
   if (!kase || kase.estado === "archivado") {
     await recordFailedAttempt("case-login", ip);
-    return NextResponse.json({ error: "Usuario o contraseña incorrectos" }, { status: 401 });
+    return NextResponse.json({ error: "Credenciales inválidas o acceso caducado" }, { status: 401 });
   }
 
   await clearAttempts("case-login", ip);

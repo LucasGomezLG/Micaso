@@ -116,10 +116,32 @@ export default function BrokerProfileModal({
                 </span>
               </label>
 
-              <div className="mt-5 flex justify-end gap-2">
+              <div className="mt-8 flex items-center justify-between border-t pt-5" style={{ borderColor: "var(--border)" }}>
                 <button
                   type="button"
-                  onClick={() => setOpen(false)}
+                  disabled={saving}
+                  onClick={async () => {
+                    if (confirm("¿Estás seguro de que querés eliminar tu cuenta de forma permanente?\n\nSi tenés una suscripción activa, se cancelará automáticamente. Se borrarán todos tus datos y perderás acceso a tus casos.")) {
+                      setSaving(true);
+                      const res = await fetch("/api/panel/profile", { method: "DELETE" });
+                      if (!res.ok) {
+                        toast.error(await apiErrorMessage(res, "No se pudo eliminar la cuenta."));
+                        setSaving(false);
+                      } else {
+                        router.push("/");
+                        router.refresh();
+                      }
+                    }
+                  }}
+                  className="text-xs font-semibold hover:underline"
+                  style={{ color: "var(--status-descartada)" }}
+                >
+                  Eliminar mi cuenta
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
                   className="rounded-full px-4 py-2 text-xs font-semibold"
                   style={{ border: "1px solid var(--border)", color: "var(--ink-muted)" }}
                 >
@@ -134,6 +156,7 @@ export default function BrokerProfileModal({
                 >
                   {saving ? "Guardando…" : "Guardar"}
                 </button>
+                </div>
               </div>
             </div>
           </div>,
