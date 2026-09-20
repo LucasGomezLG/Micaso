@@ -29,6 +29,7 @@ const STAT_TILES: { status: HouseStatus; label: string }[] = [
   { status: "gusto", label: "Nos gustó" },
   { status: "no_gusto", label: "No convenció" },
   { status: "oferta", label: "En oferta" },
+  { status: "comprada", label: "Comprada 🎉" },
   { status: "descartada", label: "Descartadas" },
 ];
 
@@ -182,53 +183,69 @@ export default async function HomePage() {
                 </dd>
               </div>
             )}
-            <div>
-              <dt className="eyebrow mb-1.5">Imprescindible</dt>
-              <dd>
-                <ul className="flex flex-col gap-1">
-                  {brief.mustHave.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <Check size={15} className="mt-0.5 shrink-0" style={{ color: "var(--status-gusto)" }} />
-                      <span style={{ color: "var(--ink-muted)" }}>{item}</span>
-                    </li>
+            {brief.mustHave.length > 0 && (
+              <div>
+                <dt className="eyebrow mb-1.5">Imprescindible</dt>
+                <dd>
+                  <ul className="flex flex-col gap-1">
+                    {brief.mustHave.map((item, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <Check size={15} className="mt-0.5 shrink-0" style={{ color: "var(--status-gusto)" }} />
+                        <span style={{ color: "var(--ink-muted)" }}>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
+            )}
+            {brief.flexible.length > 0 && (
+              <div>
+                <dt className="eyebrow mb-1.5">Puede variar</dt>
+                <dd style={{ color: "var(--ink-muted)" }}>
+                  {brief.flexible.join(" · ")}
+                </dd>
+              </div>
+            )}
+            {brief.zones.length > 0 && (
+              <div>
+                <dt className="eyebrow mb-1.5">Zonas de interés</dt>
+                <dd className="flex flex-wrap gap-1.5">
+                  {brief.zones.map((zone, i) => (
+                    <span
+                      key={i}
+                      className="rounded-full px-2.5 py-1 text-xs font-medium"
+                      style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+                    >
+                      {zone}
+                    </span>
                   ))}
-                </ul>
-              </dd>
-            </div>
-            <div>
-              <dt className="eyebrow mb-1.5">Puede variar</dt>
-              <dd style={{ color: "var(--ink-muted)" }}>
-                {brief.flexible.join(" · ")}
-              </dd>
-            </div>
-            <div>
-              <dt className="eyebrow mb-1.5">Zonas de interés</dt>
-              <dd className="flex flex-wrap gap-1.5">
-                {brief.zones.map((zone, i) => (
-                  <span
-                    key={i}
-                    className="rounded-full px-2.5 py-1 text-xs font-medium"
-                    style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-                  >
-                    {zone}
-                  </span>
-                ))}
-              </dd>
-            </div>
-            <div>
-              <dt className="eyebrow mb-1.5">Si aparece algo en Capital</dt>
-              <dd className="flex flex-wrap gap-1.5">
-                {brief.capitalZones.map((zone, i) => (
-                  <span
-                    key={i}
-                    className="rounded-full px-2.5 py-1 text-xs font-medium"
-                    style={{ background: "var(--gold-soft)", color: "var(--gold)" }}
-                  >
-                    {zone}
-                  </span>
-                ))}
-              </dd>
-            </div>
+                </dd>
+              </div>
+            )}
+            {brief.capitalZones.length > 0 && (
+              <div>
+                <dt className="eyebrow mb-1.5">Si aparece algo en Capital</dt>
+                <dd className="flex flex-wrap gap-1.5">
+                  {brief.capitalZones.map((zone, i) => (
+                    <span
+                      key={i}
+                      className="rounded-full px-2.5 py-1 text-xs font-medium"
+                      style={{ background: "var(--gold-soft)", color: "var(--gold)" }}
+                    >
+                      {zone}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+            )}
+            {brief.mustHave.length === 0 &&
+              brief.flexible.length === 0 &&
+              brief.zones.length === 0 &&
+              brief.capitalZones.length === 0 && (
+                <p className="text-sm" style={{ color: "var(--ink-faint)" }}>
+                  Tu corredor todavía no cargó los criterios de búsqueda.
+                </p>
+              )}
           </dl>
         </div>
 
@@ -302,7 +319,7 @@ export default async function HomePage() {
 
       <section>
         <h2 className="mb-3 text-lg">Estado de la búsqueda</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-9">
           {STAT_TILES.map((tile) => (
             <Link
               key={tile.status}

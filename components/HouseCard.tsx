@@ -176,7 +176,18 @@ export default function HouseCard({
     router.refresh();
   }
 
-  const cash = house.priceUsd ? cashNeededRange(house.priceUsd, loan.hasCredit ? loan.bankMaxUsd : 0) : null;
+  // Sin bankMaxUsd ni ownFundsMaxUsd cargados, el cálculo de gastos de
+  // escritura no tiene con qué compararse — pasa en un caso recién creado
+  // (EMPTY_CRITERIA en lib/store.ts) antes de que el corredor cargue el
+  // crédito, y también en casos de alquiler/otro, que nunca completan
+  // estos campos porque el concepto de escritura no les aplica. Sin este
+  // chequeo, el badge salía en rojo ("no te alcanza") en todas las casas
+  // desde el primer día, antes de tener ningún dato real de crédito.
+  const loanConfigured = loan.bankMaxUsd > 0 || loan.ownFundsMaxUsd > 0;
+  const cash =
+    house.priceUsd && loanConfigured
+      ? cashNeededRange(house.priceUsd, loan.hasCredit ? loan.bankMaxUsd : 0)
+      : null;
   const cashFit = cash
     ? cash.high <= loan.ownFundsMaxUsd
       ? "gusto"
