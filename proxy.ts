@@ -172,10 +172,17 @@ async function checkCaseAccess(
   if (kase && kase.estado !== "archivado") {
     // Solo lectura (cerrado a mano, o impago en el período de gracia):
     // la familia sigue viendo su historial, pero no puede seguir
-    // cargando casas, comentarios ni criterios nuevos. Ver
-    // /api/scrape es un POST por el body JSON, pero no muta la base de datos de Redis
+    // cargando casas, comentarios ni criterios nuevos. /api/scrape es un
+    // POST por el body JSON, pero no muta la base de datos de Redis;
+    // /api/caso/logout tampoco muta nada del caso, solo borra la cookie
+    // del navegador — sin esta excepción quedaba atrapado por el mismo
+    // bloqueo que el caso demo y solo_lectura le ponen a cualquier POST
+    // de /api/*, así que ni el demo ni un caso pausado por impago podían
+    // cerrar sesión (403 acá mismo).
     const isMutating =
-      pathname !== "/api/scrape" && ["POST", "PUT", "PATCH", "DELETE"].includes(request.method);
+      pathname !== "/api/scrape" &&
+      pathname !== "/api/caso/logout" &&
+      ["POST", "PUT", "PATCH", "DELETE"].includes(request.method);
     if (isMutating && pathname.startsWith("/api/")) {
       if (kase.estado === "solo_lectura") {
         return NextResponse.json({ error: "Este caso está en modo solo lectura" }, { status: 403 });
