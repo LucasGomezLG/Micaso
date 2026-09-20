@@ -35,7 +35,12 @@ export default function PanelDashboard({
   totalPropiedades: number;
   nextVisita: { caseId: string; caseTitulo: string; fecha: string } | null;
 }) {
-  if (activeCount === 0) return null;
+  // A propósito NO se oculta con activeCount === 0 (como antes) — ese es
+  // exactamente el estado de un corredor al que se le vencieron todos los
+  // casos por falta de pago, y esta es la única tarjeta de todo el panel
+  // del corredor con un link a /panel/plan. Ocultar el bloque entero acá
+  // le tapaba al corredor el único camino visible para reactivar su
+  // suscripción justo cuando más lo necesitaba.
   const isTrial = subscriptionStatus === "prueba";
 
   return (

@@ -28,6 +28,12 @@ export default function AdminBrokerEditor({ broker, caseCount }: { broker: Broke
   const [deleting, setDeleting] = useState(false);
 
   async function patch(body: Record<string, string>) {
+    // Mismo criterio que AdminBrokerRow.tsx: reactivar acá no reabre solo
+    // los casos que el corte automático (downgradeCasesForInactiveBrokers)
+    // había bajado a solo_lectura — el modelo no distingue eso de un
+    // cierre manual del corredor, así que reabrir a ciegas podría deshacer
+    // uno que sí quería. Se avisa en vez de reabrir solo.
+    const reactivating = body.subscriptionStatus === "activa" && broker.subscriptionStatus !== "activa";
     setSaving(true);
     const res = await fetch(`/api/superadmin/brokers/${broker.id}`, {
       method: "PATCH",
@@ -38,6 +44,12 @@ export default function AdminBrokerEditor({ broker, caseCount }: { broker: Broke
     if (!res.ok) {
       toast.error(await apiErrorMessage(res, "No se pudo guardar el cambio."));
       return false;
+    }
+    if (reactivating) {
+      toast.success("Corredor reactivado", {
+        description: "Si tenía casos en solo lectura por el corte automático, reabrilos a mano abajo — esto no los reabre solo.",
+        duration: 8000,
+      });
     }
     router.refresh();
     return true;

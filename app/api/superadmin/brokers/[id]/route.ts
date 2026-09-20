@@ -4,8 +4,11 @@ import { deleteBrokerCaseIndex, deleteCase, listCasesForBroker } from "@/lib/cas
 import { deleteCaseData } from "@/lib/store";
 import { adminBrokerPatchSchema, parseJsonBody } from "@/lib/schemas";
 
-/** Edición manual de plan/estado de cobro/prueba desde /superadmin — a
- * falta de Mercado Pago conectado (ver ARQUITECTURA.md sección 7). */
+/** Edición manual de plan/estado de cobro/prueba desde /superadmin — el
+ * webhook de Mercado Pago (app/api/mercadopago/webhook/route.ts) ya
+ * actualiza subscriptionStatus solo en altas/pausas/cancelaciones reales;
+ * esto queda como override para soporte puntual (comps, correcciones,
+ * corredores dados de alta a mano). Ver ARQUITECTURA.md sección 7. */
 export async function PATCH(
   request: NextRequest,
   ctx: RouteContext<"/api/superadmin/brokers/[id]">

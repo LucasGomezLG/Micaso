@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { Download, Users, Building2, Clock } from "lucide-react";
+import { Download, Users, Building2, Clock, DollarSign } from "lucide-react";
 import { listAllBrokers } from "@/lib/brokers";
 import { listCasesForBroker } from "@/lib/cases";
 import { isUsingRemoteDb } from "@/lib/db";
+import { formatArs } from "@/lib/format";
+import { MP_PLAN_PRICES } from "@/lib/mercadopago";
 import BrokerList from "@/components/BrokerList";
 import CreateBrokerModal from "@/components/CreateBrokerModal";
 import PanelLogoutButton from "@/components/PanelLogoutButton";
@@ -26,6 +28,12 @@ export default async function SuperadminPage() {
   const totalCasos = casesByBroker.reduce((sum, cases) => sum + cases.length, 0);
   const enPrueba = brokers.filter((b) => b.subscriptionStatus === "prueba").length;
   const activos = brokers.filter((b) => b.subscriptionStatus === "activa").length;
+  // "A medida" (volumen_alto) es precio a convenir, no entra en esta
+  // cuenta — solo suma lo que tiene un precio fijo conocido. Estimado:
+  // no descuenta impuestos ni la comisión de Mercado Pago.
+  const mrrArs = brokers
+    .filter((b) => b.subscriptionStatus === "activa")
+    .reduce((sum, b) => sum + (b.plan === "para_arrancar" || b.plan === "para_tu_cartera" ? MP_PLAN_PRICES[b.plan] : 0), 0);
 
   return (
     <div className="min-h-full" style={{ background: "var(--paper)", color: "var(--ink)" }}>
@@ -74,8 +82,9 @@ export default async function SuperadminPage() {
           <div>
             <h1 className="text-2xl">Corredores</h1>
             <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
-              {brokers.length} en total — plan y estado se editan a mano
-              hasta que Mercado Pago esté conectado.
+              {brokers.length} en total — Mercado Pago actualiza el estado de
+              cobro solo; plan y estado siguen editables a mano acá para
+              soporte puntual.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -91,7 +100,7 @@ export default async function SuperadminPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <div className="rounded-2xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
             <div className="flex items-center gap-1.5">
               <Users size={13} style={{ color: "var(--ink-faint)" }} />
@@ -130,6 +139,16 @@ export default async function SuperadminPage() {
             <p className="mono mt-1 text-xl font-semibold">{activos}</p>
             <p className="text-[11px]" style={{ color: "var(--ink-faint)" }}>
               pagando
+            </p>
+          </div>
+          <div className="rounded-2xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+            <div className="flex items-center gap-1.5">
+              <DollarSign size={13} style={{ color: "var(--ink-faint)" }} />
+              <span className="eyebrow">Ingreso mensual estimado</span>
+            </div>
+            <p className="mono mt-1 text-xl font-semibold">{formatArs(mrrArs)}</p>
+            <p className="text-[11px]" style={{ color: "var(--ink-faint)" }}>
+              suscripciones activas, sin plan a medida
             </p>
           </div>
         </div>

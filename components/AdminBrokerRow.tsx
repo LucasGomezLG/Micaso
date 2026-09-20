@@ -32,6 +32,12 @@ export default function AdminBrokerRow({
   const [saving, setSaving] = useState(false);
 
   async function patch(body: Record<string, string>) {
+    // Reactivar acá no reabre solo los casos que quedaron en solo_lectura
+    // por el corte automático (downgradeCasesForInactiveBrokers) — el
+    // modelo no distingue eso de un cierre manual del corredor, así que
+    // reabrir a ciegas podría deshacer un cierre que sí quería. Se avisa
+    // en vez de reabrir solo.
+    const reactivating = body.subscriptionStatus === "activa" && broker.subscriptionStatus !== "activa";
     setSaving(true);
     const res = await fetch(`/api/superadmin/brokers/${broker.id}`, {
       method: "PATCH",
@@ -43,7 +49,14 @@ export default function AdminBrokerRow({
       toast.error(await apiErrorMessage(res, "No se pudo guardar el cambio."));
       return;
     }
-    toast.success("Cambio guardado");
+    if (reactivating) {
+      toast.success("Corredor reactivado", {
+        description: "Si tenía casos en solo lectura por el corte automático, reabrilos a mano desde \"Gestionar →\" — esto no los reabre solo.",
+        duration: 8000,
+      });
+    } else {
+      toast.success("Cambio guardado");
+    }
     router.refresh();
   }
 
