@@ -1,5 +1,5 @@
-import { LogOut } from "lucide-react";
 import { signOut } from "@/auth";
+import PanelLogoutSubmitButton from "@/components/PanelLogoutSubmitButton";
 
 export default function PanelLogoutButton() {
   return (
@@ -15,16 +15,7 @@ export default function PanelLogoutButton() {
         await signOut({ redirectTo: "/" });
       }}
     >
-      <button
-        type="submit"
-        title="Cerrar sesión"
-        aria-label="Cerrar sesión"
-        className="inline-flex items-center gap-1.5 text-sm font-medium hover:underline"
-        style={{ color: "var(--ink-muted)" }}
-      >
-        <LogOut size={16} className="sm:hidden" />
-        <span className="hidden sm:inline">Cerrar sesión</span>
-      </button>
+      <PanelLogoutSubmitButton />
     </form>
   );
 }

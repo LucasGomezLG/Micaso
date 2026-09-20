@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Ban } from "lucide-react";
 import { getCurrentAdminEmail, getCurrentBroker } from "@/lib/brokers";
 import { listCasesForBroker } from "@/lib/cases";
 import { getCaseSummary } from "@/lib/store";
@@ -12,6 +13,7 @@ import BrokerNameEditor from "@/components/BrokerNameEditor";
 import BrokerAvatarEditor from "@/components/BrokerAvatarEditor";
 import BrokerProfileModal from "@/components/BrokerProfileModal";
 import BrokerOnboarding from "@/components/BrokerOnboarding";
+import EmptyState from "@/components/EmptyState";
 import ThemeToggle from "@/components/ThemeToggle";
 import InstallAppButton from "@/components/InstallAppButton";
 
@@ -59,8 +61,64 @@ function buildAttentionData(
 
 export default async function PanelPage() {
   const [broker, adminEmail] = await Promise.all([getCurrentBroker(), getCurrentAdminEmail()]);
+
+  // broker === null acá significa una sola cosa: esta cuenta de Google
+  // está en la lista de corredores borrados (lib/brokers.ts,
+  // DELETED_BROKERS_KEY) — a diferencia de un corredor nuevo de verdad,
+  // que getCurrentBroker() ya crea solo. Antes esto dejaba la página en
+  // blanco (ni onboarding ni mensaje), indistinguible de un bug real.
+  // Solo un admin puede revertirlo, dando de alta de nuevo el mismo email
+  // desde /superadmin ("Dar de alta un corredor") — eso limpia la baja.
+  if (!broker) {
+    return (
+      <div className="min-h-full overflow-x-clip" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+        <header
+          className="sticky top-0 z-20 border-b backdrop-blur-md"
+          style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface) 85%, transparent)" }}
+        >
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4 sm:gap-4 sm:px-6">
+            <Link href="/" className="flex shrink-0 items-center gap-2">
+              <span
+                className="flex h-7 w-7 items-center justify-center rounded-lg"
+                style={{ background: "linear-gradient(135deg, var(--accent), var(--gold))" }}
+              >
+                <MicasoMark size={16} color="var(--accent-ink)" />
+              </span>
+              <span className="text-lg font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+                Micaso
+              </span>
+            </Link>
+            <div className="flex items-center gap-2 sm:gap-3">
+              {adminEmail && (
+                <Link href="/superadmin" className="eyebrow text-xs" style={{ color: "var(--accent)" }}>
+                  Super-admin
+                </Link>
+              )}
+              <ThemeToggle />
+              <PanelLogoutButton />
+            </div>
+          </div>
+        </header>
+        <main className="mx-auto max-w-md px-4 py-16 sm:px-6">
+          <EmptyState icon={<Ban size={22} />} title="Esta cuenta ya no tiene acceso a Micaso">
+            <p className="mt-2 text-sm" style={{ color: "var(--ink-muted)" }}>
+              Tu cuenta de corredor fue dada de baja. Si creés que es un error, escribinos para que te restauremos el acceso.
+            </p>
+            <Link
+              href="/"
+              className="btn mt-5 inline-flex rounded-full px-5 py-2.5 text-sm font-semibold"
+              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+            >
+              Volver al inicio
+            </Link>
+          </EmptyState>
+        </main>
+      </div>
+    );
+  }
+
   const { createMagicLinkToken } = await import("@/lib/sessionToken");
-  const casesRaw = broker ? await listCasesForBroker(broker.id) : [];
+  const casesRaw = await listCasesForBroker(broker.id);
   const cases = casesRaw.map((c) => ({ ...c, magicLinkToken: createMagicLinkToken(c.id) }));
   const activeCases = cases.filter((c) => c.estado === "activo");
   const activos = activeCases.length;
@@ -78,14 +136,12 @@ export default async function PanelPage() {
   const { attentionItems, totalPropiedades, nextVisita } = buildAttentionData(activeCases, summaries);
 
   let createCaseDisabledReason: string | undefined = undefined;
-  if (broker) {
-    if (broker.subscriptionStatus === "atrasada") {
-      createCaseDisabledReason = "Suscripción atrasada. Por favor, regularizá tu plan para seguir creando casos.";
-    } else if (broker.subscriptionStatus === "cancelada") {
-      createCaseDisabledReason = "Tu suscripción fue cancelada. Suscribite a un plan para seguir creando casos.";
-    } else if (broker.subscriptionStatus === "prueba" && new Date() > new Date(broker.trialEndsAt)) {
-      createCaseDisabledReason = "Tu período de prueba finalizó. Elegí un plan para seguir creando casos.";
-    }
+  if (broker.subscriptionStatus === "atrasada") {
+    createCaseDisabledReason = "Suscripción atrasada. Por favor, regularizá tu plan para seguir creando casos.";
+  } else if (broker.subscriptionStatus === "cancelada") {
+    createCaseDisabledReason = "Tu suscripción fue cancelada. Suscribite a un plan para seguir creando casos.";
+  } else if (broker.subscriptionStatus === "prueba" && new Date() > new Date(broker.trialEndsAt)) {
+    createCaseDisabledReason = "Tu período de prueba finalizó. Elegí un plan para seguir creando casos.";
   }
 
   return (
@@ -117,29 +173,27 @@ export default async function PanelPage() {
                 <span className="sm:hidden">Admin</span>
               </Link>
             )}
-            {broker && (
-              <span className="flex min-w-0 items-center gap-1.5 text-sm sm:gap-2" style={{ color: "var(--ink-muted)" }}>
-                <span className="hidden items-center gap-1.5 sm:flex sm:gap-2">
-                  <BrokerAvatarEditor
-                    key={broker.imagenUrl}
-                    initialImagenUrl={broker.imagenUrl}
-                    nombreMarca={broker.nombreMarca}
-                    size={24}
-                  />
-                  <BrokerNameEditor
-                    key={broker.nombreMarca}
-                    initialName={broker.nombreMarca}
-                    className="inline-flex max-w-[150px] truncate"
-                  />
-                </span>
-                <BrokerProfileModal
-                  key={`${broker.imagenUrl}-${broker.nombreMarca}`}
+            <span className="flex min-w-0 items-center gap-1.5 text-sm sm:gap-2" style={{ color: "var(--ink-muted)" }}>
+              <span className="hidden items-center gap-1.5 sm:flex sm:gap-2">
+                <BrokerAvatarEditor
+                  key={broker.imagenUrl}
                   initialImagenUrl={broker.imagenUrl}
+                  nombreMarca={broker.nombreMarca}
+                  size={24}
+                />
+                <BrokerNameEditor
+                  key={broker.nombreMarca}
                   initialName={broker.nombreMarca}
-                  className="sm:hidden"
+                  className="inline-flex max-w-[150px] truncate"
                 />
               </span>
-            )}
+              <BrokerProfileModal
+                key={`${broker.imagenUrl}-${broker.nombreMarca}`}
+                initialImagenUrl={broker.imagenUrl}
+                initialName={broker.nombreMarca}
+                className="sm:hidden"
+              />
+            </span>
             <InstallAppButton />
             <ThemeToggle />
             <PanelLogoutButton />
@@ -171,7 +225,7 @@ export default async function PanelPage() {
           {cases.length > 0 && <CreateCaseModal disabledReason={createCaseDisabledReason} />}
         </div>
 
-        {broker && cases.length > 0 && (
+        {cases.length > 0 && (
           <PanelDashboard
             attentionItems={attentionItems}
             activeCount={activos}
@@ -186,9 +240,7 @@ export default async function PanelPage() {
         )}
 
         {cases.length === 0 ? (
-          broker ? (
-            <BrokerOnboarding broker={broker} />
-          ) : null
+          <BrokerOnboarding broker={broker} />
         ) : (
           <CaseList
             cases={cases}

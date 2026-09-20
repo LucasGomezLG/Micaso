@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Building2, Calculator, CalendarDays, CheckSquare, Sparkles, LogOut } from "lucide-react";
+import { Home, Building2, Calculator, CalendarDays, CheckSquare, Sparkles, LogOut, Loader2 } from "lucide-react";
 import { TipoCaso } from "@/lib/types";
 import { MicasoMark } from "@/components/MicasoMark";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -42,36 +43,43 @@ export default function Nav({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
   const links =
     tipoCaso === "compra"
       ? BASE_LINKS.flatMap((link) => (link.href === "/caso/agenda" ? [CALCULADORA_LINK, link] : [link]))
       : BASE_LINKS;
 
   async function handleLogout() {
-    if (isDemo) {
-      router.push("/");
-      return;
-    }
-    // Dar de baja la suscripción push de este caso antes de cerrar sesión
-    // — si no, queda un registro huérfano en el server que le seguiría
-    // mandando avisos de este caso a un dispositivo que ya no tiene
-    // acceso. Tiene que pasar ANTES del logout: el DELETE necesita la
-    // cookie de sesión todavía vigente.
-    try {
-      if ("serviceWorker" in navigator) {
-        const registration = await navigator.serviceWorker.getRegistration();
-        const subscription = await registration?.pushManager.getSubscription();
-        if (subscription) {
-          await fetch("/api/case/push/subscribe", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ endpoint: subscription.endpoint }),
-          });
+    if (loggingOut) return; // evita doble toque mientras la request está en curso
+    setLoggingOut(true);
+    // El caso demo nunca tiene push habilitado (ver lib/push.ts), así que
+    // no hay suscripción que dar de baja ahí.
+    if (!isDemo) {
+      // Dar de baja la suscripción push de este caso antes de cerrar sesión
+      // — si no, queda un registro huérfano en el server que le seguiría
+      // mandando avisos de este caso a un dispositivo que ya no tiene
+      // acceso. Tiene que pasar ANTES del logout: el DELETE necesita la
+      // cookie de sesión todavía vigente.
+      try {
+        if ("serviceWorker" in navigator) {
+          const registration = await navigator.serviceWorker.getRegistration();
+          const subscription = await registration?.pushManager.getSubscription();
+          if (subscription) {
+            await fetch("/api/case/push/subscribe", {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ endpoint: subscription.endpoint }),
+            });
+          }
         }
+      } catch {
+        // No bloqueamos el logout si esto falla
       }
-    } catch {
-      // No bloqueamos el logout si esto falla
     }
+    // Antes, el caso demo solo hacía router.push("/") sin llamar acá —
+    // la cookie de sesión seguía viva, así que proxy.ts te mandaba de
+    // vuelta a /caso apenas la landing intentaba cargar (no había forma
+    // real de "salir" del demo). Mismo logout para los dos casos.
     await fetch("/api/caso/logout", { method: "POST" });
     router.push("/");
     router.refresh();
@@ -93,8 +101,13 @@ export default function Nav({
               <span>Estás explorando el caso de demostración interactivo</span>
             </div>
             <div className="flex items-center gap-3">
-              <button onClick={handleLogout} className="hover:underline text-[11px]" style={{ color: "var(--ink-muted)" }}>
-                ← Volver al inicio
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="hover:underline text-[11px] disabled:opacity-60 disabled:pointer-events-none"
+                style={{ color: "var(--ink-muted)" }}
+              >
+                {loggingOut ? "Saliendo…" : "← Volver al inicio"}
               </button>
               <Link
                 href="/panel/login"
@@ -165,11 +178,12 @@ export default function Nav({
             {!viewingAsBroker && (
               <button
                 onClick={handleLogout}
-                className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                disabled={loggingOut}
+                className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-60 disabled:pointer-events-none"
                 title="Cerrar sesión"
                 style={{ color: "var(--ink-muted)" }}
               >
-                <LogOut size={18} />
+                {loggingOut ? <Loader2 size={18} className="animate-spin" /> : <LogOut size={18} />}
                 <span className="sr-only">Cerrar sesión</span>
               </button>
             )}

@@ -71,6 +71,10 @@ export default function CreateBrokerModal() {
             <p className="mt-1 text-sm" style={{ color: "var(--ink-muted)" }}>
               Para sumar un corredor sin esperar a que entre solo con
               Google — arranca en plan Para arrancar, prueba de 14 días.
+              También es la forma de restaurarle el acceso a un corredor
+              que borraste antes: volver a darlo de alta con el mismo
+              email le saca el bloqueo (esa cuenta, sola, no puede
+              volver a entrar).
             </p>
             <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
               <label className="flex flex-col gap-1 text-sm">
