@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Check, ArrowLeft, Shield, Clock } from "lucide-react";
+import { Check, ArrowLeft, Shield, Clock, AlertTriangle } from "lucide-react";
 import { headers } from "next/headers";
 import { getCurrentBroker, getBrokerPayments } from "@/lib/brokers";
 import { listCasesForBroker } from "@/lib/cases";
@@ -124,6 +124,14 @@ export default async function PanelPlanPage() {
 
   const daysLeft = computeDaysLeft(broker.trialEndsAt);
   const isTrial = broker.subscriptionStatus === "prueba";
+  // Vencido el período de prueba, subscriptionStatus se queda en "prueba"
+  // para siempre — nada lo cambia solo (downgradeCasesForInactiveBrokers,
+  // lib/cases.ts, baja los CASOS a solo_lectura, no toca este campo). Sin
+  // esto, un corredor con la prueba vencida veía su plan de siempre
+  // marcado "Plan en uso" (deshabilitado) y sin ningún botón para
+  // suscribirse — igual que uno con un cobro atrasado o cancelado.
+  const trialActive = isTrial && daysLeft > 0;
+  const hasWorkingSubscription = broker.subscriptionStatus === "activa" || trialActive;
 
   return (
     <div className="min-h-full overflow-x-clip" style={{ background: "var(--paper)", color: "var(--ink)" }}>
@@ -213,7 +221,9 @@ export default async function PanelPlanPage() {
               <span className="text-xs" style={{ color: "var(--ink-muted)" }}>
                 {isTrial
                   ? `Prueba del ${formatDate(broker.createdAt)} al ${formatDate(broker.trialEndsAt)} (${daysLeft} días restantes)`
-                  : "Suscripción mensual activa"}
+                  : broker.subscriptionStatus === "activa"
+                  ? "Suscripción mensual activa"
+                  : "Elegí un plan para reactivar"}
               </span>
             </div>
 
@@ -238,7 +248,7 @@ export default async function PanelPlanPage() {
           </div>
 
           {/* Banner de suscripción / prueba */}
-          {isTrial ? (
+          {trialActive ? (
             <div
               className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4"
               style={{
@@ -286,7 +296,36 @@ export default async function PanelPlanPage() {
                 <CancelSubscriptionButton />
               </div>
             </div>
-          ) : null}
+          ) : (
+            <div
+              className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4"
+              style={{
+                borderColor: "var(--status-descartada-bg)",
+                background: "var(--status-descartada-bg)",
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm"
+                  style={{ color: "var(--status-descartada)" }}
+                >
+                  <AlertTriangle size={18} />
+                </span>
+                <div>
+                  <p className="text-xs sm:text-sm font-semibold" style={{ color: "var(--status-descartada)" }}>
+                    {broker.subscriptionStatus === "atrasada"
+                      ? "No pudimos procesar tu último cobro"
+                      : broker.subscriptionStatus === "cancelada"
+                      ? "Tu suscripción está cancelada"
+                      : "Tu período de prueba terminó"}
+                  </p>
+                  <p className="text-[11px]" style={{ color: "var(--ink)" }}>
+                    Tus casos activos pasaron a modo solo lectura. Elegí un plan abajo para reactivar el cobro automático y volver a cargar casas y casos nuevos.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Historial de Pagos */}
@@ -351,7 +390,8 @@ export default async function PanelPlanPage() {
           <div className="grid gap-6 sm:grid-cols-3">
             {(["para_arrancar", "para_tu_cartera", "volumen_alto"] as Plan[]).map((pKey) => {
               const p = planDetails[pKey];
-              const isCurrent = broker.plan === pKey;
+              const isCurrent = broker.plan === pKey && hasWorkingSubscription;
+              const isReactivating = broker.plan === pKey && !hasWorkingSubscription && pKey !== "volumen_alto";
 
               return (
                 <div
@@ -416,9 +456,9 @@ export default async function PanelPlanPage() {
                             style={{ border: "1px solid var(--border-strong)", color: "var(--ink)" }}
                           />
                         ) : (
-                          <SubscribeButton 
+                          <SubscribeButton
                             plan={pKey as "para_arrancar" | "para_tu_cartera"}
-                            label={p.ctaLabel}
+                            label={isReactivating ? "Reactivar este plan" : p.ctaLabel}
                             highlight={p.highlight}
                           />
                         )}
@@ -445,7 +485,7 @@ export default async function PanelPlanPage() {
               <strong>Cancelación sin penalidad:</strong> Podés cancelar en cualquier momento desde tu panel o escribiéndonos. Conservás acceso hasta la fecha de fin del mes ya abonado.
             </li>
             <li>
-              <strong>Cobro en pesos argentinos:</strong> La pasarela automática con Mercado Pago está en desarrollo. Durante este período, las altas y renovaciones se acuerdan directamente por WhatsApp al valor de referencia en pesos.
+              <strong>Cobro en pesos argentinos:</strong> El cobro mensual se procesa automáticamente con Mercado Pago, en pesos, al valor de referencia vigente — podés ver cada cobro en el historial de pagos de esta misma pantalla.
             </li>
             <li>
               <strong>Tus datos nunca se pierden de golpe:</strong> Si interrumpís el pago, tu cuenta pasa a modo solo lectura durante 90 días para que puedas seguir consultando todo lo que cargaste.

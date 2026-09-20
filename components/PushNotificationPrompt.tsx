@@ -101,7 +101,7 @@ export default function PushNotificationPrompt() {
 
       toast.success("¡Avisos activados! Te notificaremos las novedades de tu búsqueda en este celular.");
       setDismissed(true);
-    } catch (err: any) {
+    } catch {
       toast.error("No pudimos conectar con el servicio de notificaciones de tu celular.");
     } finally {
       setLoading(false);

@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from "sonner";
 import GlobalErrorToasts from "@/components/GlobalErrorToasts";
 import { SITE_URL } from "@/lib/site";
@@ -55,6 +57,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         <Toaster theme="system" position="bottom-right" richColors closeButton />
         <GlobalErrorToasts />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

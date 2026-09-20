@@ -41,8 +41,6 @@ export async function createSubscriptionCheckout({
       payload.payer_email = email;
     }
 
-    console.log("PAYLOAD A MERCADO PAGO:", payload);
-
   const res = await fetch("https://api.mercadopago.com/preapproval", {
     method: "POST",
     headers: {
