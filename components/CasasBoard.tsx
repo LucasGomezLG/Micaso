@@ -268,13 +268,16 @@ export default function CasasBoard({
 
       {/* Barra de etapas (Embudo simplificado) */}
       <div className="flex flex-col gap-2.5">
-        {/* Wrapper relative solo para el degradé de "hay más a la derecha"
-         * en celular — el div scrolleable de abajo no puede posicionarlo
-         * él mismo porque, al ser overflow-x-auto, un hijo absolute
-         * quedaría anclado al contenido (se movería con el scroll) en vez
-         * de quedar fijo contra el borde visible de la pantalla. */}
-        <div className="relative">
-        <div className="-mx-4 flex items-center justify-between gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+        {/* Wrapper relative + el mismo full-bleed (-mx-4) que el div
+         * scrolleable de adentro — si no, el wrapper queda angosto por el
+         * padding del <main> y el degradé de abajo cae 16px adentro del
+         * borde real de la pantalla en vez de pegado a él. El div
+         * scrolleable de abajo no puede posicionar el degradé él mismo
+         * porque, al ser overflow-x-auto, un hijo absolute quedaría
+         * anclado al contenido (se movería con el scroll) en vez de
+         * quedar fijo contra el borde visible de la pantalla. */}
+        <div className="relative -mx-4 sm:mx-0">
+        <div className="flex items-center justify-between gap-2 overflow-x-auto px-4 pb-1 sm:px-0 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
           <div className="flex shrink-0 items-center gap-2">
             {STAGES.map((s) => {
               const active = stage === s.id;
