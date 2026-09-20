@@ -190,6 +190,10 @@ export const caseLoginSchema = z.object({
   username: z.string().optional(),
   password: z.string().optional(),
   token: z.string().optional(),
+  // Versión de Términos/Privacidad que el checkbox de LoginForm.tsx
+  // tenía marcada al enviar — ver lib/legal.ts y recordTermsAcceptance
+  // en lib/cases.ts. Opcional: no rompe logins de clientes viejos.
+  acceptedTermsVersion: z.string().max(20).optional(),
 }).superRefine((data, ctx) => {
   if (data.token && data.token.trim().length > 0) return;
   if (!data.username || !data.password || data.username.trim() === "" || data.password.trim() === "") {

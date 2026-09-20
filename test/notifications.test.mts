@@ -8,7 +8,7 @@ const dbDir = mkdtempSync(join(tmpdir(), "micaso-test-notif-"));
 process.env.MICASO_LOCAL_DB_PATH = join(dbDir, "store.json");
 
 const { createCase, markCaseSeenByBroker, getCase } = await import("../lib/cases");
-const { addHouse, getCaseSummary } = await import("../lib/store");
+const { addHouse, deleteCaseData, getCaseSummary } = await import("../lib/store");
 const { getCaseSubscriptions, removeCaseSubscription, saveCaseSubscription } = await import("../lib/push");
 
 after(() => rmSync(dbDir, { recursive: true, force: true }));
@@ -70,6 +70,20 @@ test("las suscripciones Web Push se aíslan estrictamente por caseId", async () 
 
   assert.deepEqual(await getCaseSubscriptions(caseA.id), []);
   assert.deepEqual((await getCaseSubscriptions(caseB.id)).map((s) => s.endpoint), [subB.endpoint]);
+});
+
+test("deleteCaseData borra las suscripciones Web Push del caso, no deja push_subscriptions huérfano (Gemini CON-05)", async () => {
+  const kase = await createCase("broker-notif", "Caso a borrar", "compra");
+  const sub = {
+    endpoint: "https://fcm.googleapis.com/fcm/send/fake-endpoint-borrado",
+    keys: { p256dh: "key-borrado", auth: "auth-borrado" },
+  };
+  await saveCaseSubscription(kase.id, sub);
+  assert.deepEqual((await getCaseSubscriptions(kase.id)).map((s) => s.endpoint), [sub.endpoint]);
+
+  await deleteCaseData(kase.id);
+
+  assert.deepEqual(await getCaseSubscriptions(kase.id), [], "no debe quedar ninguna suscripción tras borrar el caso");
 });
 
 test("el caso demo bloquea y rechaza suscripciones Web Push y no emite notificaciones", async () => {

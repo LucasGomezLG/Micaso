@@ -1,10 +1,11 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 
-// Login del panel de corredor. Redirect URI configurado en Google
-// Cloud Console hoy: solo http://localhost:3000/api/auth/callback/google
-// — agregar el de producción ahí cuando haya dominio (ver
-// ARQUITECTURA.md sección 11).
+// Login del panel de corredor. Redirect URIs autorizados en Google Cloud
+// Console: http://localhost:3000/api/auth/callback/google (local) y
+// https://www.micaso.com.ar/api/auth/callback/google (producción, sumado
+// el 17 sept 2026 — ver ARQUITECTURA.md sección 4, "Confirmado
+// funcionando de punta a punta").
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   providers: [Google],

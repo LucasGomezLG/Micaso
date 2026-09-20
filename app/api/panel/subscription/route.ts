@@ -14,16 +14,23 @@ export async function POST(request: Request) {
   if ("error" in parsed) return parsed.error;
   const { plan } = parsed.data;
 
-  try {
-    // Si ya tenía una suscripción activa (cambio de plan, o reintento de
-    // checkout sin haber cancelado antes), cancelarla primero — si no,
-    // Mercado Pago termina cobrando las dos por separado cada mes. Un
-    // error al cancelar en MP no debería trabar el flujo (mejor dejar
-    // pasar a que el corredor pueda suscribirse igual y resolver el
-    // duplicado a mano después, que dejarlo sin poder pagar nunca).
-    // NOTA LEGAL (CON-03): Cancelación preventiva suspendida. Conservar
-    // la suscripción anterior y cancelarla solo en el webhook al confirmar.
+  // CON-03: la pantalla de /panel/plan ya no muestra este botón si
+  // subscriptionStatus es "activa", pero esa es una restricción de UI,
+  // no de la API — sin este chequeo, pegarle directo a esta ruta creaba
+  // una segunda suscripción sin cancelar la primera, y Mercado Pago
+  // termina cobrando las dos. La suscripción vieja se cancela en el
+  // webhook recién cuando la nueva se confirma (ver app/api/mercadopago/
+  // webhook/route.ts), nunca antes de eso — si se cancelara antes de
+  // crear el checkout nuevo, un corredor que abandona el checkout
+  // quedaría sin ninguna suscripción activa.
+  if (broker.mpPreapprovalId && broker.subscriptionStatus === "activa") {
+    return NextResponse.json(
+      { error: "Ya tenés una suscripción activa. Cancelala antes de generar una nueva." },
+      { status: 400 }
+    );
+  }
 
+  try {
     const { url } = request;
     const origin = new URL(url).origin;
     // Mercado Pago requiere una URL HTTPS válida para el back_url de suscripciones

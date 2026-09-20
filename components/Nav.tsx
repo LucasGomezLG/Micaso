@@ -52,6 +52,26 @@ export default function Nav({
       router.push("/");
       return;
     }
+    // Dar de baja la suscripción push de este caso antes de cerrar sesión
+    // — si no, queda un registro huérfano en el server que le seguiría
+    // mandando avisos de este caso a un dispositivo que ya no tiene
+    // acceso. Tiene que pasar ANTES del logout: el DELETE necesita la
+    // cookie de sesión todavía vigente.
+    try {
+      if ("serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration();
+        const subscription = await registration?.pushManager.getSubscription();
+        if (subscription) {
+          await fetch("/api/case/push/subscribe", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint: subscription.endpoint }),
+          });
+        }
+      }
+    } catch {
+      // No bloqueamos el logout si esto falla
+    }
     await fetch("/api/caso/logout", { method: "POST" });
     router.push("/");
     router.refresh();

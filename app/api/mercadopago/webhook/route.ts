@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { addBrokerPayment, updateBroker } from "@/lib/brokers";
+import { addBrokerPayment, getBroker, updateBroker } from "@/lib/brokers";
 import { downgradeCasesForInactiveBrokers } from "@/lib/cases";
-import { getPayment, getSubscription } from "@/lib/mercadopago";
+import { cancelSubscription, getPayment, getSubscription } from "@/lib/mercadopago";
 import { PaymentRecord, Plan } from "@/lib/types";
 
 const MP_WEBHOOK_SECRET = process.env.MP_WEBHOOK_SECRET;
@@ -87,6 +87,19 @@ export async function POST(request: Request) {
         const [brokerId, planKey] = externalReference.split(":");
         
         if (status === "authorized") {
+          // CON-03: si el corredor ya tenía otra suscripción activa (cambio
+          // de plan, o un checkout repetido), recién ACÁ es seguro
+          // cancelarla — no antes de crear el checkout nuevo, porque si
+          // ese checkout nuevo nunca se confirma, el corredor se quedaría
+          // sin ninguna suscripción activa. Cancelar solo cuando la nueva
+          // ya está confirmada evita el doble cobro sin ese riesgo.
+          const broker = await getBroker(brokerId);
+          const previousPreapprovalId = broker?.mpPreapprovalId;
+          if (previousPreapprovalId && previousPreapprovalId !== resourceId) {
+            await cancelSubscription(previousPreapprovalId).catch((err) => {
+              console.error("No se pudo cancelar la suscripción anterior tras confirmar la nueva:", err);
+            });
+          }
           await updateBroker(brokerId, {
             subscriptionStatus: "activa",
             mpPreapprovalId: resourceId,

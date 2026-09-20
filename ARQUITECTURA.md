@@ -1,6 +1,6 @@
 # De herramienta personal a SaaS para corredores
 
-> Documento de arquitectura — Micaso · 13 sept 2026 (estado actualizado 18 sept 2026)
+> Documento de arquitectura — Micaso · 13 sept 2026 (estado actualizado 20 sept 2026)
 > Estado: **en construcción activa, en vivo en `micaso.com.ar`.** Núcleo multi-caso, panel de corredor (con login real por Google), super-admin con control por corredor, landing pública, Mercado Pago (suscripciones vía Preapproval, ARS/USD según IP), notificaciones Web Push y PWA con soporte offline (Serwist) ya funcionando — ver los addendums fechados en cada sección para el detalle de qué se construyó y cuándo. Lo que falta es más chico y puntual: legal (sección 9), la confirmación del `robots.txt`/términos de ZonaProp (sección 9), y la migración internacional a Stripe/i18n (sección 6 y 13, todavía sin arrancar).
 > Nace de Casa, en producción desde el 12 sept 2026 (41 propiedades, 3 personas usándolo a la fecha)
 > Versión con diseño: [artifact publicado](https://claude.ai/code/artifact/613d03c0-8366-4fbd-b641-a59eb5383997)
@@ -1490,6 +1490,162 @@ borrar copias viejas).
 > pueden borrar más adelante a mano una vez que haya confianza total en
 > el esquema nuevo, no antes.
 
+> **Bug real de sesión de caso encontrado y arreglado (20 sept 2026): un
+> magic link vencido tapaba una cookie de sesión todavía válida.**
+> Reportado por familias reales de un corredor: cerraban la app o la
+> pestaña, la volvían a abrir, y tenían que loguearse de nuevo — pasaba
+> en Android, tanto con la PWA instalada como reabriendo siempre el
+> mismo link de WhatsApp. La cookie de sesión (`case_id`, 90 días,
+> HMAC-firmada, ver SEC-01 arriba) estaba bien construida en los tres
+> lugares que la emiten (`/api/login`, `/api/demo-access`, el
+> impersonate del panel); el bug estaba en el bypass que auto-saltea
+> `/login` cuando ya hay sesión activa (`proxy.ts`, agregado el 19 sept
+> junto con los magic links de CON-02, sin test ni documentar acá — ver
+> también el addendum de términos más abajo sobre esa misma laguna).
+> Si la URL todavía traía `?t=<token>` del link de WhatsApp compartido y
+> ese token —que dura 15 días, no 90 (`MAGIC_LINK_MAX_AGE_MS`, ver
+> `lib/sessionToken.ts`)— ya había vencido, el código nunca hacía el
+> bypass aunque la cookie siguiera perfectamente válida. Como el link de
+> WhatsApp que comparte el corredor no caduca solo (sección 6, "Ciclo de
+> vida de un caso" — el corredor lo cierra a mano), pasados esos 15 días
+> cualquier familia que reabriera el mismo link volvía a ver el
+> formulario completo de login (usuario/contraseña + checkbox de
+> términos), en vez de entrar directo a `/caso`.
+>
+> **Arreglado:** un token vencido ahora se trata como "no hay token que
+> honrar", no como "hay otro caso distinto que respetar" — la cookie ya
+> válida gana. Solo se sigue exigiendo el login manual cuando el token
+> es válido y apunta a un caso *distinto* al de la cookie activa (cambio
+> de caso intencional, se preserva). Probado con curl contra el server
+> de dev real, no solo el análisis de código: sin parámetros → bypass
+> (sin cambios); token vencido/inválido → ahora sí bypassea a `/caso`
+> (el fix); token válido de otro caso → sigue sin bypassear, pide login
+> a mano. De paso, dos prolijidades chicas de la misma revisión: el
+> comentario de `auth.ts` que decía que el redirect URI de producción de
+> Google todavía no estaba configurado (desactualizado desde el 17 sept,
+> ver sección 4) se corrigió, y `Nav.tsx` ahora da de baja la
+> suscripción Web Push del dispositivo (`DELETE /api/case/push/
+> subscribe`) antes de cerrar sesión, para no dejar un registro huérfano
+> mandándole avisos de un caso a un dispositivo que ya no tiene acceso.
+
+> **Segunda verificación cruzada (20 sept 2026): los dos informes legales
+> del 19 sept (`AUDITORIA-LEGAL-2026-09-19-Claude.md` y
+> `AUDITORIA-LEGAL-2026-09-19-Gemini.md`) se contradicen entre sí en
+> varios puntos — se chequeó cada uno contra el código real y el
+> historial de git, no se les creyó por escrito (mismo protocolo de este
+> CLAUDE.md: no fabricar, confirmar).**
+>
+> - **Encontrado y arreglado el mismo día: cambiar de plan podía
+>   terminar cobrando dos suscripciones a la vez en Mercado Pago (Gemini
+>   CON-03) — más grave de lo que parecía al leer el informe.**
+>   `git log -S "Cancelación preventiva suspendida"` ubica el cambio en
+>   el mismo commit `1dce11a` (18 sept 2026, 23:58) que agregó los dos
+>   informes: se sacó la cancelación preventiva de la suscripción
+>   anterior antes de crear un checkout nuevo (razón correcta en su
+>   momento: evitaba dejar al corredor sin nada activo si el checkout
+>   nuevo fallaba), y el comentario que quedó en su lugar
+>   (`app/api/panel/subscription/route.ts`) prometía que "se cancela en
+>   el webhook al confirmar" — pero `app/api/mercadopago/webhook/
+>   route.ts` nunca llamaba a `cancelSubscription` en ningún punto;
+>   cuando llegaba `status: "authorized"` solo pisaba `mpPreapprovalId`
+>   con el ID nuevo y dejaba la suscripción vieja corriendo en Mercado
+>   Pago para siempre — sin ningún cron ni reconciliación que lo
+>   detectara después. Peor todavía: `/panel/plan` no muestra el botón
+>   de checkout si `subscriptionStatus === "activa"`, pero **`POST
+>   /api/panel/subscription` no repetía ese chequeo en el servidor** —
+>   cualquiera que le pegara directo a la ruta (o incluso una ventana de
+>   carrera normal, con el webhook todavía sin procesar el estado nuevo)
+>   generaba un segundo cobro mensual real, sin que nada lo corrigiera
+>   solo. No era un riesgo latente para el día que se construya la
+>   pantalla de "cambiar de plan" (sección 6) — ya era explotable contra
+>   la API tal como estaba.
+>
+>   **Arreglado:** dos cambios. (1) `app/api/mercadopago/webhook/
+>   route.ts` ahora sí cumple la promesa del comentario — cuando llega
+>   `status: "authorized"` para una suscripción nueva, busca el
+>   `mpPreapprovalId` que el corredor ya tenía guardado y, si es
+>   distinto al de la suscripción recién confirmada, cancela la vieja en
+>   ese mismo momento (nunca antes de confirmar la nueva, por la misma
+>   razón original: si se cancelara antes y el checkout nuevo nunca se
+>   confirma, el corredor queda sin nada activo). (2) `POST /api/panel/
+>   subscription` ahora rechaza con 400 si el corredor ya tiene
+>   `subscriptionStatus === "activa"`, cerrando el camino de pegarle
+>   directo a la API sin pasar por la UI. Cubierto con 3 tests nuevos
+>   (`test/subscription.test.mts`, mockeando `fetch` contra la API de
+>   Mercado Pago — no le pega a la real): confirma la suscripción vieja
+>   distinta se cancela, que una primera suscripción sin
+>   `mpPreapprovalId` previo no intenta cancelar nada, y que un evento de
+>   webhook repetido para la misma suscripción no se cancela a sí misma.
+>   Probado además contra el server de dev real: un corredor con
+>   `subscriptionStatus: "activa"` que le pega directo a `POST
+>   /api/panel/subscription` ahora recibe 400 (antes hubiera llegado
+>   hasta crear un preapproval real contra la API de producción de
+>   Mercado Pago — no se probó ese camino contra la API real por lo que
+>   implica, el mock ya cubre la lógica).
+>
+> - **Encontrado y arreglado el mismo día: `deleteCaseData` no borraba
+>   las suscripciones push del caso (Gemini CON-05; Claude no lo
+>   lista).** Las tres rutas que borran un caso para siempre
+>   (`app/api/panel/cases/[id]/route.ts`, `app/api/superadmin/
+>   cases/[id]/route.ts`, y en cascada desde `app/api/superadmin/
+>   brokers/[id]/route.ts`) llaman `deleteCase` + `deleteCaseData`
+>   (`lib/store.ts`), que borraba casas/checklist/criterios y las fotos
+>   de Vercel Blob — pero nunca `case:{caseId}:push_subscriptions`
+>   (`lib/push.ts`). No era un riesgo de seguridad (nadie puede leer esas
+>   suscripciones desde afuera), era una clave huérfana que quedaba en
+>   Redis para siempre por cada caso borrado.
+>
+>   **Arreglado:** nuevo `deleteCaseSubscriptions(caseId)` exportado
+>   desde `lib/push.ts` (borra la clave entera de una, no de a un
+>   endpoint como ya hacía `removeCaseSubscription`) — `deleteCaseData`
+>   lo suma al mismo `Promise.all` que ya borraba houses/checklist/
+>   criteria, así las tres rutas de borrado quedan cubiertas sin
+>   tocarlas (todas pasan por esta misma función). Cubierto con un test
+>   nuevo en `test/notifications.test.mts` (guarda una suscripción,
+>   borra el caso, confirma que no queda ninguna) — 63/63 tests,
+>   `tsc`/`eslint` limpios.
+>
+> - **Confirmado por Lucas (20 sept 2026): `scripts/purge-legacy-blobs.mts`
+>   ya se corrió contra producción (Claude #1 / Gemini CON-05).** El
+>   script existe, tiene guardas de seguridad (aborta si no encuentra los
+>   índices nuevos) y quedó commiteado en el mismo `1dce11a` — a
+>   diferencia de `scripts/migrate-cases-brokers.mts`, cuya corrida
+>   contra el Redis real sí quedó documentada más arriba en esta misma
+>   sección, esta no tenía ningún addendum propio (ni `git log` tiene un
+>   commit de "purga" más allá de crear el archivo), y este entorno de
+>   desarrollo no tiene credenciales de Upstash para verificarlo directo
+>   contra la base real — así que esto queda registrado como confirmado
+>   por Lucas, no verificado de forma independiente contra el Redis de
+>   producción. Los blobs viejos `"cases"`/`"brokers"` ya no deberían
+>   existir en producción.
+>
+> - **Descartado: el hallazgo CON-01 de Gemini (falsificación de
+>   `Referer` y User-Agent `facebookexternalhit`) ya estaba resuelto en
+>   el mismo commit que agregó su propio informe.** `git show
+>   f059e34:app/api/scrape/route.ts` (el commit inmediatamente anterior)
+>   todavía tiene el `USER_AGENTS` viejo con `facebookexternalhit`; el
+>   commit siguiente, `1dce11a` — el mismo que agrega
+>   `AUDITORIA-LEGAL-2026-09-19-Gemini.md` — ya lo reemplaza por
+>   `MicasoBot/1.0` con contacto real, y sacó el `Referer:
+>   ${url.origin}/` falso de `app/api/image/route.ts`. El informe de
+>   Gemini describe código que dejó de existir en el mismo momento en
+>   que se lo commiteó — no es que el riesgo sea bajo, es que ya no
+>   existe. No hace falta ninguna acción sobre esto.
+>
+> - **Confirmado, real, y resuelto por fuera del código (Gemini
+>   CON-08): no existe ninguna integración de facturación
+>   electrónica.** Búsqueda exhaustiva (`factura`, `invoice`, `AFIP`,
+>   `WSFE`, `CAE`, `CUIT`) sin un solo resultado en el código — ni
+>   siquiera existe el campo CUIT/razón social en el perfil del
+>   corredor. Micaso cobra suscripciones reales por Mercado Pago sin
+>   que el código emita ningún comprobante fiscal — y no lo va a hacer:
+>   **decisión de Lucas (20 sept 2026), esto se gestiona a mano desde su
+>   cuenta de Mercado Pago (facturación del propio monotributo/
+>   responsable inscripto sobre lo cobrado), no se construye una
+>   integración con AFIP/WSFE.** Deuda de negocio resuelta por vía
+>   administrativa, no de código — no bloquea nada y no queda pendiente
+>   ninguna tarea de desarrollo.
+
 **Barrido de "quedó pensado para un solo caso" (14 sept 2026) — dos
 bugs reales encontrados y resueltos**
 Además de la auditoría de aislamiento de arriba (¿puede un caso/corredor
@@ -1603,6 +1759,50 @@ decisión de diseño, es contenido que no se improvisa en una tarde.
 > como se decidió arriba. Sigue siendo prudente una revisión legal
 > profesional antes de escalar a muchos corredores con clientes reales,
 > pero ya no bloquea tener la landing pública en vivo.
+
+> **Laguna documental encontrada y consentimiento arreglado (20 sept
+> 2026): el clickwrap de TyC pasa a aceptarse una vez, con prueba real,
+> no en cada login.** El 19 sept 2026 se sumó un checkbox obligatorio de
+> "acepto los Términos y la Política de privacidad" en `LoginForm.tsx`
+> (y el equivalente en `BrokerLoginForm.tsx`) siguiendo un informe de
+> auditoría legal (`AUDITORIA-LEGAL-2026-09-19-Gemini.md`, hallazgo
+> CON-06: el aviso pasivo al pie del formulario, sin acción afirmativa,
+> no cuenta como consentimiento expreso bajo el Art. 5 de la Ley 25.326)
+> — pero ese cambio nunca quedó registrado acá, y solo se implementó la
+> mitad de lo que ese mismo informe pedía: el checkbox no se mandaba al
+> servidor ni dejaba ningún registro (no probaba nada ante nadie), y
+> además volvía a pedirse en cada visita a `/login`, molesto para una
+> familia que reingresa seguido (reportado como queja real de clientes
+> de un corredor). Registrar el consentimiento una vez —con fecha y
+> versión— y no repetirlo no le resta validez legal: lo que exige la ley
+> es un consentimiento expreso e informado, no un checkbox sin memoria
+> que se repite en cada visita.
+>
+> **Arreglado:** `lib/legal.ts` fija `TERMS_VERSION` (`"2026-09-v1"`,
+> mismo string que ya usaba el informe). `Case.terminos`
+> (`lib/types.ts`) guarda `{ version, aceptadoEn }` —
+> `recordTermsAcceptance()` (`lib/cases.ts`) lo escribe la primera vez
+> que el login trae `acceptedTermsVersion` en el body
+> (`app/api/login/route.ts`), sin pisar la fecha si esa misma versión ya
+> estaba aceptada (la fecha del primer "acepto" es la que importa
+> legalmente, no la del último login). En el dispositivo,
+> `LoginForm.tsx` refleja lo mismo en `localStorage`
+> (`micaso_terms_accepted_version`) para no volver a mostrar el
+> checkbox — si sube `TERMS_VERSION` el día que cambie el texto real de
+> `/terminos` o `/privacidad`, se vuelve a pedir. Probado de punta a
+> punta con Playwright contra un caso real (no el demo): la primera vez
+> pide el checkbox, después de loguearse el caso queda con `terminos`
+> guardado (verificado leyendo el registro), y una segunda visita al
+> mismo dispositivo —incluso sin cookie de sesión, ver el addendum de
+> arriba sobre esa misma laguna— ya no lo vuelve a pedir.
+>
+> **Deliberadamente sin hacer:** ese mismo informe también pedía guardar
+> IP y user-agent junto al consentimiento (`legalAudit` en el hallazgo
+> CON-06) — no se sumó; versión + fecha alcanza para lo que hoy hace
+> falta, y ese nivel de trazabilidad, si llega a hacer falta, es un
+> cambio aparte. `BrokerLoginForm.tsx` (corredor) tampoco se tocó — no
+> es molesto en la práctica porque la sesión de Google dura 30 días
+> (sección 4) y rara vez vuelve a pasar por `/panel/login`.
 
 **Condición de carrera en el store local — pasó de verdad (14 sept
 2026), resuelto para local; queda un resto menor en Redis**

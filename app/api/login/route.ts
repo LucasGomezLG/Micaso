@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCaseByCredentials, getCase } from "@/lib/cases";
+import { getCaseByCredentials, getCase, recordTermsAcceptance } from "@/lib/cases";
 import { CASE_COOKIE } from "@/lib/session";
 import { createCaseSessionToken, verifyMagicLinkToken } from "@/lib/sessionToken";
 import { clearAttempts, isRateLimited, recordFailedAttempt } from "@/lib/rateLimit";
@@ -46,6 +46,10 @@ export async function POST(request: NextRequest) {
   }
 
   await clearAttempts("case-login", ip);
+
+  if (body.acceptedTermsVersion) {
+    await recordTermsAcceptance(kase.id, body.acceptedTermsVersion);
+  }
 
   const expires = new Date();
   expires.setDate(expires.getDate() + 90);

@@ -265,6 +265,20 @@ export async function markCaseSeenByFamily(caseId: string): Promise<Case | null>
   return updated ? decryptCase(updated) : null;
 }
 
+/** Registra la primera vez que alguien de la familia aceptó el
+ * clickwrap de Términos/Privacidad vigente — hasta ahora el checkbox de
+ * LoginForm.tsx no dejaba ningún rastro server-side, así que no probaba
+ * nada ante nadie (CON-06). No pisa una aceptación ya registrada para
+ * la misma versión: la fecha del primer "acepto" es la que importa
+ * legalmente, no la de cada login posterior. Si `version` cambia (se
+ * republicó /terminos o /privacidad), sí vuelve a quedar registrada. */
+export async function recordTermsAcceptance(caseId: string, version: string): Promise<Case | null> {
+  const kase = await getCase(caseId);
+  if (!kase || kase.terminos?.version === version) return kase;
+  const updated = await updateCase(caseId, { terminos: { version, aceptadoEn: new Date().toISOString() } });
+  return updated ? decryptCase(updated) : null;
+}
+
 /** Editable desde adentro del caso (no desde el panel del corredor) —
  * la familia es quien sabe sus propios nombres. Sin duplicados ni
  * strings vacíos. */

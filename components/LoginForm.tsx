@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { MicasoMark } from "@/components/MicasoMark";
+import { TERMS_VERSION } from "@/lib/legal";
+
+const TERMS_ACCEPTED_KEY = "micaso_terms_accepted_version";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -20,6 +23,23 @@ export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsAlreadyAccepted, setTermsAlreadyAccepted] = useState(false);
+
+  useEffect(() => {
+    // setTimeout defiere el setState fuera del cuerpo síncrono del efecto
+    // — mismo motivo que ClientOnboardingModal (react-hooks/set-state-in-effect).
+    setTimeout(() => {
+      try {
+        if (localStorage.getItem(TERMS_ACCEPTED_KEY) === TERMS_VERSION) {
+          setTermsAlreadyAccepted(true);
+          setAcceptedTerms(true);
+        }
+      } catch {
+        // Sin localStorage (navegación privada, etc.) simplemente se
+        // vuelve a pedir el checkbox — no es un caso para bloquear el login.
+      }
+    }, 0);
+  }, []);
 
   async function performLogin() {
     if (!acceptedTerms) {
@@ -29,13 +49,20 @@ export default function LoginForm() {
     setLoading(true);
     setError(null);
     try {
-      const payload = magicToken ? { token: magicToken } : { username, password };
+      const payload = magicToken
+        ? { token: magicToken, acceptedTermsVersion: TERMS_VERSION }
+        : { username, password, acceptedTermsVersion: TERMS_VERSION };
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       if (res.ok) {
+        try {
+          localStorage.setItem(TERMS_ACCEPTED_KEY, TERMS_VERSION);
+        } catch {
+          // No pasa nada si no se puede recordar — el próximo login vuelve a pedir el checkbox.
+        }
         // router.replace para que los parámetros no queden en el historial del navegador
         router.replace(searchParams.get("next") || "/caso");
         router.refresh();
@@ -166,25 +193,39 @@ export default function LoginForm() {
           </p>
         )}
 
-        <label className="mt-4 flex items-start gap-2.5 text-xs cursor-pointer select-none">
-          <input
-            type="checkbox"
-            required
-            checked={acceptedTerms}
-            onChange={(e) => setAcceptedTerms(e.target.checked)}
-            className="mt-0.5 h-4 w-4 shrink-0 rounded border-[var(--border)] accent-[var(--accent)] cursor-pointer"
-          />
-          <span style={{ color: "var(--ink-muted)" }} className="leading-snug">
-            He leído y acepto los{" "}
+        {termsAlreadyAccepted ? (
+          <p className="mt-4 text-xs leading-snug" style={{ color: "var(--ink-muted)" }}>
+            Ya aceptaste los{" "}
             <Link href="/terminos" target="_blank" className="underline underline-offset-2 hover:text-[var(--ink)]" style={{ color: "var(--ink)" }}>
               Términos de servicio
             </Link>{" "}
             y la{" "}
             <Link href="/privacidad" target="_blank" className="underline underline-offset-2 hover:text-[var(--ink)]" style={{ color: "var(--ink)" }}>
               Política de privacidad
-            </Link>.
-          </span>
-        </label>
+            </Link>{" "}
+            en este dispositivo.
+          </p>
+        ) : (
+          <label className="mt-4 flex items-start gap-2.5 text-xs cursor-pointer select-none">
+            <input
+              type="checkbox"
+              required
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-[var(--border)] accent-[var(--accent)] cursor-pointer"
+            />
+            <span style={{ color: "var(--ink-muted)" }} className="leading-snug">
+              He leído y acepto los{" "}
+              <Link href="/terminos" target="_blank" className="underline underline-offset-2 hover:text-[var(--ink)]" style={{ color: "var(--ink)" }}>
+                Términos de servicio
+              </Link>{" "}
+              y la{" "}
+              <Link href="/privacidad" target="_blank" className="underline underline-offset-2 hover:text-[var(--ink)]" style={{ color: "var(--ink)" }}>
+                Política de privacidad
+              </Link>.
+            </span>
+          </label>
+        )}
 
         <button
           type="submit"

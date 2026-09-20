@@ -1,5 +1,5 @@
 import webpush from "web-push";
-import { dbGet, dbSet, dbUpdate } from "./db";
+import { dbDelete, dbGet, dbSet, dbUpdate } from "./db";
 
 export interface StoredPushSubscription {
   endpoint: string;
@@ -80,6 +80,16 @@ export async function removeCaseSubscription(caseId: string, endpoint: string): 
     const list = current ?? [];
     return list.filter((s) => s.endpoint !== endpoint);
   });
+}
+
+/** Borra TODAS las suscripciones Web Push de un caso de una sola vez —
+ * usado por deleteCaseData (lib/store.ts) al borrar un caso para
+ * siempre. Sin esto, `case:{caseId}:push_subscriptions` quedaba
+ * huérfano en Redis después de borrar el caso (Gemini CON-05, ver
+ * ARQUITECTURA.md sección 9) — nada de seguridad (nadie puede leer eso
+ * desde afuera), solo una clave que nunca se limpiaba. */
+export async function deleteCaseSubscriptions(caseId: string): Promise<void> {
+  await dbDelete(pushKey(caseId));
 }
 
 /** Suscripciones Web Push guardadas para un caso puntual — usado por los

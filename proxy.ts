@@ -76,18 +76,27 @@ export const proxy = auth(async (request) => {
         } else if (pathname === "/login") {
           const magicToken = request.nextUrl.searchParams.get("t");
           const hasCredentialsParams = request.nextUrl.searchParams.has("u") && request.nextUrl.searchParams.has("p");
-          
+
           let shouldRedirectToCaso = false;
-          
-          if (!magicToken && !hasCredentialsParams) {
-            shouldRedirectToCaso = true; // /login sin parámetros, ya logueado
-          } else if (magicToken) {
-            const targetCaseId = verifyMagicLinkToken(magicToken);
-            if (targetCaseId === loggedCaseId) {
-              shouldRedirectToCaso = true; // El link de WhatsApp es para el mismo caso activo
+
+          if (!hasCredentialsParams) {
+            if (!magicToken) {
+              shouldRedirectToCaso = true; // /login sin parámetros, ya logueado
+            } else {
+              const targetCaseId = verifyMagicLinkToken(magicToken);
+              // El magic link dura 15 días (bastante menos que los 90 de la
+              // cookie de sesión, ver lib/sessionToken.ts) — si venció, no
+              // significa "hay OTRO caso vigente que este link señala",
+              // significa simplemente que no hay nada que honrar de la URL,
+              // así que no debe tapar la sesión que ya tiene. Si el token
+              // es válido pero apunta a otro caso, ahí sí lo dejamos entrar
+              // a mano a ese caso distinto (a propósito).
+              if (targetCaseId === null || targetCaseId === loggedCaseId) {
+                shouldRedirectToCaso = true;
+              }
             }
           }
-          
+
           if (shouldRedirectToCaso) {
             const targetUrl = request.nextUrl.searchParams.get("next") || "/caso";
             return NextResponse.redirect(new URL(targetUrl, request.url));

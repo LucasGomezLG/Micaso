@@ -4,6 +4,7 @@ import { dbDelete, dbGet, dbUpdate } from "./db";
 import { DEMO_CASE_ID, SEED_CHECKLIST, SEED_CRITERIA, SEED_HOUSES } from "./seed";
 import { buildChecklistTemplate } from "./checklistTemplates";
 import { getCase } from "./cases";
+import { deleteCaseSubscriptions } from "./push";
 import { isOverdue } from "./format";
 import { ChecklistItem, Criteria, House, HouseChecklistItem, HouseComment, HouseStatus, LoanInfo, PIPELINE_STATUSES, SearchBrief } from "./types";
 
@@ -29,14 +30,19 @@ function ownBlobUrls(images: string[]): string[] {
   });
 }
 
-/** Borra las casas, el checklist y los criterios de un caso — usado por
- * el borrado definitivo desde /superadmin (ver lib/cases.ts deleteCase,
- * que borra el caso en sí; el caller llama a las dos). Irreversible a
- * propósito, no hay soft-delete acá. */
+/** Borra las casas, el checklist, los criterios y las suscripciones Web
+ * Push de un caso — usado por el borrado definitivo desde /superadmin
+ * (ver lib/cases.ts deleteCase, que borra el caso en sí; el caller llama
+ * a las dos). Irreversible a propósito, no hay soft-delete acá. */
 export async function deleteCaseData(caseId: string): Promise<void> {
   const houses = await getHouses(caseId).catch(() => []);
   const blobUrls = ownBlobUrls(houses.flatMap((h) => h.images));
-  await Promise.all([dbDelete(housesKey(caseId)), dbDelete(checklistKey(caseId)), dbDelete(criteriaKey(caseId))]);
+  await Promise.all([
+    dbDelete(housesKey(caseId)),
+    dbDelete(checklistKey(caseId)),
+    dbDelete(criteriaKey(caseId)),
+    deleteCaseSubscriptions(caseId),
+  ]);
   if (blobUrls.length > 0) await del(blobUrls).catch(() => {});
 }
 

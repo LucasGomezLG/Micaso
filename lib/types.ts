@@ -220,6 +220,12 @@ export interface Case {
   /** Cuándo fue la última vez que la familia ingresó o interactuó
    * con este caso. Se actualiza mediante un ping background. */
   familyLastSeenAt?: string | null;
+  /** Prueba de consentimiento expreso (clickwrap) de los Términos y la
+   * Política de privacidad — versión aceptada y fecha del primer
+   * "acepto" real, no del último login. `null`/ausente en casos
+   * creados antes de que esto existiera. Ver lib/legal.ts y
+   * lib/cases.ts recordTermsAcceptance. */
+  terminos?: { version: string; aceptadoEn: string } | null;
   createdAt: string;
   updatedAt: string;
 }
