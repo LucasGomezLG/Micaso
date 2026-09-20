@@ -268,6 +268,12 @@ export default function CasasBoard({
 
       {/* Barra de etapas (Embudo simplificado) */}
       <div className="flex flex-col gap-2.5">
+        {/* Wrapper relative solo para el degradé de "hay más a la derecha"
+         * en celular — el div scrolleable de abajo no puede posicionarlo
+         * él mismo porque, al ser overflow-x-auto, un hijo absolute
+         * quedaría anclado al contenido (se movería con el scroll) en vez
+         * de quedar fijo contra el borde visible de la pantalla. */}
+        <div className="relative">
         <div className="-mx-4 flex items-center justify-between gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
           <div className="flex shrink-0 items-center gap-2">
             {STAGES.map((s) => {
@@ -347,6 +353,12 @@ export default function CasasBoard({
             </button>
           </div>
         </div>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute right-0 top-0 bottom-1 w-10 sm:hidden"
+          style={{ background: "linear-gradient(to right, transparent, var(--paper))" }}
+        />
+        </div>
 
         {/* Fila secundaria: sub-filtros de la etapa activa (si tiene sub-estados) */}
         {currentStageDef && currentStageDef.statuses.length > 0 && (
@@ -364,10 +376,9 @@ export default function CasasBoard({
               onClick={() => setSubStatus("todas")}
               className="rounded-lg px-2.5 py-1 font-medium transition-all"
               style={{
-                background: subStatus === "todas" ? "var(--surface)" : "transparent",
-                color: subStatus === "todas" ? "var(--ink)" : "var(--ink-muted)",
-                boxShadow: subStatus === "todas" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-                border: `1px solid ${subStatus === "todas" ? "var(--border-strong)" : "transparent"}`,
+                background: subStatus === "todas" ? "var(--accent-soft)" : "transparent",
+                color: subStatus === "todas" ? "var(--accent)" : "var(--ink-muted)",
+                border: `1px solid ${subStatus === "todas" ? "var(--accent)" : "transparent"}`,
               }}
             >
               Todas ({counts.byStage[currentStageDef.id]})
@@ -382,10 +393,9 @@ export default function CasasBoard({
                   onClick={() => setSubStatus(st)}
                   className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 font-medium transition-all"
                   style={{
-                    background: active ? "var(--surface)" : "transparent",
-                    color: active ? "var(--ink)" : count === 0 ? "var(--ink-faint)" : "var(--ink-muted)",
-                    boxShadow: active ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-                    border: `1px solid ${active ? "var(--border-strong)" : "transparent"}`,
+                    background: active ? "var(--accent-soft)" : "transparent",
+                    color: active ? "var(--accent)" : count === 0 ? "var(--ink-faint)" : "var(--ink-muted)",
+                    border: `1px solid ${active ? "var(--accent)" : "transparent"}`,
                   }}
                 >
                   <span>{label}</span>
