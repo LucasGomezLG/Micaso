@@ -839,6 +839,35 @@ Lo mínimo que necesita el panel para ser útil desde el primer día:
 > (`z-30`): el botón de guardar quedaba tapado en mobile. Subidos a
 > `z-50`, mismo nivel que el resto de los modales de la app.
 
+> **Encontrado y arreglado (20 sept 2026): un corredor sin suscripción
+> activa no tenía forma de volver a pagar desde su propio panel.**
+> Auditoría propia de `/panel/plan` y `PanelDashboard.tsx`, sin que nadie
+> lo reportara todavía — dos bugs relacionados, el segundo más grave que
+> el primero.
+> - **`/panel/plan`:** `isCurrent = broker.plan === pKey` no miraba
+>   `subscriptionStatus` — un corredor `atrasada`/`cancelada`, o con la
+>   prueba de 14 días vencida (`subscriptionStatus` se queda en
+>   `"prueba"` para siempre, nada lo cambia solo — ver el detalle en
+>   sección 9), veía su plan de siempre marcado "Plan en uso" con el
+>   botón deshabilitado, sin ningún banner que explicara por qué ni
+>   ningún camino para pagar de nuevo. **Arreglado:**
+>   `hasWorkingSubscription` distingue "prueba vigente" de "prueba
+>   vencida pero el campo sigue diciendo prueba"; el botón de suscripción
+>   vuelve a aparecer (con la etiqueta "Reactivar este plan") para esos
+>   tres estados, y un banner nuevo explica el motivo.
+> - **`PanelDashboard.tsx` (más grave): el componente entero desaparecía
+>   con `activeCount === 0`** — exactamente el estado de un corredor al
+>   que se le bajaron todos los casos a `solo_lectura` por impago
+>   (`downgradeCasesForInactiveBrokers`, sección 9). Es el único lugar de
+>   todo `/panel` con un link a `/panel/plan`; ocultarlo tapaba la única
+>   salida visible justo cuando más hacía falta. **Arreglado:** se sacó
+>   el `return null`.
+> - De paso, el texto de "Garantías y preguntas sobre cobro" en la misma
+>   página seguía diciendo que "la pasarela automática con Mercado Pago
+>   está en desarrollo" y que se coordina por WhatsApp — desactualizado
+>   desde que el checkout automático quedó funcionando (sección 9).
+>   Corregido.
+
 ## 7. Tu panel de super-admin
 
 Una capa más arriba de todo: vos administrando la plataforma completa, no
@@ -967,6 +996,38 @@ demasiados corredores para tocarlos a mano de a uno.
 > (`getCaseForBroker`, 404 si el caso no es del corredor logueado), mismo
 > modal de confirmación centrado que cerrar/reabrir/regenerar clave en
 > `CaseRow`. Reutiliza `deleteCase`/`deleteCaseData`, sin cambios ahí.
+
+> **Ajustes de soporte y un chequeo real de "desbloquear" un corredor
+> borrado (20 sept 2026).**
+> - Reactivar a mano un corredor (`subscriptionStatus` → `"activa"`)
+>   desde `AdminBrokerRow`/`AdminBrokerEditor` **no reabre solo** los
+>   casos que quedaron en `solo_lectura` por el corte automático — el
+>   modelo no distingue eso de un cierre manual del corredor (mismo
+>   campo `Case.estado`), así que reabrir a ciegas podría deshacer un
+>   cierre real. En vez de automatizarlo, ahora sale un toast recordando
+>   revisarlos y reabrirlos a mano.
+> - El texto de `/superadmin` ("plan y estado se editan a mano hasta que
+>   Mercado Pago esté conectado") y el comentario de `PATCH
+>   /api/superadmin/brokers/[id]` decían lo mismo desde antes de que el
+>   webhook de MP estuviera en pie — corregidos para explicar que el
+>   editor manual es un override de soporte, no la única vía.
+> - Nueva tarjeta "Ingreso mensual estimado" en el dashboard, calculada
+>   con `MP_PLAN_PRICES` × corredores en `subscriptionStatus: "activa"`
+>   (sin el plan "a medida", que no tiene precio fijo) — sin esto no
+>   había ningún número de negocio a la vista sin ir a mirar Mercado Pago
+>   aparte.
+> - **Confirmado con un test real, no solo lectura de código: borrar un
+>   corredor y volver a darlo de alta con el mismo email desde "Dar de
+>   alta un corredor" sí le saca el bloqueo.** Lucas reportó una cuenta
+>   borrada antes de este cambio que seguía sin acceso ni aparecía en la
+>   lista — esto último es esperado (un corredor borrado sale del índice
+>   `all_broker_ids`, no hay fila para "restaurar"), lo que hacía falta
+>   confirmar es que recrearlo funciona. Script de prueba contra el store
+>   local: crear → `deleteBroker` → `getOrCreateBroker` con el mismo
+>   email → el registro vuelve a existir y el tombstone (`RT-01`, ver
+>   sección 9) queda limpio — mismo mecanismo que ya usa "Dar de alta un
+>   corredor". Se sumó una aclaración en ese modal para que quede
+>   documentado como el camino correcto, no solo implícito en el código.
 
 ## 8. Qué cambia respecto al código de Casa
 
@@ -1896,6 +1957,46 @@ grande por clave.
 > confirmar del todo) a una edición manual del store hecha por fuera del
 > server — es probable que este bug ya estuviera contribuyendo desde
 > antes.
+
+> **Tres bugs reales de sesión encontrados y arreglados (20 sept 2026),
+> dos de ellos reportados por Lucas probando a mano.**
+> - **Cuenta de corredor borrada, pantalla en blanco.**
+>   `getCurrentBroker()` ya devolvía `null` a propósito para una cuenta
+>   tombstoneada (RT-01, arriba) — pero `app/panel/page.tsx` no
+>   distinguía ese caso de nada, y terminaba sin renderizar contenido (ni
+>   onboarding ni mensaje), indistinguible de la app rota. Decisión
+>   tomada con Lucas: mantener el bloqueo (protección real contra abuso
+>   de la prueba gratis), pero mostrar un mensaje claro ("Esta cuenta ya
+>   no tiene acceso a Micaso") con un botón para volver al inicio, en vez
+>   de una pantalla vacía.
+> - **El caso demo se quedaba atrapado, sin forma de salir ni volver a la
+>   landing.** `Nav.tsx` `handleLogout` para `isDemo` solo hacía
+>   `router.push("/")`, sin borrar la cookie de sesión — como seguía
+>   viva, `proxy.ts` devolvía a `/caso` apenas la landing intentaba
+>   cargar (el mismo bypass de sesión ya activa que la sección 4
+>   documenta). **Arreglado:** el demo ahora pasa por el mismo `/api/
+>   caso/logout` que cualquier caso (salteando solo el paso de dar de
+>   baja push, que el demo nunca tiene habilitado).
+> - **Ese mismo `/api/caso/logout` devolvía 403 al intentar arreglarlo —
+>   un segundo bug, más viejo, debajo del primero.** `checkCaseAccess` en
+>   `proxy.ts` bloquea cualquier POST/PUT/PATCH/DELETE hacia `/api/*`
+>   para el caso demo o un caso en `solo_lectura` — pero `/api/caso/
+>   logout` no muta ningún dato del caso, solo borra la cookie del
+>   navegador, y caía en esa misma regla igual que `/api/scrape` ya tenía
+>   una excepción explícita por el mismo motivo. **Arreglado** con la
+>   misma excepción. De paso corrige el caso real (no solo el demo): una
+>   familia con el caso pausado por impago tampoco podía cerrar sesión
+>   antes de este fix. **Verificado contra un servidor de dev real** con
+>   tres casos (activo, solo_lectura, demo): `/api/caso/logout` pasa a
+>   200 en los tres (antes 403 en los últimos dos) y borra la cookie de
+>   verdad (`Set-Cookie: case_id=; Expires=1970`); de control, `POST
+>   /api/houses` sigue devolviendo 403 para solo_lectura y demo — la
+>   protección contra mutar datos reales no se tocó, solo el logout
+>   quedó exento.
+> - De paso: los tres botones de "cerrar sesión" de la app (familia/demo
+>   en `Nav.tsx`, corredor en `PanelLogoutButton.tsx`) ahora se
+>   deshabilitan y muestran un spinner mientras la request está en curso,
+>   para que un doble toque no dispare dos logouts en paralelo.
 
 ## 10. Fuera de alcance (v1)
 
