@@ -6,9 +6,20 @@ import { useRouter } from "next/navigation";
 import { Check, ArrowRight, User, Building2, Star, CheckSquare, X } from "lucide-react";
 import { MicasoMark } from "@/components/MicasoMark";
 import { useModalScrollLock } from "@/lib/hooks";
+import { TipoCaso } from "@/lib/types";
 
 const ONBOARDED_KEY_PREFIX = "micaso-client-onboarded:";
 const AUTHOR_KEY = "casa-comment-author";
+
+// Mismo criterio que INTRO (app/caso/page.tsx) y SUBTITLE
+// (ChecklistClient.tsx) — "escribanía" y la calculadora son cosas de
+// comprar con crédito, no existen para un caso de alquiler (que ni
+// siquiera tiene el link a la calculadora en el menú, ver Nav.tsx).
+const STEP3_CHECKLIST_TEXT: Record<TipoCaso, string> = {
+  compra: "Sigan paso a paso los trámites pendientes (seña, escribanía) y simulen cuotas en la calculadora.",
+  alquiler: "Sigan paso a paso los trámites pendientes (depósito, garantía, contrato) hasta tener las llaves.",
+  otro: "Sigan paso a paso los trámites pendientes hasta cerrar la operación.",
+};
 
 interface ClientOnboardingModalProps {
   caseId: string;
@@ -18,6 +29,7 @@ interface ClientOnboardingModalProps {
   existingPeople?: string[];
   viewingAsBroker?: boolean;
   isDemo?: boolean;
+  tipoCaso?: TipoCaso;
 }
 
 export default function ClientOnboardingModal({
@@ -27,6 +39,7 @@ export default function ClientOnboardingModal({
   brokerImage,
   existingPeople = [],
   viewingAsBroker = false,
+  tipoCaso = "compra",
 }: ClientOnboardingModalProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -384,7 +397,7 @@ export default function ClientOnboardingModal({
                       3. Checklist y números claros
                     </p>
                     <p className="text-[11px] sm:text-xs leading-relaxed" style={{ color: "var(--ink-muted)" }}>
-                      Sigan paso a paso los trámites pendientes (seña, escribanía) y simulen cuotas en la calculadora.
+                      {STEP3_CHECKLIST_TEXT[tipoCaso]}
                     </p>
                   </div>
                 </div>

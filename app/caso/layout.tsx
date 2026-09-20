@@ -48,6 +48,7 @@ export default async function CasoLayout({ children }: LayoutProps<"/caso">) {
         existingPeople={kase?.people ?? []}
         viewingAsBroker={viewingAsBroker}
         isDemo={isDemo}
+        tipoCaso={kase?.tipoCaso ?? "compra"}
       />
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 pb-20 sm:pb-8 sm:px-6">
         {children}
