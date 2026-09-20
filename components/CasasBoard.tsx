@@ -235,10 +235,10 @@ export default function CasasBoard({
             {activeHouses.length} propiedades cargadas.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link
             href="/caso/casas/mapa"
-            className="inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium"
+            className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium"
             style={{ borderColor: "var(--border)", color: "var(--ink-muted)" }}
           >
             <Map size={15} /> Mapa
@@ -246,7 +246,7 @@ export default function CasasBoard({
           {destacadasCount > 0 && (
             <Link
               href="/caso/casas/comparar"
-              className="inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-colors"
+              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-colors"
               style={{
                 borderColor: "color-mix(in srgb, var(--gold) 50%, var(--border))",
                 color: "var(--gold)",
@@ -258,7 +258,7 @@ export default function CasasBoard({
           )}
           <button
             onClick={() => setShowAdd(true)}
-            className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold"
+            className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold"
             style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
           >
             <Plus size={15} /> Agregar casa

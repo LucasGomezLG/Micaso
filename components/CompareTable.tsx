@@ -17,6 +17,12 @@ function cell(className = ""): string {
 
 export default function CompareTable({ houses, loan }: { houses: House[]; loan: LoanInfo }) {
   const router = useRouter();
+  // Mismo criterio que HouseCard.tsx: sin bankMaxUsd ni ownFundsMaxUsd
+  // cargados (caso recién creado, o de alquiler/otro, que nunca completan
+  // estos campos) el cálculo de gastos de escritura no tiene con qué
+  // compararse y el badge salía en rojo ("no te alcanza") sin ningún dato
+  // real de crédito detrás.
+  const loanConfigured = loan.bankMaxUsd > 0 || loan.ownFundsMaxUsd > 0;
 
   async function unstar(id: string) {
     const res = await fetch(`/api/houses/${id}`, {
@@ -80,7 +86,7 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
     {
       label: "Plata necesaria",
       render: (h) => {
-        if (!h.priceUsd) return "—";
+        if (!h.priceUsd || !loanConfigured) return "—";
         const cash = cashNeededRange(h.priceUsd, loan.hasCredit ? loan.bankMaxUsd : 0);
         const fit =
           cash.high <= loan.ownFundsMaxUsd ? "gusto" : cash.low <= loan.ownFundsMaxUsd ? "pendiente" : "descartada";
@@ -168,7 +174,7 @@ export default function CompareTable({ houses, loan }: { houses: House[]; loan: 
         <div className="-mx-4 flex gap-3.5 overflow-x-auto px-4 pb-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
           {houses.map((h, index) => {
             const v = pricePerM2(h.priceUsd, h.superficieM2);
-            const cash = h.priceUsd ? cashNeededRange(h.priceUsd, loan.hasCredit ? loan.bankMaxUsd : 0) : null;
+            const cash = h.priceUsd && loanConfigured ? cashNeededRange(h.priceUsd, loan.hasCredit ? loan.bankMaxUsd : 0) : null;
             const fit = cash
               ? cash.high <= loan.ownFundsMaxUsd
                 ? "gusto"
