@@ -16,7 +16,7 @@ interface VapidKeys {
 }
 
 const VAPID_DB_KEY = "micaso:vapid_keys";
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:hola@micaso.com.ar";
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:luccaass96@gmail.com";
 
 const pushKey = (caseId: string) => `case:${caseId}:push_subscriptions`;
 

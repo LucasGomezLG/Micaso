@@ -14,4 +14,4 @@ export const SITE_URL =
     ? "https://www.micaso.com.ar"
     : (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000");
 
-export const CONTACT_EMAIL = "hola@micaso.com.ar";
+export const CONTACT_EMAIL = "luccaass96@gmail.com";
