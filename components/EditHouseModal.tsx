@@ -21,6 +21,7 @@ export default function EditHouseModal({
   const [title, setTitle] = useState(house.title);
   const [priceUsd, setPriceUsd] = useState(house.priceUsd !== null ? String(house.priceUsd) : "");
   const [zone, setZone] = useState(house.zone ?? "");
+  const [address, setAddress] = useState(house.address ?? "");
   const [ambientes, setAmbientes] = useState(house.ambientes !== null ? String(house.ambientes) : "");
   const [superficieM2, setSuperficieM2] = useState(
     house.superficieM2 !== null ? String(house.superficieM2) : ""
@@ -28,6 +29,7 @@ export default function EditHouseModal({
   const [cochera, setCochera] = useState<"unknown" | "yes" | "no">(
     house.cochera === true ? "yes" : house.cochera === false ? "no" : "unknown"
   );
+  const [aptoCredito, setAptoCredito] = useState<House["aptoCredito"]>(house.aptoCredito);
   const [images, setImages] = useState<string[]>(house.images);
   const [newImageUrl, setNewImageUrl] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -62,9 +64,11 @@ export default function EditHouseModal({
       title: title.trim() || house.url || "Propiedad sin título",
       priceUsd: priceUsd ? Number(priceUsd) : null,
       zone: zone.trim() || null,
+      address: address.trim() || null,
       ambientes: ambientes ? Number(ambientes) : null,
       superficieM2: superficieM2 ? Number(superficieM2) : null,
       cochera: cochera === "unknown" ? null : cochera === "yes",
+      aptoCredito,
       images,
       contactoNombre: contactoNombre.trim() || null,
       contactoTelefono: contactoTelefono.trim() || null,
@@ -145,13 +149,22 @@ export default function EditHouseModal({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1">
+            <label className="col-span-2 flex flex-col gap-1">
               <span className="eyebrow">Zona</span>
               <input
                 className="field"
                 value={zone}
                 onChange={(e) => setZone(e.target.value)}
                 placeholder="Sin dato"
+              />
+            </label>
+            <label className="col-span-2 flex flex-col gap-1">
+              <span className="eyebrow">Dirección</span>
+              <input
+                className="field"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Calle y altura, para el mapa y el calendario"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -163,6 +176,18 @@ export default function EditHouseModal({
               >
                 <option value="unknown">Sin dato</option>
                 <option value="yes">Sí</option>
+                <option value="no">No</option>
+              </Select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="eyebrow">Apto crédito</span>
+              <Select
+                className="field"
+                value={aptoCredito}
+                onChange={(e) => setAptoCredito(e.target.value as House["aptoCredito"])}
+              >
+                <option value="no_se">Sin dato</option>
+                <option value="si">Sí</option>
                 <option value="no">No</option>
               </Select>
             </label>

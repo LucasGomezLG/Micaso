@@ -52,7 +52,7 @@ const APTO_CREDITO_NEXT: Record<AptoCredito, AptoCredito> = {
 };
 
 const APTO_CREDITO_LABEL: Record<AptoCredito, string> = {
-  no_se: "Apto crédito: no sé",
+  no_se: "Apto crédito: sin dato",
   si: "Apto crédito: sí",
   no: "Apto crédito: no",
 };
@@ -437,9 +437,9 @@ export default function HouseCard({
         )}
 
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs" style={{ color: "var(--ink-muted)" }}>
-          {house.zone && (
+          {(house.address || house.zone) && (
             <span className="inline-flex items-center gap-1">
-              <MapPin size={13} /> {house.zone}
+              <MapPin size={13} /> {house.address || house.zone}
             </span>
           )}
           {house.ambientes && <span>{house.ambientes} amb.</span>}

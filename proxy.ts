@@ -108,8 +108,16 @@ export const proxy = auth(async (request) => {
 
   // Si ya tiene sesión activa de Google y va a /panel/login o /login:
   // no volver a pedirle login de Google, mandarlo directo a su panel o destino
-  // (a menos que venga a /login con parámetros de caso ?u=..., en cuyo caso quiere entrar al caso puntual):
-  const isCaseLoginWithParams = pathname === "/login" && request.nextUrl.searchParams.has("u");
+  // (a menos que venga a /login con parámetros de caso ?u=..., o con un
+  // magic link ?t= válido, en cuyo caso quiere entrar al caso puntual —
+  // sin el chequeo de `t` acá, un corredor/admin con sesión de Google
+  // activa que abre el link mágico de un caso quedaba atrapado en su
+  // propio panel sin poder entrar, porque este bloque corría antes de
+  // que nadie mirara el token):
+  const magicLoginToken = pathname === "/login" ? request.nextUrl.searchParams.get("t") : null;
+  const hasValidMagicToken = magicLoginToken ? verifyMagicLinkToken(magicLoginToken) !== null : false;
+  const isCaseLoginWithParams =
+    pathname === "/login" && (request.nextUrl.searchParams.has("u") || hasValidMagicToken);
   if (userEmail && !isCaseLoginWithParams && (pathname === "/panel/login" || pathname === "/login")) {
     const next = request.nextUrl.searchParams.get("next");
     if (next && next !== "/login" && next !== "/panel/login") {

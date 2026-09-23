@@ -9,6 +9,7 @@ import CriteriaEditor from "@/components/CriteriaEditor";
 import BriefEditor from "@/components/BriefEditor";
 import PeopleEditor from "@/components/PeopleEditor";
 import VisitaCoordinadaBadge from "@/components/VisitaCoordinadaBadge";
+import HouseQuickView from "@/components/HouseQuickView";
 import EmptyState from "@/components/EmptyState";
 import PushNotificationPrompt from "@/components/PushNotificationPrompt";
 import { House, HouseStatus, TipoCaso } from "@/lib/types";
@@ -106,14 +107,16 @@ export default async function HomePage() {
                   className="flex flex-col gap-2 rounded-xl border px-4 py-3 transition-colors hover:border-[var(--border-strong)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
                   style={{ background: "var(--surface)", borderColor: "var(--border)" }}
                 >
-                  <Link
-                    href={`/caso/casas#house-${house.id}`}
-                    className="flex min-w-0 flex-col gap-2 sm:flex-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3"
+                  <HouseQuickView
+                    house={house}
+                    loan={loan}
+                    people={people}
+                    className="flex min-w-0 flex-col gap-2 text-left sm:flex-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{house.title}</p>
                       <p className="truncate text-xs" style={{ color: "var(--ink-faint)" }}>
-                        {house.zone ?? house.source}
+                        {house.address ?? house.zone ?? house.source}
                       </p>
                     </div>
                     {house.proximaAccion && (
@@ -130,7 +133,7 @@ export default async function HomePage() {
                         )}
                       </span>
                     )}
-                  </Link>
+                  </HouseQuickView>
                   {hasUpcomingVisit(house, today) && (
                     <VisitaCoordinadaBadge house={house} label="Visita: " linkToAgenda />
                   )}
@@ -224,7 +227,7 @@ export default async function HomePage() {
             )}
             {brief.capitalZones.length > 0 && (
               <div>
-                <dt className="eyebrow mb-1.5">Si aparece algo en Capital</dt>
+                <dt className="eyebrow mb-1.5">Si aparece algo en</dt>
                 <dd className="flex flex-wrap gap-1.5">
                   {brief.capitalZones.map((zone, i) => (
                     <span

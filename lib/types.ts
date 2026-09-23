@@ -88,6 +88,12 @@ export interface House {
   source: string;
   priceUsd: number | null;
   zone: string | null;
+  /** Dirección exacta (calle y altura), a diferencia de `zone` (barrio o
+   * texto libre de zona) — usada para el pin del mapa cuando está
+   * cargada, para el `LOCATION` del evento de calendario, y para mostrar
+   * en la Agenda. Null hasta que alguien la carga a mano o el scraper la
+   * detecta en el aviso. */
+  address: string | null;
   lat: number | null;
   lng: number | null;
   ambientes: number | null;
@@ -134,6 +140,13 @@ export interface LoanInfo {
   hasCredit: boolean;
   bankName: string;
   bankMaxUsd: number;
+  /** Cotización del dólar (ARS) usada para autocalcular `bankMaxUsd` a
+   * partir de `approvedAmountArs` — 0 si nunca se cargó (el corredor
+   * sigue pudiendo tocar `bankMaxUsd` a mano en ese caso). No se
+   * recalcula solo: el autocálculo corre una sola vez, al apretar el
+   * botón "Autocalcular" en CriteriaEditor, para no pisar una edición
+   * manual posterior. */
+  fxRateArs: number;
   ownFundsMinUsd: number;
   ownFundsMaxUsd: number;
   approvedAmountArs: number;

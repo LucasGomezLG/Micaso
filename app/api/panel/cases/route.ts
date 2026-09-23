@@ -22,6 +22,12 @@ export async function POST(request: NextRequest) {
     initialPeople = body.people.split(",").map((p) => p.trim()).filter(Boolean);
   }
 
+  // El corredor queda como "persona" del caso desde que lo crea, sin
+  // tener que agregarse a mano — createCase() dedupe el array, así que
+  // no importa si también lo hubiera tipeado en el campo de personas.
+  const brokerFirstName = broker.nombreMarca.trim().split(/\s+/)[0];
+  if (brokerFirstName) initialPeople = [brokerFirstName, ...initialPeople];
+
   try {
     const kase = await createCase(broker.id, body.titulo, tipoCaso, initialPeople);
     const { createMagicLinkToken } = await import("@/lib/sessionToken");

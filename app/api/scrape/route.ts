@@ -78,7 +78,20 @@ type JsonLdGuess = {
   priceUsd: number | null;
   ambientes: number | null;
   superficieM2: number | null;
+  address: string | null;
 };
+
+/** schema.org da la dirección como string plano o como
+ * `PostalAddress.streetAddress` — mismo criterio que
+ * `numberFromQuantitativeValue` para las dos formas posibles. */
+function addressFromJsonLdAddress(raw: unknown): string | null {
+  if (typeof raw === "string") return raw.trim() || null;
+  if (raw && typeof raw === "object") {
+    const streetAddress = (raw as { streetAddress?: unknown }).streetAddress;
+    if (typeof streetAddress === "string" && streetAddress.trim()) return streetAddress.trim();
+  }
+  return null;
+}
 
 /** schema.org a veces da `floorSize`/`numberOfRooms` como número/string
  * plano y a veces como `{ "@type": "QuantitativeValue", "value": N }` —
@@ -122,15 +135,16 @@ function guessFromJsonLd(html: string): JsonLdGuess {
             : null;
         const ambientes = numberFromQuantitativeValue(item?.numberOfRooms);
         const superficieM2 = numberFromQuantitativeValue(item?.floorSize);
-        if (images.length || priceUsd || ambientes || superficieM2) {
-          return { images, priceUsd, ambientes, superficieM2 };
+        const address = addressFromJsonLdAddress(item?.address);
+        if (images.length || priceUsd || ambientes || superficieM2 || address) {
+          return { images, priceUsd, ambientes, superficieM2, address };
         }
       }
     } catch {
       // not valid JSON, or not the shape we expect — skip this block
     }
   }
-  return { images: [], priceUsd: null, ambientes: null, superficieM2: null };
+  return { images: [], priceUsd: null, ambientes: null, superficieM2: null, address: null };
 }
 
 /** Some sites (RE/MAX, etc.) don't put the price in text or JSON-LD at
@@ -237,6 +251,7 @@ function blockedAutoFillResponse(blockedUrl: URL) {
     priceUsd: null,
     ambientes: guess.ambientes,
     superficieM2: null,
+    address: null,
     blocked: true,
     notice:
       "Este sitio no permite autocompletar foto ni precio — completamos lo que pudimos sacar del link, cargá el resto a mano.",
@@ -405,12 +420,15 @@ export async function POST(request: NextRequest) {
       guessPriceFromEmbeddedJson(html);
     const ambientes = jsonLd.ambientes ?? guessAmbientesFromText(title, description);
     const superficieM2 = jsonLd.superficieM2 ?? guessSuperficieFromText(title, description);
+    const address =
+      jsonLd.address ?? extractItemprop(html, "streetAddress")[0]?.trim() ?? null;
 
     return NextResponse.json({
       title: title ? decodeHtmlEntities(title).trim() : null,
       images,
       description,
       priceUsd,
+      address: address || null,
       ambientes,
       superficieM2,
     });

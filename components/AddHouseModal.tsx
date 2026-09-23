@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { ClipboardPaste, Sparkles, X } from "lucide-react";
+import { AptoCredito } from "@/lib/types";
 import { proxiedImage } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/http";
 import { uploadHousePhoto } from "@/lib/photoUpload";
@@ -19,9 +20,11 @@ type Draft = {
   images: string[];
   priceUsd: string;
   zone: string;
+  address: string;
   ambientes: string;
   superficieM2: string;
   cochera: boolean;
+  aptoCredito: AptoCredito;
   notes: string;
   addedBy: string;
 };
@@ -34,9 +37,11 @@ function emptyDraft(people: string[]): Draft {
     images: [],
     priceUsd: "",
     zone: "",
+    address: "",
     ambientes: "",
     superficieM2: "",
     cochera: false,
+    aptoCredito: "no_se",
     notes: "",
     addedBy: people[0] ?? "",
   };
@@ -187,6 +192,7 @@ export default function AddHouseModal({
           ambientes: data.ambientes ? String(data.ambientes) : d.ambientes,
           superficieM2: data.superficieM2 ? String(data.superficieM2) : d.superficieM2,
           zone: zoneMatch || d.zone,
+          address: data.address || d.address,
         } : d));
         setScrapeMsg(data.notice || "Listo — revisá los datos y completá lo que falte.");
       }
@@ -239,9 +245,11 @@ export default function AddHouseModal({
         images: draft.images,
         priceUsd: draft.priceUsd ? Number(draft.priceUsd) : null,
         zone: draft.zone || null,
+        address: draft.address || null,
         ambientes: draft.ambientes ? Number(draft.ambientes) : null,
         superficieM2: draft.superficieM2 ? Number(draft.superficieM2) : null,
         cochera: draft.cochera,
+        aptoCredito: draft.aptoCredito,
         initialComments: draft.notes.trim() ? [draft.notes.trim()] : undefined,
         addedBy: draft.addedBy,
       }),
@@ -505,6 +513,16 @@ export default function AddHouseModal({
             />
           </label>
 
+          <label className="flex flex-col gap-1">
+            <span className="eyebrow">Dirección (opcional)</span>
+            <input
+              className="field"
+              placeholder="Calle y altura, para el mapa y el calendario"
+              value={draft.address}
+              onChange={(e) => setDraft({ ...draft, address: e.target.value })}
+            />
+          </label>
+
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -512,6 +530,19 @@ export default function AddHouseModal({
               onChange={(e) => setDraft({ ...draft, cochera: e.target.checked })}
             />
             <span className="text-sm">Tiene cochera</span>
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="eyebrow">Apto crédito</span>
+            <Select
+              className="field"
+              value={draft.aptoCredito}
+              onChange={(e) => setDraft({ ...draft, aptoCredito: e.target.value as AptoCredito })}
+            >
+              <option value="no_se">Sin dato</option>
+              <option value="si">Sí</option>
+              <option value="no">No</option>
+            </Select>
           </label>
 
           <label className="flex flex-col gap-1">

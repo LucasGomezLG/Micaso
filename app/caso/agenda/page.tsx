@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { CalendarDays, MapPin, Phone } from "lucide-react";
-import { getHouses } from "@/lib/store";
+import { getCriteria, getHouses } from "@/lib/store";
 import { getCaseId } from "@/lib/session";
+import { getCase } from "@/lib/cases";
 import { dayLabel, daysUntil, formatTime, formatUsd, todayAr } from "@/lib/format";
-import { House, STATUS_LABEL } from "@/lib/types";
+import { House, LoanInfo, STATUS_LABEL } from "@/lib/types";
 import AddToCalendarButton from "@/components/AddToCalendarButton";
 import EmptyState from "@/components/EmptyState";
+import HouseQuickView from "@/components/HouseQuickView";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +24,13 @@ function groupByDay(list: VisitHouse[]): Record<string, VisitHouse[]> {
 
 export default async function AgendaPage() {
   const caseId = await getCaseId();
-  const houses = await getHouses(caseId);
+  const [houses, criteria, kase] = await Promise.all([
+    getHouses(caseId),
+    getCriteria(caseId),
+    getCase(caseId),
+  ]);
+  const loan = criteria.loan;
+  const people = kase?.people ?? [];
   const today = todayAr();
 
   const activeHouses = houses.filter((h) => h.status !== "borrada");
@@ -89,7 +97,7 @@ export default async function AgendaPage() {
           ) : (
             <div className="flex flex-col gap-8">
               {Object.entries(proximasGroups).map(([day, dayHouses]) => (
-                <DayGroup key={day} day={day} today={today} houses={dayHouses} />
+                <DayGroup key={day} day={day} today={today} houses={dayHouses} loan={loan} people={people} />
               ))}
             </div>
           )}
@@ -104,7 +112,7 @@ export default async function AgendaPage() {
               </div>
               <div className="flex flex-col gap-6 opacity-75">
                 {Object.entries(pasadasGroups).map(([day, dayHouses]) => (
-                  <DayGroup key={day} day={day} today={today} houses={dayHouses} past />
+                  <DayGroup key={day} day={day} today={today} houses={dayHouses} loan={loan} people={people} past />
                 ))}
               </div>
             </section>
@@ -119,11 +127,15 @@ function DayGroup({
   day,
   today,
   houses,
+  loan,
+  people,
   past = false,
 }: {
   day: string;
   today: string;
   houses: VisitHouse[];
+  loan: LoanInfo;
+  people: string[];
   past?: boolean;
 }) {
   const isToday = !past && day === today;
@@ -177,16 +189,18 @@ function DayGroup({
                 {formatTime(house.visitaFecha)}
               </span>
               <div className="min-w-0 flex-1">
-                <Link
-                  href={`/caso/casas#house-${house.id}`}
-                  className="block truncate text-sm font-semibold hover:text-[var(--accent)] transition-colors"
+                <HouseQuickView
+                  house={house}
+                  loan={loan}
+                  people={people}
+                  className="block truncate text-left text-sm font-semibold hover:text-[var(--accent)] transition-colors"
                 >
                   {house.title}
-                </Link>
+                </HouseQuickView>
                 <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" style={{ color: "var(--ink-faint)" }}>
-                  {house.zone && (
+                  {(house.address || house.zone) && (
                     <span className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--ink-muted)" }}>
-                      <MapPin size={12} className="shrink-0" /> {house.zone}
+                      <MapPin size={12} className="shrink-0" /> {house.address || house.zone}
                     </span>
                   )}
                   {house.priceUsd !== null && (
@@ -223,8 +237,10 @@ function DayGroup({
               </div>
             ) : house.status === "coordinada" ? (
               <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto pt-1 sm:pt-0">
-                <Link
-                  href={`/caso/casas#house-${house.id}`}
+                <HouseQuickView
+                  house={house}
+                  loan={loan}
+                  people={people}
                   className="inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all hover:brightness-95 active:scale-95"
                   style={{
                     borderColor: "var(--status-coordinada)",
@@ -233,7 +249,7 @@ function DayGroup({
                   }}
                 >
                   ¿Cómo les fue? Calificar →
-                </Link>
+                </HouseQuickView>
               </div>
             ) : (
               <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto pt-1 sm:pt-0">

@@ -7,6 +7,7 @@ test("buildVisitIcs devuelve null si la casa no tiene visitaFecha", () => {
     id: "h-test-1",
     title: "Casa sin visita",
     zone: "Palermo",
+    address: null,
     url: null,
     visitaFecha: null,
     contactoNombre: null,
@@ -20,6 +21,7 @@ test("buildVisitIcs genera un archivo .ics RFC5545 válido con offset UTC-3 y 1 
     id: "h-test-2",
     title: "Depto 3 amb, luminoso; con cochera",
     zone: "Belgrano, CABA",
+    address: null,
     url: "https://example.com/aviso-123",
     visitaFecha: "2026-09-17T15:30",
     contactoNombre: "Juan Pérez",
@@ -62,6 +64,7 @@ test("buildVisitIcs no permite CRLF injection vía house.url", () => {
     id: "h-test-3",
     title: "Depto con URL maliciosa",
     zone: null,
+    address: null,
     url: "https://example.com/aviso\r\nX-Injected:evil\r\nBEGIN:VALARM",
     visitaFecha: "2026-09-17T15:30",
     contactoNombre: null,
@@ -78,4 +81,22 @@ test("buildVisitIcs no permite CRLF injection vía house.url", () => {
   assert.ok(!rawLines.includes("X-Injected:evil"));
   assert.ok(!rawLines.some((l) => l === "BEGIN:VALARM"));
   assert.ok(ics.includes("URL:https://example.com/avisoX-Injected:evilBEGIN:VALARM\r\n"));
+});
+
+test("buildVisitIcs usa address en vez de zone en LOCATION cuando está cargada", () => {
+  const house: IcsHouse = {
+    id: "h-test-4",
+    title: "Depto con dirección exacta",
+    zone: "Belgrano, CABA",
+    address: "Av. Cabildo 1234",
+    url: null,
+    visitaFecha: "2026-09-17T15:30",
+    contactoNombre: null,
+    contactoTelefono: null,
+  };
+
+  const ics = buildVisitIcs(house, "https://micaso.com.ar/caso/casas");
+  assert.ok(ics !== null);
+  assert.ok(ics.includes("LOCATION:Av. Cabildo 1234\r\n"));
+  assert.ok(!ics.includes("LOCATION:Belgrano"));
 });

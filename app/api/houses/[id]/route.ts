@@ -25,11 +25,18 @@ export async function PATCH(
       ? (previousHouse?.priceUsd ?? null)
       : null;
 
-  if (typeof patch.zone === "string" && patch.zone !== previousHouse?.zone) {
-    const coords = await geocodeZone(patch.zone);
-    if (coords) {
-      patch.lat = coords.lat;
-      patch.lng = coords.lng;
+  const zoneChanged = typeof patch.zone === "string" && patch.zone !== previousHouse?.zone;
+  const addressChanged = typeof patch.address === "string" && patch.address !== previousHouse?.address;
+  if (zoneChanged || addressChanged) {
+    const effectiveAddress = typeof patch.address === "string" ? patch.address : previousHouse?.address;
+    const effectiveZone = typeof patch.zone === "string" ? patch.zone : previousHouse?.zone;
+    const query = effectiveAddress || effectiveZone;
+    if (query) {
+      const coords = await geocodeZone(query);
+      if (coords) {
+        patch.lat = coords.lat;
+        patch.lng = coords.lng;
+      }
     }
   }
 

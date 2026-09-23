@@ -69,14 +69,16 @@ const visitReviewSchema = z.object({
  * servidor; aceptarlos acá permitiría pisar el array entero con
  * cualquier cosa con la forma correcta (mismo riesgo que RT-04, ver
  * ARQUITECTURA.md). Tampoco `id`/`addedAt`/`updatedAt` (los pone el
- * servidor) ni `lat`/`lng` (los calcula geocodeZone a partir de `zone`,
- * ver app/api/houses/route.ts y app/api/houses/[id]/route.ts). */
+ * servidor) ni `lat`/`lng` (los calcula geocodeZone a partir de
+ * `address` o, si no hay, `zone` — ver app/api/houses/route.ts y
+ * app/api/houses/[id]/route.ts). */
 const housePatchableFields = {
   url: z.string().max(2000).nullable(),
   title: z.string().min(1).max(300),
   source: z.string().max(100),
   priceUsd: z.number().finite().nonnegative().nullable(),
   zone: z.string().max(200).nullable(),
+  address: z.string().max(300).nullable(),
   ambientes: z.number().int().nonnegative().max(50).nullable(),
   dormitorios: z.number().int().nonnegative().max(50).nullable(),
   cochera: z.boolean().nullable(),
@@ -149,6 +151,7 @@ const loanPatchSchema = z
     hasCredit: z.boolean(),
     bankName: z.string().max(200),
     bankMaxUsd: z.number().finite().nonnegative(),
+    fxRateArs: z.number().finite().nonnegative(),
     ownFundsMinUsd: z.number().finite().nonnegative(),
     ownFundsMaxUsd: z.number().finite().nonnegative(),
     approvedAmountArs: z.number().finite().nonnegative(),

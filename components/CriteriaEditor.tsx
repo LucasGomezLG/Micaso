@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { X } from "lucide-react";
 import { Criteria } from "@/lib/types";
 import { apiErrorMessage } from "@/lib/http";
+import { formatDecimalInput, parseDecimalInput } from "@/lib/format";
 import { useModalScrollLock } from "@/lib/hooks";
 
 export default function CriteriaEditor({ criteria }: { criteria: Criteria }) {
@@ -93,26 +94,16 @@ export default function CriteriaEditor({ criteria }: { criteria: Criteria }) {
                   onChange={(e) => setForm({ ...form, bankName: e.target.value })}
                 />
               </Field>
-              <Field label="Monto aprobado (ARS)">
-                <input
-                  type="number"
-                  className="field"
-                  value={form.approvedAmountArs}
-                  onChange={(e) =>
-                    setForm({ ...form, approvedAmountArs: Number(e.target.value) || 0 })
-                  }
-                />
-              </Field>
-              <Field label="Cuota aproximada (ARS)">
-                <input
-                  type="number"
-                  className="field"
-                  value={form.approvedInstallmentArs}
-                  onChange={(e) =>
-                    setForm({ ...form, approvedInstallmentArs: Number(e.target.value) || 0 })
-                  }
-                />
-              </Field>
+              <DecimalField
+                label="Monto aprobado (ARS)"
+                value={form.approvedAmountArs}
+                onChange={(n) => setForm({ ...form, approvedAmountArs: n })}
+              />
+              <DecimalField
+                label="Cuota aproximada (ARS)"
+                value={form.approvedInstallmentArs}
+                onChange={(n) => setForm({ ...form, approvedInstallmentArs: n })}
+              />
               <Field label="Tasa">
                 <input
                   type="text"
@@ -129,13 +120,35 @@ export default function CriteriaEditor({ criteria }: { criteria: Criteria }) {
                   onChange={(e) => setForm({ ...form, termMonths: Number(e.target.value) || 0 })}
                 />
               </Field>
+              <DecimalField
+                label="Cotización del dólar (ARS)"
+                value={form.fxRateArs}
+                onChange={(n) => setForm({ ...form, fxRateArs: n })}
+              />
               <Field label="Préstamo máximo del banco (USD)">
-                <input
-                  type="number"
-                  className="field"
-                  value={form.bankMaxUsd}
-                  onChange={(e) => setForm({ ...form, bankMaxUsd: Number(e.target.value) || 0 })}
-                />
+                <div className="flex gap-1.5">
+                  <input
+                    type="number"
+                    className="field"
+                    value={form.bankMaxUsd}
+                    onChange={(e) => setForm({ ...form, bankMaxUsd: Number(e.target.value) || 0 })}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        bankMaxUsd: Math.round(form.approvedAmountArs / form.fxRateArs),
+                      })
+                    }
+                    disabled={!(form.approvedAmountArs > 0 && form.fxRateArs > 0)}
+                    title="Recalcular a partir del Monto aprobado y la cotización del dólar"
+                    className="shrink-0 rounded-lg px-2.5 text-xs font-semibold disabled:opacity-40"
+                    style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+                  >
+                    Autocalcular
+                  </button>
+                </div>
               </Field>
               <Field label="Condiciones del banco">
                 <div className="flex flex-col gap-1.5">
@@ -259,5 +272,42 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="eyebrow">{label}</span>
       {children}
     </label>
+  );
+}
+
+/** Input de plata con coma decimal (formato argentino) — un
+ * `type="number"` nativo no deja tipear "," como separador decimal en la
+ * mayoría de los navegadores. Mantiene su propio string mientras se
+ * escribe (en vez de derivarlo de `value` en cada tecleo) para no borrar
+ * la coma que el usuario recién tipeó antes de que pueda seguir
+ * escribiendo los decimales; sincroniza el texto mostrado con el número
+ * real recién al perder el foco. */
+function DecimalField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (n: number) => void;
+}) {
+  const [text, setText] = useState(() => formatDecimalInput(value));
+
+  return (
+    <Field label={label}>
+      <input
+        type="text"
+        inputMode="decimal"
+        className="field"
+        value={text}
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (!/^\d*([.,]\d{0,2})?$/.test(raw)) return;
+          setText(raw);
+          onChange(parseDecimalInput(raw));
+        }}
+        onBlur={() => setText(formatDecimalInput(value))}
+      />
+    </Field>
   );
 }

@@ -72,7 +72,7 @@ function foldLine(line: string): string {
 
 export type IcsHouse = Pick<
   House,
-  "id" | "title" | "zone" | "url" | "visitaFecha" | "contactoNombre" | "contactoTelefono"
+  "id" | "title" | "zone" | "address" | "url" | "visitaFecha" | "contactoNombre" | "contactoTelefono"
 >;
 
 /** Genera el contenido de un archivo .ics para la visita coordinada de
@@ -103,7 +103,9 @@ export function buildVisitIcs(house: IcsHouse, caseUrl: string): string | null {
     `DTSTART:${toIcsUtcStamp(start)}`,
     `DTEND:${toIcsUtcStamp(end)}`,
     `SUMMARY:${escapeIcsText(`Visita: ${house.title}`)}`,
-    ...(house.zone ? [`LOCATION:${escapeIcsText(house.zone)}`] : []),
+    ...(house.address || house.zone
+      ? [`LOCATION:${escapeIcsText(house.address || house.zone || "")}`]
+      : []),
     `DESCRIPTION:${escapeIcsText(descriptionLines.join("\n"))}`,
     ...(house.url ? [`URL:${stripCrlf(house.url)}`] : []),
     "END:VEVENT",
@@ -136,8 +138,8 @@ export function buildGoogleCalendarUrl(house: IcsHouse, caseUrl: string): string
     dates: `${startStamp}/${endStamp}`,
     details: descriptionLines.join("\n"),
   });
-  if (house.zone) {
-    params.set("location", house.zone);
+  if (house.address || house.zone) {
+    params.set("location", house.address || house.zone || "");
   }
 
   return `https://calendar.google.com/calendar/render?${params.toString()}`;

@@ -17,6 +17,7 @@ export const SEED_CRITERIA: Criteria = {
     hasCredit: true,
     bankName: "BBVA",
     bankMaxUsd: 77000,
+    fxRateArs: 0,
     ownFundsMinUsd: 30000,
     ownFundsMaxUsd: 35000,
     approvedAmountArs: 117668100,
@@ -75,6 +76,7 @@ type SeedFields =
   | "highlighted"
   | "images"
   | "updatedAt"
+  | "address"
   | "superficieM2"
   | "contactoNombre"
   | "contactoTelefono"
@@ -115,6 +117,7 @@ function h(partial: Omit<House, SeedFields> & {
     proximaAccionFecha: null,
     visitaFecha: null,
     visitReview: null,
+    address: null,
     lat: null,
     lng: null,
     aptoCredito: "no_se",

@@ -55,6 +55,7 @@ const EMPTY_CRITERIA: Criteria = {
     hasCredit: true,
     bankName: "",
     bankMaxUsd: 0,
+    fxRateArs: 0,
     ownFundsMinUsd: 0,
     ownFundsMaxUsd: 0,
     approvedAmountArs: 0,
@@ -91,6 +92,7 @@ function sanitizeHousePatch(patch: Partial<House>): Partial<House> {
 }
 
 const NEW_FIELD_DEFAULTS = {
+  address: null,
   superficieM2: null,
   contactoNombre: null,
   contactoTelefono: null,
@@ -164,6 +166,7 @@ export async function addHouse(
     source: input.source || (input.url ? guessSource(input.url) : "Manual"),
     priceUsd: input.priceUsd ?? null,
     zone: input.zone ?? null,
+    address: input.address ?? null,
     lat: input.lat ?? null,
     lng: input.lng ?? null,
     ambientes: input.ambientes ?? null,
@@ -487,12 +490,22 @@ export async function deleteChecklistItem(caseId: string, id: string): Promise<b
   return deleted;
 }
 
+// Campos de `loan` agregados después de que ya hubiera casos guardados —
+// mismo mecanismo que NEW_FIELD_DEFAULTS para House (ver normalizeHouse):
+// se rellenan al leer, sin migrar los datos guardados en Redis.
+const LOAN_NEW_FIELD_DEFAULTS = { fxRateArs: 0 } as const;
+
+function normalizeCriteria(criteria: Criteria): Criteria {
+  return { ...criteria, loan: { ...LOAN_NEW_FIELD_DEFAULTS, ...criteria.loan } };
+}
+
 export const getCriteria = cache(async function getCriteria(caseId: string): Promise<Criteria> {
   const criteria = await dbGet<Criteria>(criteriaKey(caseId));
-  if (criteria !== null) return criteria;
+  if (criteria !== null) return normalizeCriteria(criteria);
   // Mismo riesgo de carrera que getHouses (ver ese comentario).
   const fallback = caseId === DEMO_CASE_ID ? SEED_CRITERIA : EMPTY_CRITERIA;
-  return dbUpdate<Criteria>(criteriaKey(caseId), (current) => current ?? fallback);
+  const result = await dbUpdate<Criteria>(criteriaKey(caseId), (current) => current ?? fallback);
+  return normalizeCriteria(result);
 });
 
 export async function updateCriteria(

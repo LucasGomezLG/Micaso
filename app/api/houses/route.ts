@@ -28,8 +28,9 @@ export async function POST(request: NextRequest) {
 
   let lat: number | undefined;
   let lng: number | undefined;
-  if (body.zone) {
-    const coords = await geocodeZone(body.zone);
+  const geocodeQuery = body.address || body.zone;
+  if (geocodeQuery) {
+    const coords = await geocodeZone(geocodeQuery);
     if (coords) {
       lat = coords.lat;
       lng = coords.lng;

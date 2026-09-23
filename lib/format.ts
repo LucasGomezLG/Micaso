@@ -134,6 +134,24 @@ export function daysAgoLabel(iso: string): string {
   return `hace ${daysAgo} días`;
 }
 
+/** Convierte texto tipeado a mano (coma o punto decimal, formato
+ * argentino o internacional) a un `number` real, redondeado a 2
+ * decimales — vacío o inválido da `0`, igual que ya hacían los inputs de
+ * plata de toda la vida (`Number(e.target.value) || 0`). */
+export function parseDecimalInput(raw: string): number {
+  const n = Number(raw.trim().replace(",", "."));
+  if (Number.isNaN(n)) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+/** Inverso de `parseDecimalInput`, para precargar un input de texto con
+ * el valor guardado — coma como separador decimal, sin separador de
+ * miles (para no pelear con la posición del cursor mientras se escribe). */
+export function formatDecimalInput(value: number): string {
+  const rounded = Math.round(value * 100) / 100;
+  return String(rounded).replace(".", ",");
+}
+
 export function formatPercent(value: number): string {
   return new Intl.NumberFormat("es-AR", {
     style: "percent",

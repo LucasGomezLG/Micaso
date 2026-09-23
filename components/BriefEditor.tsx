@@ -93,7 +93,7 @@ export default function BriefEditor({ brief }: { brief: SearchBrief }) {
             pill
           />
           <TagList
-            label="Si aparece algo en Capital"
+            label="Si aparece algo en"
             items={form.capitalZones}
             onChange={(items) => setForm({ ...form, capitalZones: items })}
             placeholder="Ej. Villa Devoto…"
