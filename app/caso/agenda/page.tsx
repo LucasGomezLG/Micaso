@@ -193,9 +193,9 @@ function DayGroup({
                   house={house}
                   loan={loan}
                   people={people}
-                  className="block truncate text-left text-sm font-semibold hover:text-[var(--accent)] transition-colors"
+                  className="block w-full min-w-0 text-left text-sm font-semibold hover:text-[var(--accent)] transition-colors"
                 >
-                  {house.title}
+                  <span className="block truncate">{house.title}</span>
                 </HouseQuickView>
                 <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" style={{ color: "var(--ink-faint)" }}>
                   {(house.address || house.zone) && (
