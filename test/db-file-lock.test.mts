@@ -50,3 +50,54 @@ test("dos instancias distintas del módulo db.ts (como dos rutas compiladas por 
   assert.equal(finalFromA?.length, totalPerSide * 2);
   assert.deepEqual(finalFromA, finalFromB);
 });
+
+// withLock (SEP23-20): el tope de casos del plan depende de leer varias
+// claves y después escribir, algo que dbUpdate no cubre. El test de
+// SEP23-20 en concurrency.test.mts pasa incluso sin el lock en modo local
+// (el lock de archivo del store termina serializando las altas de hecho),
+// así que el que prueba de verdad la exclusión es este.
+test("withLock: dos secciones con el mismo nombre nunca corren a la vez; con nombres distintos sí", async () => {
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const track = () => {
+    const state = { inside: 0, max: 0 };
+    const run = async () => {
+      state.inside++;
+      state.max = Math.max(state.max, state.inside);
+      await sleep(15);
+      state.inside--;
+    };
+    return { state, run };
+  };
+
+  const same = track();
+  await Promise.all(Array.from({ length: 5 }, () => dbA.withLock("seccion", same.run)));
+  assert.equal(same.state.max, 1);
+
+  // Con nombres distintos: la primera sección no sale hasta que la
+  // segunda entró. Si se bloquearan entre sí, la segunda nunca entraría
+  // y la primera se rinde a los 3 s. Con una barrera en vez de medir
+  // tiempos, así no depende de qué tan cargada esté la máquina.
+  let otherEntered!: () => void;
+  const entered = new Promise<void>((resolve) => (otherEntered = resolve));
+  const first = dbA.withLock("uno", () =>
+    Promise.race([
+      entered,
+      sleep(3000).then(() => {
+        throw new Error("la sección con otro nombre no pudo entrar mientras esta estaba adentro");
+      }),
+    ])
+  );
+  const second = dbB.withLock("otro", async () => otherEntered());
+  await Promise.all([first, second]);
+});
+
+test("withLock: se puede usar dbUpdate adentro sin trabarse, y el lock se libera aunque fn tire", async () => {
+  const result = await dbA.withLock("anidado", () => dbA.dbUpdate<number>("contador-anidado", (n) => (n ?? 0) + 1));
+  assert.equal(result, 1);
+
+  await assert.rejects(dbA.withLock("con-error", async () => { throw new Error("boom"); }), /boom/);
+  // Si el lock hubiera quedado tomado, esto esperaría los 10 s del lock vencido.
+  const start = Date.now();
+  await dbB.withLock("con-error", async () => {});
+  assert.ok(Date.now() - start < 2000, "el lock quedó tomado después del error");
+});

@@ -20,7 +20,7 @@ const dbDir = mkdtempSync(join(tmpdir(), "micaso-test-"));
 process.env.MICASO_LOCAL_DB_PATH = join(dbDir, "store.json");
 
 const { createCase, listCasesForBroker, renameCase, closeCase } = await import("../lib/cases");
-const { getHouses, addHouse, updateHouse, getChecklist, deleteChecklistItem } = await import(
+const { getHouses, addHouse, updateHouse, getChecklist, deleteChecklistItem, ownBlobUrls, blobPhotosToDelete } = await import(
   "../lib/store"
 );
 
@@ -85,4 +85,32 @@ test("un corredor no puede renombrar ni cerrar el caso de otro corredor", async 
   const legitClose = await closeCase(caseA.id, "broker-alpha");
   assert.ok(legitClose);
   assert.equal(legitClose.estado, "solo_lectura");
+});
+
+test("al borrar fotos de Blob, solo cuentan las subidas por ESTE caso (SEP23-08)", () => {
+  const blob = "https://abc123.public.blob.vercel-storage.com";
+  const images = [
+    blob + "/case-photos/caso-a/foto-1.jpg",
+    blob + "/case-photos/caso-b/foto-copiada.jpg",
+    blob + "/otra-carpeta/foto.jpg",
+    "https://http2.mlstatic.com/D_foto-del-portal.jpg",
+    "no es una url",
+  ];
+  assert.deepEqual(ownBlobUrls("caso-a", images), [blob + "/case-photos/caso-a/foto-1.jpg"]);
+  assert.deepEqual(ownBlobUrls("caso-b", images), [blob + "/case-photos/caso-b/foto-copiada.jpg"]);
+  assert.deepEqual(ownBlobUrls("caso", images), [], "un caseId que es prefijo de otro no borra fotos ajenas");
+});
+
+test("SEP23-08: una foto del caso X que otro caso del mismo corredor usa no se borra al borrar en X", async () => {
+  const blob = "https://abc123.public.blob.vercel-storage.com";
+  const x = await createCase("broker-fotos", "Caso X", "compra");
+  const y = await createCase("broker-fotos", "Caso Y", "compra");
+  const compartida = blob + "/case-photos/" + x.id + "/compartida.jpg";
+  const soloDeX = blob + "/case-photos/" + x.id + "/solo-x.jpg";
+  await addHouse(x.id, { url: "https://example.com/casa", addedBy: "Test", images: [compartida, soloDeX] });
+  await addHouse(y.id, { url: "https://example.com/casa", addedBy: "Test", images: [compartida] });
+
+  assert.deepEqual(await blobPhotosToDelete(x.id, "broker-fotos", [compartida, soloDeX]), [soloDeX]);
+  // Desde Y, ninguna de las dos es suya: no borra nada.
+  assert.deepEqual(await blobPhotosToDelete(y.id, "broker-fotos", [compartida]), []);
 });

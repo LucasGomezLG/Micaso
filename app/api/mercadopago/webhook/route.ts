@@ -7,6 +7,23 @@ import { PaymentRecord, Plan } from "@/lib/types";
 
 const MP_WEBHOOK_SECRET = process.env.MP_WEBHOOK_SECRET;
 
+/** Cancela en Mercado Pago una suscripción que el corredor ya reemplazó.
+ * cancelSubscription devuelve false (no tira) si Mercado Pago rechaza el
+ * PUT — antes ese caso no dejaba ningún rastro. Si falla, se vuelve a
+ * intentar con el próximo aviso de esa suscripción (ver
+ * mpReplacedPreapprovalIds en lib/types.ts). */
+async function cancelReplacedSubscription(oldId: string, brokerId: string, currentId: string | null): Promise<void> {
+  const cancelled = await cancelSubscription(oldId).catch((err) => {
+    console.error("Error cancelando una suscripción reemplazada:", err);
+    return false;
+  });
+  if (!cancelled) {
+    console.error(
+      `No se pudo cancelar la suscripción reemplazada ${oldId} del corredor ${brokerId} (vigente: ${currentId}) — se reintenta con su próximo aviso; si sigue, revisarla a mano en Mercado Pago`
+    );
+  }
+}
+
 // Mercado Pago envía eventos a esta URL
 export async function POST(request: Request) {
   try {
@@ -63,8 +80,17 @@ export async function POST(request: Request) {
     // Parsea el evento
     const body = JSON.parse(rawBody);
 
-    // El id del recurso viene en body.data.id o en body.id según la versión del webhook
-    const resourceId = body?.data?.id || body?.id;
+    // La firma cubre el `data.id` del query string, no el del body — así
+    // que ese es el único id que se procesa. Antes se tomaba el del body,
+    // y un request firmado capturado se podía reusar con otro body
+    // (SEP23-10, AUDITORIA-2026-09-23.md). Si el body trae un id distinto,
+    // algo no cuadra: se rechaza en vez de elegir uno.
+    const bodyId = body?.data?.id ?? body?.id;
+    if (bodyId !== undefined && bodyId !== null && String(bodyId) !== dataIdParam) {
+      console.error("Webhook de Mercado Pago con id del body distinto al firmado:", { dataIdParam, bodyId });
+      return NextResponse.json({ error: "Resource id mismatch" }, { status: 400 });
+    }
+    const resourceId = dataIdParam;
     const type = body?.type || body?.action; // type="subscription_preapproval"
     const topic = new URL(request.url).searchParams.get("topic") || type;
 
@@ -85,33 +111,59 @@ export async function POST(request: Request) {
 
       if (externalReference) {
         const [brokerId, planKey] = externalReference.split(":");
-        
-        if (status === "authorized") {
+        const broker = await getBroker(brokerId);
+        // SEP23-01 (AUDITORIA-2026-09-23.md): pausas y bajas solo cuentan
+        // si son de la suscripción VIGENTE del corredor. Cuando se
+        // confirma una nueva, la vieja se cancela acá abajo, y Mercado
+        // Pago avisa ese cambio con su propio webhook — sin este chequeo,
+        // ese aviso marcaba `cancelada` (y pasaba sus casos a solo
+        // lectura) a un corredor que acababa de pagar, mientras la nueva
+        // le seguía cobrando. Con igualdad estricta, un checkout
+        // abandonado que después vence tampoco toca a nadie.
+        const isCurrentSubscription = broker?.mpPreapprovalId === resourceId;
+
+        if (status === "authorized" && broker?.mpReplacedPreapprovalIds?.includes(resourceId)) {
+          // Una suscripción que este corredor ya reemplazó por otra y que
+          // sigue autorizada: su cancelación falló. Se reintenta, en vez de
+          // volver a tomarla como vigente — si no, su próximo aviso (por
+          // ejemplo, el cobro mensual) la ponía de nuevo como vigente y
+          // cancelaba la que el corredor acababa de contratar.
+          await cancelReplacedSubscription(resourceId, brokerId, broker.mpPreapprovalId);
+        } else if (status === "authorized") {
           // CON-03: si el corredor ya tenía otra suscripción activa (cambio
           // de plan, o un checkout repetido), recién ACÁ es seguro
           // cancelarla — no antes de crear el checkout nuevo, porque si
           // ese checkout nuevo nunca se confirma, el corredor se quedaría
           // sin ninguna suscripción activa. Cancelar solo cuando la nueva
           // ya está confirmada evita el doble cobro sin ese riesgo.
-          const broker = await getBroker(brokerId);
           const previousPreapprovalId = broker?.mpPreapprovalId;
-          if (previousPreapprovalId && previousPreapprovalId !== resourceId) {
-            await cancelSubscription(previousPreapprovalId).catch((err) => {
-              console.error("No se pudo cancelar la suscripción anterior tras confirmar la nueva:", err);
-            });
-          }
+          const replacesAnother = !!previousPreapprovalId && previousPreapprovalId !== resourceId;
+          // Primero guardar la nueva como vigente y recién después
+          // cancelar la vieja (SEP23-01): al revés, si el aviso de la
+          // vieja cancelada entraba en el medio, todavía figuraba como
+          // vigente y pasaba el chequeo de arriba. La vieja queda anotada
+          // como reemplazada (ver la rama de arriba).
           await updateBroker(brokerId, {
             subscriptionStatus: "activa",
             mpPreapprovalId: resourceId,
             plan: (planKey as Plan) || "para_arrancar",
+            ...(replacesAnother && {
+              mpReplacedPreapprovalIds: [
+                ...(broker?.mpReplacedPreapprovalIds ?? []).filter((id) => id !== previousPreapprovalId),
+                previousPreapprovalId,
+              ].slice(-10),
+            }),
           });
-        } else if (status === "paused") {
+          if (replacesAnother) {
+            await cancelReplacedSubscription(previousPreapprovalId, brokerId, resourceId);
+          }
+        } else if (status === "paused" && isCurrentSubscription) {
           // Cobro fallido / Tarjeta vencida / Fondos insuficientes
           await updateBroker(brokerId, {
             subscriptionStatus: "atrasada",
           });
           await downgradeCasesForInactiveBrokers(brokerId);
-        } else if (status === "cancelled") {
+        } else if (status === "cancelled" && isCurrentSubscription) {
           // Suscripción dada de baja
           await updateBroker(brokerId, {
             subscriptionStatus: "cancelada",

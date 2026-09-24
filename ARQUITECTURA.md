@@ -1998,6 +1998,126 @@ grande por clave.
 >   deshabilitan y muestran un spinner mientras la request está en curso,
 >   para que un doble toque no dispare dos logouts en paralelo.
 
+> **Auditoría de código (23 sept 2026): 22 hallazgos nuevos, dos graves y
+> reproducidos, ninguno arreglado todavía.** Informe completo, con
+> ubicación, arreglo propuesto, tests de reproducción listos para `test/`
+> y una sección de cobertura (qué se revisó y qué no), en
+> `AUDITORIA-2026-09-23.md`. Se hizo en dos pasadas el mismo día:
+> backend (seguridad, aislamiento multi-tenant, cobro), y después service
+> worker/PWA, scraper, geocoding, Server Components, costo y tests. Lo ya
+> resuelto o aceptado en esta sección no se volvió a reportar.
+>
+> - **SEP23-01 (alta, reproducido):** el fix de CON-03 (20 sept, más
+>   arriba) quedó incompleto. El webhook aplica `paused`/`cancelled` sin
+>   chequear que el evento sea de la suscripción vigente del corredor.
+>   Cuando confirma B y cancela A, el aviso de A cancelada marca al
+>   corredor `cancelada` y pasa sus casos a `solo_lectura`, mientras B
+>   sigue cobrando. El caso más expuesto es el de un corredor atrasado que
+>   vuelve a pagar.
+> - **SEP23-02 (alta, reproducido):** el autoservicio "Eliminar mi
+>   cuenta" (hallazgo #5 de `AUDITORIA-LEGAL-2026-09-19-Claude.md`,
+>   marcado ✓ ahí) solo borra al corredor, no sus casos, a diferencia del
+>   borrado desde `/superadmin`. Las familias siguen entrando, el cron no
+>   los baja nunca, y los datos quedan guardados pese a que el modal
+>   promete borrarlos.
+> - **Media:** `/api/image` funciona como proxy abierto vía la sesión
+>   demo pública y sigue redirects sin revisarlos (SEP23-03). "Regenerar
+>   clave" no revoca magic links ni sesiones (SEP23-04, con decisión
+>   pendiente de Lucas: si regenerar debe cerrar las sesiones abiertas).
+>   Las credenciales de caso salen de `Math.random()` (SEP23-05). El
+>   endpoint de Web Push no se valida y no tiene tope (SEP23-06).
+> - **Media, segunda pasada:** el `defaultCache` de Serwist guarda en el
+>   dispositivo páginas y `/api/*` autenticados (incluidos `/panel`, con
+>   las contraseñas y magic links de cada caso, y el backup completo), y
+>   nada lo borra al cerrar sesión (SEP23-16). No era la intención de la
+>   PWA del 18 sept, que solo buscaba precachear assets y mostrar
+>   `/offline`. Las regex del scraper tardan tiempo cuadrático con HTML
+>   armado a propósito: 273KB ya son 5,8 s en una sola regex (SEP23-17).
+>   Cualquiera puede dispararlo vía la sesión demo, igual que SEP23-03.
+> - **Baja:** 13 más (open redirect con `?next=`, borrado de Blob sin
+>   chequear el caso, contraseñas en el payload de `/superadmin`,
+>   contadores de Redis que pueden quedar sin vencimiento, `proxy.ts` sin
+>   tests, etc.) y un punto a confirmar: el caso demo público muestra datos
+>   reales del crédito de Lucas y Abril (SEP23-15). Además, quedan
+>   variables de entorno de Vercel por confirmar a mano (tabla en el
+>   informe).
+>
+> Verificaciones del mismo día: `tsc` limpio, `eslint` sin errores (4
+> warnings de imports sin usar), 64/64 tests, `npm run build` OK, y `npm
+> audit` con 2 altas de `browserslist` solo en build (SEP23-14; no correr
+> `--force`).
+
+> **Remediación, bloque 1 (23 sept 2026): SEP23-01 y SEP23-02
+> arreglados.** El detalle está en "Seguimiento de la remediación" de
+> `AUDITORIA-2026-09-23.md`.
+> - **SEP23-01:** el webhook de Mercado Pago solo aplica una pausa o una
+>   baja si es de la suscripción vigente del corredor. Al confirmar una
+>   nueva, primero la guarda y después cancela la vieja.
+> - **SEP23-02:** borrar un corredor pasa siempre por
+>   `deleteBrokerCascade` (`lib/brokerDeletion.ts`), tanto desde "Eliminar
+>   mi cuenta" como desde `/superadmin`. Cancela la suscripción viva
+>   (activa o atrasada) y borra sus casos con todos sus datos. Desde
+>   `/superadmin` ahora también se cancela la suscripción, cosa que antes
+>   no pasaba.
+> - **Tests:** con `MICASO_LOCAL_DB_PATH` puesto (el override de los
+>   tests), `lib/db.ts` ya no usa Redis aunque `.env.local` traiga
+>   credenciales. Antes, un `vercel env pull` hacía que `npm test` corriera
+>   contra la base de producción.
+>
+> **Decisiones de Lucas del mismo día:**
+> - Regenerar la clave de un caso cierra las sesiones abiertas de esa
+>   familia (SEP23-04).
+> - El demo no tiene que mostrar sus datos reales del crédito (SEP23-15).
+> - La PWA cachea solo `/caso`, para verlo sin señal, y lo borra al
+>   cerrar sesión. `/panel` y `/superadmin` no se cachean nunca (SEP23-16).
+> - Las variables de entorno de Vercel están confirmadas en producción.
+
+> **Remediación, bloques 2 a 5 (23 sept 2026): los 22 hallazgos de
+> `AUDITORIA-2026-09-23.md` quedaron arreglados en el código.** El detalle
+> de cada uno está en "Seguimiento de la remediación" de ese informe. Lo
+> que cambia cómo funciona el sistema:
+> - **Service worker (SEP23-16):** ya no usa el `defaultCache` de Serwist
+>   tal cual. Guarda en el dispositivo solo `/caso` (para verlo sin señal)
+>   y las fotos de `/api/image`, y se borra al cerrar sesión y al entrar a
+>   un caso (`lib/offlineCache.ts`). `/panel`, `/superadmin`, `/login` y
+>   toda la API van siempre a la red. La página `/offline` ahora sí se
+>   precachea (antes no, y el fallback nunca funcionó) y es pública en
+>   `proxy.ts`.
+> - **"Regenerar clave" corta todo (SEP23-04):** el caso guarda
+>   `credencialesRotadasEn`, y cualquier cookie o magic link emitido antes
+>   se rechaza. Ahora sí sirve para el caso de una clave o un link
+>   filtrado.
+> - **Demo público (SEP23-03, 17, 15):** ya no puede usar `/api/scrape`, y
+>   `/api/image` solo le sirve las fotos de sus propias casas. El resto de
+>   los casos tiene una cuota de imágenes. La semilla ya no tiene datos
+>   reales. Para cambiar el demo que ya está en producción está
+>   `scripts/reset-demo.mts`.
+> - **`withLock` (`lib/db.ts`, SEP23-20):** es un lock con nombre para
+>   decisiones que leen varias claves antes de escribir, algo que
+>   `dbUpdate` no cubre. Hoy lo usa el tope de casos del plan.
+> - **Headers de seguridad (SEP23-11)** en `next.config.ts`, y
+>   `safeNextPath` (`lib/safeNextPath.ts`) para todo `?next=`.
+> - **Scripts nuevos, de una sola vez:** `scripts/reset-demo.mts` y
+>   `scripts/purge-orphan-cases.mts` (casos sin corredor por SEP23-02).
+>   Las credenciales de producción van en `.env.produccion`, nunca en
+>   `.env.local`: si están ahí, `npm run dev` escribe en la base real.
+> - **Campo nuevo en el corredor, `mpReplacedPreapprovalIds`** (agregado
+>   en el repaso de código del mismo día): son las suscripciones de
+>   Mercado Pago que ya reemplazó. Si una de ellas vuelve a avisar que está
+>   autorizada (porque falló su cancelación), el webhook la cancela de
+>   nuevo en vez de tomarla como vigente.
+> - **Pendiente:** correr esos dos scripts contra producción después del
+>   deploy, y decidir si el historial de pagos se borra con la baja del
+>   corredor.
+
+> **Estado de la remediación (24 sept 2026): está en una rama, no en
+> `main`.** Todos los cambios de los bloques 1 a 5 están en
+> `fix/auditoria-2026-09-23`, subida a `origin`. `main` y producción
+> siguen sin ellos. Se mergean cuando pase la checklist de
+> `PRUEBAS-2026-09-24.md` (pruebas a mano en dev y en el build de
+> producción, más `scripts/check-redis.mts` contra Upstash). Al mergear,
+> actualizar esta nota.
+
 ## 10. Fuera de alcance (v1)
 
 Explícitamente afuera hasta tener señal real de que el resto funciona:

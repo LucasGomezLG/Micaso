@@ -7,13 +7,19 @@ const url =
 const token =
   process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
-const redis = url && token ? new Redis({ url, token }) : null;
-
 // Override solo para tests (ver test/isolation.test.ts) — así corren
 // contra un archivo temporal propio en vez de pisar `.data/store.json`,
 // que además usa el dev server local mientras se prueba a mano.
-const LOCAL_DB_PATH =
-  process.env.MICASO_LOCAL_DB_PATH || path.join(process.cwd(), ".data", "store.json");
+const TEST_DB_PATH = process.env.MICASO_LOCAL_DB_PATH;
+
+// Con el override de tests puesto, nunca Redis, aunque haya credenciales
+// cargadas: `npm test` lee `.env.local`, y un `vercel env pull` le
+// agrega KV_REST_API_URL/TOKEN de producción — sin este chequeo, los
+// tests (que crean y borran corredores y casos) terminaban corriendo
+// contra la base real (hallazgo del análisis de AUDITORIA-2026-09-23.md).
+const redis = url && token && !TEST_DB_PATH ? new Redis({ url, token }) : null;
+
+const LOCAL_DB_PATH = TEST_DB_PATH || path.join(process.cwd(), ".data", "store.json");
 
 async function readLocalStore(): Promise<Record<string, unknown>> {
   try {
@@ -55,22 +61,22 @@ const LOCK_PATH = LOCAL_DB_PATH + ".lock";
 const LOCK_STALE_MS = 10_000;
 const LOCK_RETRY_MS = 20;
 
-async function acquireFileLock(): Promise<void> {
+async function acquireFileLock(lockPath: string = LOCK_PATH): Promise<void> {
   for (;;) {
     try {
-      const handle = await fs.open(LOCK_PATH, "wx");
+      const handle = await fs.open(lockPath, "wx");
       await handle.close();
       return;
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
       try {
-        const stat = await fs.stat(LOCK_PATH);
+        const stat = await fs.stat(lockPath);
         if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
           // Nadie debería tardar 10s en un read-modify-write de un
           // archivo JSON local - si el lock lleva más que eso, es de un
           // proceso que murió sin liberarlo (ctrl-C a mitad de camino),
           // no una operación legítima en curso.
-          await fs.unlink(LOCK_PATH).catch(() => {});
+          await fs.unlink(lockPath).catch(() => {});
           continue;
         }
       } catch {
@@ -82,8 +88,56 @@ async function acquireFileLock(): Promise<void> {
   }
 }
 
-async function releaseFileLock(): Promise<void> {
-  await fs.unlink(LOCK_PATH).catch(() => {});
+async function releaseFileLock(lockPath: string = LOCK_PATH): Promise<void> {
+  await fs.unlink(lockPath).catch(() => {});
+}
+
+/** Spin-lock en Redis (SET NX + EX) — devuelve el token con el que se
+ * tomó, para liberarlo solo si sigue siendo nuestro. */
+async function acquireRedisLock(lockKey: string, ttlSeconds: number): Promise<string> {
+  const client = redis!;
+  const lockToken = crypto.randomUUID();
+  const startTime = Date.now();
+  // Intentamos adquirir el lock por hasta 5 segundos (CON-04)
+  while (Date.now() - startTime < 5000) {
+    const acquired = await client.set(lockKey, lockToken, { nx: true, ex: ttlSeconds });
+    if (acquired) return lockToken;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(`Timeout adquiriendo lock concurrente en Redis para la clave: ${lockKey}`);
+}
+
+async function releaseRedisLock(lockKey: string, lockToken: string): Promise<void> {
+  const client = redis!;
+  const currentLock = await client.get(lockKey);
+  if (currentLock === lockToken) {
+    await client.del(lockKey);
+  }
+}
+
+/** Sección crítica con nombre, para cuando una decisión depende de leer
+ * VARIAS claves y después escribir (algo que dbUpdate no cubre: su
+ * `mutate` es sincrónica y de una sola clave). Todo el que llame con el
+ * mismo `name` espera su turno. `fn` puede usar dbGet/dbSet/dbUpdate
+ * adentro: en local el lock es otro archivo, distinto del del store.
+ * Usado para el tope de casos del plan (SEP23-20, ver lib/cases.ts). */
+export async function withLock<T>(name: string, fn: () => Promise<T>): Promise<T> {
+  if (redis) {
+    const lockKey = `lock:${name}`;
+    const lockToken = await acquireRedisLock(lockKey, 15);
+    try {
+      return await fn();
+    } finally {
+      await releaseRedisLock(lockKey, lockToken);
+    }
+  }
+  const lockPath = `${LOCAL_DB_PATH}.${name.replace(/[^a-zA-Z0-9_-]/g, "_")}.lock`;
+  await acquireFileLock(lockPath);
+  try {
+    return await fn();
+  } finally {
+    await releaseFileLock(lockPath);
+  }
 }
 
 async function withLocalStoreLock<T>(fn: () => Promise<T>): Promise<T> {
@@ -134,34 +188,14 @@ export async function dbSet<T>(key: string, value: T): Promise<void> {
 export async function dbUpdate<T>(key: string, mutate: (current: T | null) => T): Promise<T> {
   if (redis) {
     const lockKey = `${key}:lock`;
-    const lockToken = crypto.randomUUID();
-    let locked = false;
-    const startTime = Date.now();
-
-    // Spin-lock: Intentamos adquirir el lock por hasta 5 segundos (CON-04)
-    while (Date.now() - startTime < 5000) {
-      const acquired = await redis.set(lockKey, lockToken, { nx: true, ex: 5 });
-      if (acquired) {
-        locked = true;
-        break;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-
-    if (!locked) {
-      throw new Error(`Timeout adquiriendo lock concurrente en Redis para la clave: ${key}`);
-    }
-
+    const lockToken = await acquireRedisLock(lockKey, 5);
     try {
       const current = await redis.get<T>(key);
       const next = mutate(current ?? null);
       await redis.set(key, next);
       return next;
     } finally {
-      const currentLock = await redis.get(lockKey);
-      if (currentLock === lockToken) {
-        await redis.del(lockKey);
-      }
+      await releaseRedisLock(lockKey, lockToken);
     }
   }
   return withLocalStoreLock(async () => {
@@ -184,8 +218,15 @@ type Counter = { count: number; expiresAt: number };
  * existe o si ya venció. Usado para rate limiting (ver lib/rateLimit.ts). */
 export async function dbIncrWithTtl(key: string, ttlSeconds: number): Promise<number> {
   if (redis) {
-    const count = await redis.incr(key);
-    if (count === 1) await redis.expire(key, ttlSeconds);
+    // Una sola transacción (MULTI/EXEC, un solo request HTTP a Upstash)
+    // en vez de INCR y después EXPIRE por separado: si el EXPIRE fallaba
+    // o la función se cortaba en el medio, la clave quedaba sin
+    // vencimiento y el contador bloqueaba para siempre — por ejemplo,
+    // `ratelimit:nominatim:global` apagaba el geocoding de toda la
+    // plataforma (SEP23-18, AUDITORIA-2026-09-23.md). `NX` pone el TTL
+    // solo si la clave no tiene uno: la ventana sigue fija desde el primer
+    // uso, y una clave que haya quedado sin TTL se arregla sola.
+    const [count] = await redis.multi().incr(key).expire(key, ttlSeconds, "NX").exec<[number, 0 | 1]>();
     return count;
   }
   return withLocalStoreLock(async () => {

@@ -1,7 +1,8 @@
 import { ChecklistItem, Criteria, House, HouseComment, VisitReview } from "./types";
 
-/** El único caso que arranca con datos reales (la búsqueda actual de
- * Lucas y Abril) en vez de vacío — ver lib/cases.ts (se auto-crea con
+/** El único caso que arranca con datos en vez de vacío: una búsqueda
+ * real, con los nombres, el banco y los números del crédito cambiados
+ * para no exponer los de nadie (SEP23-15, AUDITORIA-2026-09-23.md) — ver lib/cases.ts (se auto-crea con
  * las credenciales que ya se usaban: usuario "casa", clave "1234") y
  * lib/store.ts (único caso que se siembra con SEED_HOUSES/CHECKLIST/
  * CRITERIA). Cualquier caso nuevo que se cree de acá en más arranca
@@ -15,21 +16,21 @@ export const DEMO_CASE_ID = "demo";
 export const SEED_CRITERIA: Criteria = {
   loan: {
     hasCredit: true,
-    bankName: "BBVA",
-    bankMaxUsd: 77000,
+    bankName: "ICBC",
+    bankMaxUsd: 80000,
     fxRateArs: 0,
-    ownFundsMinUsd: 30000,
-    ownFundsMaxUsd: 35000,
-    approvedAmountArs: 117668100,
-    approvedInstallmentArs: 822753.04,
-    rateLabel: "7,5% + UVA",
+    ownFundsMinUsd: 25000,
+    ownFundsMaxUsd: 32000,
+    approvedAmountArs: 96500000,
+    approvedInstallmentArs: 698420.5,
+    rateLabel: "6,9% + UVA",
     termMonths: 360,
     conditions: [
-      "Seguro de auto contratado con BBVA",
-      "Seguro de hogar contratado con BBVA",
-      "Sueldo acreditado en cuenta BBVA",
+      "Seguro de auto contratado con ICBC",
+      "Seguro de hogar contratado con ICBC",
+      "Sueldo acreditado en cuenta ICBC",
     ],
-    moveOutDeadline: "2027-02-01",
+    moveOutDeadline: "2027-04-30",
   },
   brief: {
     mustHave: [
@@ -145,7 +146,7 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://http2.mlstatic.com/D_NQ_NP_927696-MLA113411888693_062026-O.webp",
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-09T12:44:56-03:00",
   }),
   h({
@@ -160,7 +161,7 @@ export const SEED_HOUSES: House[] = [
     cochera: true,
     image: "https://d1acdg20u0pmxj.cloudfront.net/listings/a88e4c1e-cc49-44e1-83cd-d7fd95b798a4/1080xAUTO/b1184419-2878-4e95-b078-f0ec52ff3f60.jpg",
     status: "no_gusto",
-    addedBy: "Lucas",
+    addedBy: "Martín",
     addedAt: "2026-09-09T12:45:56-03:00",
   }),
   h({
@@ -175,7 +176,7 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://www.argenprop.com/static-content/51847501/00f3a0d0-1439-4906-a1b9-7a44624101fb_u_medium.jpg",
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-09T12:54:31-03:00",
   }),
   h({
@@ -190,8 +191,8 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://imgar.zonapropcdn.com/avisos/1/00/57/06/46/54/720x532/1998097607.jpg?isFirstImage=true",
     status: "pendiente",
-    comments: [{ id: "1e4681dd-0138-4b40-b770-2132afd3b31a", author: "Abril", text: "No cumple el requisito de \"no refaccionar\".", createdAt: "2026-09-09T13:03:02-03:00" }],
-    addedBy: "Abril",
+    comments: [{ id: "1e4681dd-0138-4b40-b770-2132afd3b31a", author: "Sofía", text: "No cumple el requisito de \"no refaccionar\".", createdAt: "2026-09-09T13:03:02-03:00" }],
+    addedBy: "Sofía",
     addedAt: "2026-09-09T13:03:02-03:00",
   }),
   h({
@@ -205,7 +206,7 @@ export const SEED_HOUSES: House[] = [
     dormitorios: null,
     cochera: null,
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-09T13:03:56-03:00",
   }),
   h({
@@ -219,7 +220,7 @@ export const SEED_HOUSES: House[] = [
     dormitorios: null,
     cochera: null,
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-09T13:06:57-03:00",
   }),
   h({
@@ -233,7 +234,7 @@ export const SEED_HOUSES: House[] = [
     dormitorios: null,
     cochera: null,
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-09T13:08:36-03:00",
   }),
   h({
@@ -247,7 +248,7 @@ export const SEED_HOUSES: House[] = [
     dormitorios: null,
     cochera: null,
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-09T13:10:54-03:00",
   }),
   h({
@@ -262,7 +263,7 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://http2.mlstatic.com/D_NQ_NP_987982-MLA112723375598_062026-O.webp",
     status: "pendiente",
-    addedBy: "Lucas",
+    addedBy: "Martín",
     addedAt: "2026-09-09T13:37:38-03:00",
   }),
   h({
@@ -277,8 +278,8 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://http2.mlstatic.com/D_NQ_NP_747581-MLA117377119715_092026-O.webp",
     status: "pendiente",
-    comments: [{ id: "7f5a0319-c382-4a7b-b33e-07d454ebf6de", author: "Lucas", text: "\"La zona una mierda\" / re cerca de la Rana de Ballester.", createdAt: "2026-09-09T13:49:30-03:00" }],
-    addedBy: "Lucas",
+    comments: [{ id: "7f5a0319-c382-4a7b-b33e-07d454ebf6de", author: "Martín", text: "La zona no nos convence, queda cerca de la Rana de Ballester.", createdAt: "2026-09-09T13:49:30-03:00" }],
+    addedBy: "Martín",
     addedAt: "2026-09-09T13:49:30-03:00",
   }),
   h({
@@ -294,7 +295,7 @@ export const SEED_HOUSES: House[] = [
     image: "https://http2.mlstatic.com/D_NQ_NP_624807-MLA117086054261_092026-O.webp",
     status: "pendiente",
     highlighted: true,
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-09T22:20:28-03:00",
   }),
   h({
@@ -309,8 +310,8 @@ export const SEED_HOUSES: House[] = [
     cochera: true,
     image: "https://http2.mlstatic.com/D_NQ_NP_705218-MLA117171075035_092026-O.webp",
     status: "gusto",
-    comments: [{ id: "7c2d475a-98ab-46a0-a33c-9624a92643e5", author: "Abril", text: "Apto crédito hipotecario.", createdAt: "2026-09-09T22:31:19-03:00" }],
-    addedBy: "Abril",
+    comments: [{ id: "7c2d475a-98ab-46a0-a33c-9624a92643e5", author: "Sofía", text: "Apto crédito hipotecario.", createdAt: "2026-09-09T22:31:19-03:00" }],
+    addedBy: "Sofía",
     addedAt: "2026-09-09T22:31:19-03:00",
   }),
   h({
@@ -325,8 +326,8 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://d1v2p1s05qqabi.cloudfront.net/26039063/conversions/1785886149-thumbnail.webp",
     status: "pendiente",
-    comments: [{ id: "3ebf2b43-88cd-4e16-9c05-cf0cccb2d8fe", author: "Abril", text: "Cerca de la Roca lado 9 de julio, jardin dificil de cerrar.", createdAt: "2026-09-13T14:06:36.804Z" }],
-    addedBy: "Abril",
+    comments: [{ id: "3ebf2b43-88cd-4e16-9c05-cf0cccb2d8fe", author: "Sofía", text: "Cerca de la Roca lado 9 de julio, jardin dificil de cerrar.", createdAt: "2026-09-13T14:06:36.804Z" }],
+    addedBy: "Sofía",
     addedAt: "2026-09-10T14:47:20-03:00",
   }),
   h({
@@ -341,8 +342,8 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://d1v2p1s05qqabi.cloudfront.net/18550345/conversions/1760801347-thumbnail.webp",
     status: "descartada",
-    comments: [{ id: "4e897597-ad50-44fd-a215-d16da8a24232", author: "Lucas", text: "\"Qué lástima la zona, pero qué hermoso chalet\" — chalet lindo, zona floja.", createdAt: "2026-09-10T14:48:39-03:00" }],
-    addedBy: "Lucas",
+    comments: [{ id: "4e897597-ad50-44fd-a215-d16da8a24232", author: "Martín", text: "\"Qué lástima la zona, pero qué hermoso chalet\" — chalet lindo, zona floja.", createdAt: "2026-09-10T14:48:39-03:00" }],
+    addedBy: "Martín",
     addedAt: "2026-09-10T14:48:39-03:00",
   }),
   h({
@@ -357,8 +358,8 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://static.tokkobroker.com/pictures/35265123234539744381956956564907365783469888127802631276282135825070231080904.jpg",
     status: "pendiente",
-    comments: [{ id: "98ab4115-bcbd-4a71-887e-63409006d0a4", author: "Abril", text: "Comentario: \"enorme\".", createdAt: "2026-09-10T14:57:36-03:00" }],
-    addedBy: "Abril",
+    comments: [{ id: "98ab4115-bcbd-4a71-887e-63409006d0a4", author: "Sofía", text: "Comentario: \"enorme\".", createdAt: "2026-09-10T14:57:36-03:00" }],
+    addedBy: "Sofía",
     addedAt: "2026-09-10T14:57:36-03:00",
   }),
   h({
@@ -372,7 +373,7 @@ export const SEED_HOUSES: House[] = [
     dormitorios: null,
     cochera: true,
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-10T22:37:09-03:00",
   }),
   h({
@@ -386,7 +387,7 @@ export const SEED_HOUSES: House[] = [
     dormitorios: null,
     cochera: null,
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-10T22:38:33-03:00",
   }),
   h({
@@ -401,7 +402,7 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://http2.mlstatic.com/D_NQ_NP_914885-MLA114512899193_072026-O.webp",
     status: "descartada",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-10T22:56:53-03:00",
   }),
   h({
@@ -417,14 +418,14 @@ export const SEED_HOUSES: House[] = [
     image: "https://mfy-files-api-prod.mudafy.com/AR/publications/13892689/photo_1778410858268175213_photo-8637a58b-4c5f-11f1-bb65-1aba881b12b7.jpg",
     status: "pendiente",
     highlighted: true,
-    comments: [{ id: "53dd51bc-b19c-45af-b2b6-d872a115feb3", author: "Lucas", text: "Quieren ir a verla: sábado a cualquier horario, o de lunes a viernes después de las 18 (menos miércoles).", createdAt: "2026-09-11T13:39:05-03:00" }, { id: "ace6ba93-eb77-4f00-a948-3687394ccbf1", author: "Abril", text: "cerca de Balbin", createdAt: "2026-09-13T14:08:38.088Z" }],
-    addedBy: "Lucas",
+    comments: [{ id: "53dd51bc-b19c-45af-b2b6-d872a115feb3", author: "Martín", text: "Quieren ir a verla: sábado a cualquier horario, o de lunes a viernes después de las 18 (menos miércoles).", createdAt: "2026-09-11T13:39:05-03:00" }, { id: "ace6ba93-eb77-4f00-a948-3687394ccbf1", author: "Sofía", text: "cerca de Balbin", createdAt: "2026-09-13T14:08:38.088Z" }],
+    addedBy: "Martín",
     addedAt: "2026-09-11T13:39:05-03:00",
   }),
   h({
     id: "h20",
     url: "https://www.remax.com.ar/420691098-180?associate=421031128",
-    title: "Propiedad recomendada por Carolina",
+    title: "Propiedad recomendada por Valeria",
     source: "RE/MAX",
     priceUsd: 110000,
     zone: null,
@@ -433,14 +434,14 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://d1acdg20u0pmxj.cloudfront.net/listings/76d8676a-0433-4b5f-a9ee-c143d117c83e/1080xAUTO/0c113d5f-d4ee-4f83-a831-906ca54a0fc9.jpg",
     status: "pendiente",
-    comments: [{ id: "0769aec5-e41e-47b1-8208-84386cf2e556", author: "Carolina", text: "Carolina: \"Es diminuto, pero está divino\". Según Carolina, tiene el patio chico.", createdAt: "2026-09-11T16:31:04-03:00" }],
-    addedBy: "Carolina",
+    comments: [{ id: "0769aec5-e41e-47b1-8208-84386cf2e556", author: "Valeria", text: "Valeria: \"Es chiquito, pero está divino\". Según Valeria, tiene el patio chico.", createdAt: "2026-09-11T16:31:04-03:00" }],
+    addedBy: "Valeria",
     addedAt: "2026-09-11T16:31:04-03:00",
   }),
   h({
     id: "h21",
     url: "https://www.remax.com.ar/421071111-29?associate=421031128",
-    title: "Propiedad recomendada por Carolina",
+    title: "Propiedad recomendada por Valeria",
     source: "RE/MAX",
     priceUsd: 109000,
     zone: null,
@@ -449,7 +450,7 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://d1acdg20u0pmxj.cloudfront.net/listings/ac30b988-a51d-4569-8b0e-e7f269316d1f/1080xAUTO/c3e0863f-b2f5-4b92-9a50-cccd3acb3d70.jpg",
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-11T18:47:58-03:00",
   }),
   h({
@@ -464,7 +465,7 @@ export const SEED_HOUSES: House[] = [
     cochera: true,
     image: "https://http2.mlstatic.com/D_NQ_NP_936074-MLA112627879036_062026-O.webp",
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-11T19:30:46-03:00",
   }),
   h({
@@ -479,8 +480,8 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://http2.mlstatic.com/D_NQ_NP_728268-MLA117059898531_092026-O.webp",
     status: "pendiente",
-    comments: [{ id: "f8e5e1c2-39b8-479e-bf07-781069e7fad2", author: "Abril", text: "Poca información en el título, revisar la ficha.", createdAt: "2026-09-11T19:31:23-03:00" }],
-    addedBy: "Abril",
+    comments: [{ id: "f8e5e1c2-39b8-479e-bf07-781069e7fad2", author: "Sofía", text: "Poca información en el título, revisar la ficha.", createdAt: "2026-09-11T19:31:23-03:00" }],
+    addedBy: "Sofía",
     addedAt: "2026-09-11T19:31:23-03:00",
   }),
   h({
@@ -495,7 +496,7 @@ export const SEED_HOUSES: House[] = [
     cochera: true,
     image: "https://http2.mlstatic.com/D_NQ_NP_720261-MLA109231217838_042026-O.webp",
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-11T19:41:33-03:00",
   }),
   h({
@@ -511,8 +512,8 @@ export const SEED_HOUSES: House[] = [
     image: "https://http2.mlstatic.com/D_NQ_NP_933483-MLA115638705298_092026-O.webp",
     status: "pendiente",
     highlighted: true,
-    comments: [{ id: "b6fab6ab-3892-431f-9765-2c6b29422b3c", author: "Abril", text: "\"Amiga, queremos ver este\" — Abril.", createdAt: "2026-09-12T01:50:44-03:00" }, { id: "f5d4e4a0-ee41-4c39-bf39-f013567ae9e4", author: "Abril", text: "el patio es chiquito pero cerca de la mitre", createdAt: "2026-09-13T14:12:51.642Z" }],
-    addedBy: "Abril",
+    comments: [{ id: "b6fab6ab-3892-431f-9765-2c6b29422b3c", author: "Sofía", text: "Queremos ver este.", createdAt: "2026-09-12T01:50:44-03:00" }, { id: "f5d4e4a0-ee41-4c39-bf39-f013567ae9e4", author: "Sofía", text: "el patio es chiquito pero cerca de la mitre", createdAt: "2026-09-13T14:12:51.642Z" }],
+    addedBy: "Sofía",
     addedAt: "2026-09-12T01:50:44-03:00",
   }),
   h({
@@ -527,7 +528,7 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://http2.mlstatic.com/D_NQ_NP_898081-MLA114983564742_082026-O.webp",
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-12T01:52:46-03:00",
   }),
   h({
@@ -542,7 +543,7 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://mfy-files-api-prod.mudafy.com/AR/publications/778030/photo_1741163273962985221_24929942_standard.jpg",
     status: "descartada",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-12T09:33:54-03:00",
   }),
   h({
@@ -558,7 +559,7 @@ export const SEED_HOUSES: House[] = [
     image: "https://static1.adinco.net/3703946_p/medium_u_6a0b30440e2b1.jpg",
     status: "pendiente",
     highlighted: true,
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-12T09:42:47-03:00",
   }),
   h({
@@ -574,8 +575,8 @@ export const SEED_HOUSES: House[] = [
     image: "https://d1acdg20u0pmxj.cloudfront.net/listings/76d8676a-0433-4b5f-a9ee-c143d117c83e/1080xAUTO/0c113d5f-d4ee-4f83-a831-906ca54a0fc9.jpg",
     status: "pendiente",
     highlighted: true,
-    comments: [{ id: "964c6a72-0538-46f9-89d4-4acaeae9c903", author: "Abril", text: "Duplicado de h20 (misma propiedad de RE/MAX, dos links distintos). Nota original: \"Según Carolina, tiene el patio chico.\"", createdAt: "2026-09-12T11:13:17-03:00" }],
-    addedBy: "Abril",
+    comments: [{ id: "964c6a72-0538-46f9-89d4-4acaeae9c903", author: "Sofía", text: "Duplicado de h20 (misma propiedad de RE/MAX, dos links distintos). Nota original: \"Según Valeria, tiene el patio chico.\"", createdAt: "2026-09-12T11:13:17-03:00" }],
+    addedBy: "Sofía",
     addedAt: "2026-09-12T11:13:17-03:00",
   }),
   h({
@@ -590,7 +591,7 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://http2.mlstatic.com/D_NQ_NP_920688-MLA112849152592_072026-O.webp",
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-12T11:15:11-03:00",
   }),
   h({
@@ -605,7 +606,7 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://http2.mlstatic.com/D_NQ_NP_605908-MLA116761578903_082026-O.webp",
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-12T12:18:56-03:00",
   }),
   h({
@@ -620,7 +621,7 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://http2.mlstatic.com/D_NQ_NP_850657-MLA112632614729_062026-O.webp",
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-12T12:27:40-03:00",
   }),
   h({
@@ -635,7 +636,7 @@ export const SEED_HOUSES: House[] = [
     cochera: true,
     image: "https://http2.mlstatic.com/D_NQ_NP_626164-MLA88015244412_072025-O.webp",
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-12T12:29:26-03:00",
   }),
   h({
@@ -650,7 +651,7 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://www.argenprop.com/static-content/07752202/af39b58f-92cb-4a0b-80f9-51dec7361ce2_u_medium.jpg",
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-12T15:00:08-03:00",
   }),
   h({
@@ -665,7 +666,7 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://www.argenprop.com/static-content/03135591/839e6971-0b1b-4068-824e-f80783b487bc_u_medium.jpg",
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-12T15:01:25-03:00",
   }),
   h({
@@ -680,7 +681,7 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://www.argenprop.com/static-content/83930302/08f7c1a9-3cd0-4645-afab-adbc9c959963_u_medium.jpg",
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-12T16:28:46-03:00",
   }),
   h({
@@ -695,7 +696,7 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://www.argenprop.com/static-content/11663402/02e7c4dd-e933-4df5-83e9-d1a5ba4a337f_u_medium.jpg",
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-12T16:31:19-03:00",
   }),
   h({
@@ -710,7 +711,7 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://http2.mlstatic.com/D_NQ_NP_783915-MLA114585809388_082026-O.webp",
     status: "pendiente",
-    addedBy: "Abril",
+    addedBy: "Sofía",
     addedAt: "2026-09-12T16:50:05-03:00",
   }),
   h({
@@ -725,8 +726,8 @@ export const SEED_HOUSES: House[] = [
     cochera: null,
     image: "https://http2.mlstatic.com/D_NQ_NP_815475-MLA86521586356_062025-O.webp",
     status: "pendiente",
-    comments: [{ id: "dbb37128-aa4c-463d-a48c-42332e523169", author: "Abril", text: "\"Hay que ver zona\" — pendiente de confirmar si es segura.", createdAt: "2026-09-12T16:51:12-03:00" }],
-    addedBy: "Abril",
+    comments: [{ id: "dbb37128-aa4c-463d-a48c-42332e523169", author: "Sofía", text: "\"Hay que ver zona\" — pendiente de confirmar si es segura.", createdAt: "2026-09-12T16:51:12-03:00" }],
+    addedBy: "Sofía",
     addedAt: "2026-09-12T16:51:12-03:00",
   }),
   h({
@@ -741,7 +742,7 @@ export const SEED_HOUSES: House[] = [
     cochera: true,
     image: "https://www.argenprop.com/static-content/40071402/2aa222f2-2a35-4d96-bf65-68acf8ff454d_u_medium.jpg",
     status: "pendiente",
-    addedBy: "Lucas",
+    addedBy: "Martín",
     addedAt: "2026-09-13T14:57:34.325Z",
   }),
   h({
@@ -756,22 +757,22 @@ export const SEED_HOUSES: House[] = [
     cochera: true,
     image: "https://www.argenprop.com/static-content/32133181/4a0c5059-447c-47c2-bdc0-513b35a903fa_u_medium.jpg",
     status: "pendiente",
-    addedBy: "Lucas",
+    addedBy: "Martín",
     addedAt: "2026-09-13T15:02:36.294Z",
   }),
 ];
 
 export const SEED_CHECKLIST: ChecklistItem[] = [
-  { id: "c1", group: "Condiciones del banco", label: "Contratar seguro de auto con BBVA", done: false, assignedTo: null, notes: "" },
-  { id: "c2", group: "Condiciones del banco", label: "Contratar seguro de hogar con BBVA", done: false, assignedTo: null, notes: "" },
-  { id: "c3", group: "Condiciones del banco", label: "Acreditar el sueldo en cuenta BBVA", done: false, assignedTo: null, notes: "" },
+  { id: "c1", group: "Condiciones del banco", label: "Contratar seguro de auto con ICBC", done: false, assignedTo: null, notes: "" },
+  { id: "c2", group: "Condiciones del banco", label: "Contratar seguro de hogar con ICBC", done: false, assignedTo: null, notes: "" },
+  { id: "c3", group: "Condiciones del banco", label: "Acreditar el sueldo en cuenta ICBC", done: false, assignedTo: null, notes: "" },
   { id: "c4", group: "Búsqueda y visitas", label: "Definir zonas y requisitos prioritarios", done: true, assignedTo: null, notes: "Ya está: ver Criterios en el inicio." },
-  { id: "c5", group: "Búsqueda y visitas", label: "Coordinar visitas de fin de semana", done: false, assignedTo: "Carolina", notes: "" },
+  { id: "c5", group: "Búsqueda y visitas", label: "Coordinar visitas de fin de semana", done: false, assignedTo: "Valeria", notes: "" },
   { id: "c6", group: "Búsqueda y visitas", label: "Elegir 2-3 casas favoritas para avanzar con oferta", done: false, assignedTo: null, notes: "" },
   { id: "c7", group: "Documentación", label: "DNI de todos los titulares", done: false, assignedTo: null, notes: "" },
   { id: "c8", group: "Documentación", label: "Últimos 3 recibos de sueldo", done: false, assignedTo: null, notes: "" },
   { id: "c9", group: "Documentación", label: "Constancia de CUIL / CUIT", done: false, assignedTo: null, notes: "" },
-  { id: "c10", group: "Documentación", label: "Certificado de CBU de la cuenta sueldo BBVA", done: false, assignedTo: null, notes: "" },
+  { id: "c10", group: "Documentación", label: "Certificado de CBU de la cuenta sueldo ICBC", done: false, assignedTo: null, notes: "" },
   { id: "c11", group: "Trámite de la propiedad elegida", label: "Tasación del banco", done: false, assignedTo: null, notes: "" },
   { id: "c12", group: "Trámite de la propiedad elegida", label: "Estudio de títulos (escribano)", done: false, assignedTo: null, notes: "" },
   { id: "c13", group: "Trámite de la propiedad elegida", label: "Boleto de compraventa / seña", done: false, assignedTo: null, notes: "" },

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentBroker, updateBroker, deleteBroker } from "@/lib/brokers";
-import { cancelSubscription } from "@/lib/mercadopago";
+import { getCurrentBroker, updateBroker } from "@/lib/brokers";
+import { deleteBrokerCascade } from "@/lib/brokerDeletion";
 import { brokerProfilePatchSchema, parseJsonBody } from "@/lib/schemas";
 
 export async function PATCH(request: NextRequest) {
@@ -23,12 +23,9 @@ export async function DELETE() {
   }
 
   try {
-    if (broker.mpPreapprovalId && broker.subscriptionStatus === "activa") {
-      await cancelSubscription(broker.mpPreapprovalId).catch((err) => {
-        console.error("Error cancelando suscripción en MP durante la baja:", err);
-      });
-    }
-    await deleteBroker(broker.id);
+    // En cascada: suscripción, casos y datos de cada caso — ver
+    // lib/brokerDeletion.ts (SEP23-02).
+    await deleteBrokerCascade(broker.id);
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("Error al eliminar cuenta:", err);

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteBroker, getBroker, getCurrentAdminEmail, updateBroker } from "@/lib/brokers";
-import { deleteBrokerCaseIndex, deleteCase, listCasesForBroker } from "@/lib/cases";
-import { deleteCaseData } from "@/lib/store";
+import { getCurrentAdminEmail, updateBroker } from "@/lib/brokers";
+import { deleteBrokerCascade } from "@/lib/brokerDeletion";
 import { adminBrokerPatchSchema, parseJsonBody } from "@/lib/schemas";
 
 /** Edición manual de plan/estado de cobro/prueba desde /superadmin — el
@@ -30,9 +29,10 @@ export async function PATCH(
 }
 
 /** Borrado definitivo de un corredor y, en cascada, de TODOS sus casos
- * (con sus casas/checklist/criterios) — pensado para limpiar cuentas de
- * prueba, no algo que un corredor pueda hacerse a sí mismo. Irreversible
- * a propósito. */
+ * (con sus casas/checklist/criterios) y su suscripción en Mercado Pago —
+ * misma cascada que "Eliminar mi cuenta", ver lib/brokerDeletion.ts.
+ * Pensado para limpiar cuentas de prueba o dar de baja a pedido.
+ * Irreversible a propósito. */
 export async function DELETE(
   _request: NextRequest,
   ctx: RouteContext<"/api/superadmin/brokers/[id]">
@@ -43,18 +43,9 @@ export async function DELETE(
   }
 
   const { id } = await ctx.params;
-  const broker = await getBroker(id);
-  if (!broker) {
+  if (!(await deleteBrokerCascade(id))) {
     return NextResponse.json({ error: "Corredor no encontrado" }, { status: 404 });
   }
-
-  const cases = await listCasesForBroker(id);
-  for (const kase of cases) {
-    await deleteCase(kase.id, id);
-    await deleteCaseData(kase.id);
-  }
-  await deleteBrokerCaseIndex(id);
-  await deleteBroker(id);
 
   return NextResponse.json({ ok: true });
 }

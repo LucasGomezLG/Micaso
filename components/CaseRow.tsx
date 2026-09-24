@@ -10,6 +10,7 @@ import type { CaseSummary } from "@/lib/store";
 import { daysAgoLabel } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/http";
 import { buildCaseShareMessage, openWhatsapp } from "@/lib/whatsapp";
+import { clearPrivateCaches } from "@/lib/offlineCache";
 
 const TIPO_LABEL: Record<TipoCaso, string> = {
   compra: "Compra",
@@ -87,7 +88,7 @@ export default function CaseRow({
     const updated = (await res.json()).case;
     setKase(updated);
     setShowPassword(false);
-    toast.success("Contraseña regenerada — la anterior dejó de funcionar.");
+    toast.success("Clave regenerada — la anterior y el link viejo dejaron de funcionar.");
   }
 
   async function cerrarCaso() {
@@ -137,7 +138,7 @@ export default function CaseRow({
   > = {
     password: {
       title: "¿Regenerar la contraseña de este caso?",
-      description: "La clave actual dejará de funcionar y deberás compartir la nueva con la familia.",
+      description: "La clave y el link que ya compartiste dejan de funcionar, y la familia tendrá que volver a entrar. Después compartiles los nuevos.",
       confirmLabel: "Sí, regenerar",
       onConfirm: regenerarClave,
     },
@@ -171,6 +172,8 @@ export default function CaseRow({
       toast.error(await apiErrorMessage(res, "No se pudo entrar al caso."));
       return;
     }
+    // Mismo motivo que en LoginForm: no mezclar con otro caso guardado sin señal (SEP23-16).
+    await clearPrivateCaches();
     router.refresh();
     router.push("/caso");
   }

@@ -83,3 +83,62 @@ export async function isSafeResolvedUrl(
     return false;
   }
 }
+
+const MAX_REDIRECT_HOPS = 5;
+
+/** `fetch` a una URL que eligió el usuario, siguiendo los redirects a
+ * mano (`redirect: "manual"`) y pasando CADA salto por
+ * `isSafeResolvedUrl` antes de pedirlo. Con el default de `fetch`
+ * (`redirect: "follow"`), un host público que responde
+ * `302 → http://127.0.0.1/…` o a una IP interna hacía que el servidor le
+ * pegara a ese destino aunque la URL inicial hubiera pasado el chequeo
+ * (SEP23-03, AUDITORIA-2026-09-23.md). Devuelve null si algún salto no
+ * es seguro o si hay demasiados redirects.
+ *
+ * El scraper (app/api/scrape) tiene su propio loop con la misma idea,
+ * porque además mira en cada salto si el sitio bloquea el autocompletado. */
+export async function fetchFollowingSafeRedirects(
+  startUrl: URL,
+  init: Omit<RequestInit, "redirect"> = {},
+  lookup: DnsLookupAll = defaultLookup
+): Promise<Response | null> {
+  let current = startUrl;
+  // Mismo límite que el loop del scraper: MAX_REDIRECT_HOPS pedidos en total.
+  for (let hop = 0; hop < MAX_REDIRECT_HOPS; hop++) {
+    if (!(await isSafeResolvedUrl(current, lookup))) return null;
+    const res = await fetch(current, { ...init, redirect: "manual" });
+    const location = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
+    if (!location) return res;
+    await res.body?.cancel().catch(() => {});
+    current = new URL(location, current);
+  }
+  return null;
+}
+
+/** Hosts de los servicios de Web Push de los navegadores: Chrome/Android,
+ * Samsung y Opera (FCM), Firefox (Mozilla autopush), Edge (WNS) y
+ * Safari/iOS (Apple). */
+const PUSH_SERVICE_HOSTS = [
+  { host: "fcm.googleapis.com", exact: true },
+  { host: ".push.services.mozilla.com", exact: false },
+  { host: ".notify.windows.com", exact: false },
+  { host: ".push.apple.com", exact: false },
+];
+
+/** SEP23-06 (AUDITORIA-2026-09-23.md): el `endpoint` de una suscripción
+ * push es una URL a la que el servidor le hace un POST cada vez que el
+ * corredor carga una casa o agenda una visita — antes se aceptaba
+ * cualquier string, así que una sesión de caso podía apuntarlo a una
+ * dirección interna (SSRF ciego por POST). Solo se acepta https contra
+ * un servicio de push conocido. */
+export function isKnownPushEndpoint(endpoint: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:" || url.port !== "" || url.username || url.password) return false;
+  const host = url.hostname.toLowerCase();
+  return PUSH_SERVICE_HOSTS.some((s) => (s.exact ? host === s.host : host.endsWith(s.host)));
+}

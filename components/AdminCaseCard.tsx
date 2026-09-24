@@ -88,7 +88,7 @@ export default function AdminCaseCard({
     }
     setKase((await res.json()).case);
     setRevealedPassword(null);
-    toast.success("Contraseña regenerada — la anterior dejó de funcionar.");
+    toast.success("Clave regenerada — la anterior y los links viejos dejaron de funcionar.");
   }
 
   async function toggleVerContrasena() {
@@ -164,7 +164,7 @@ export default function AdminCaseCard({
   > = {
     password: {
       title: "¿Regenerar la contraseña de este caso?",
-      description: "La clave actual deja de funcionar. El corredor puede compartir la nueva con la familia desde su panel.",
+      description: "La clave y los links ya compartidos dejan de funcionar, y la familia tendrá que volver a entrar. El corredor puede compartir los nuevos desde su panel.",
       confirmLabel: "Sí, regenerar",
       onConfirm: regenerarClave,
     },

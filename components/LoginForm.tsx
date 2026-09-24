@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { MicasoMark } from "@/components/MicasoMark";
 import { TERMS_VERSION } from "@/lib/legal";
+import { safeNextPath } from "@/lib/safeNextPath";
+import { clearPrivateCaches } from "@/lib/offlineCache";
 
 const TERMS_ACCEPTED_KEY = "micaso_terms_accepted_version";
 
@@ -63,8 +65,11 @@ export default function LoginForm() {
         } catch {
           // No pasa nada si no se puede recordar — el próximo login vuelve a pedir el checkbox.
         }
+        // Si en este dispositivo quedó guardado otro caso para verlo sin
+        // señal, no se mezcla con el que entra ahora (SEP23-16).
+        await clearPrivateCaches();
         // router.replace para que los parámetros no queden en el historial del navegador
-        router.replace(searchParams.get("next") || "/caso");
+        router.replace(safeNextPath(searchParams.get("next"), "/caso"));
         router.refresh();
       } else {
         const data = await res.json().catch(() => ({}));

@@ -24,7 +24,7 @@ const TRIAL_DAYS = 14;
  * recreaba con un período de prueba nuevo de 14 días. */
 const DELETED_BROKERS_KEY = "deleted_broker_ids";
 
-async function isBrokerDeleted(id: string): Promise<boolean> {
+export async function isBrokerDeleted(id: string): Promise<boolean> {
   const deleted = await dbGet<Record<string, true>>(DELETED_BROKERS_KEY);
   return Boolean(deleted && Object.prototype.hasOwnProperty.call(deleted, id));
 }
@@ -85,6 +85,14 @@ export async function getOrCreateBroker(
   googleImage: string | null | undefined
 ): Promise<Broker> {
   const id = resolveBrokerId(email);
+  // Camino común (el corredor ya existe): una sola lectura. getCurrentBroker
+  // llama a esto en cada render del panel y en cada ruta de /api/panel/*,
+  // y el dbUpdate de abajo son ~6 comandos de Redis con lock aunque no
+  // cambie nada (SEP23-19, AUDITORIA-2026-09-23.md) — queda solo para la
+  // primera vez, donde sí importa que dos requests simultáneas no se pisen.
+  const existing = await dbGet<Broker>(brokerKey(id));
+  if (existing) return normalizeBroker(existing);
+
   let created = false;
   const broker = await dbUpdate<Broker>(brokerKey(id), (current) => {
     if (current) return current;
@@ -133,7 +141,9 @@ export const getBroker = cache(async function getBroker(id: string): Promise<Bro
  * ARQUITECTURA.md sección 7). */
 export async function updateBroker(
   id: string,
-  patch: Partial<Pick<Broker, "nombreMarca" | "imagenUrl" | "plan" | "subscriptionStatus" | "trialEndsAt" | "mpPreapprovalId">>
+  patch: Partial<
+    Pick<Broker, "nombreMarca" | "imagenUrl" | "plan" | "subscriptionStatus" | "trialEndsAt" | "mpPreapprovalId" | "mpReplacedPreapprovalIds">
+  >
 ): Promise<Broker | null> {
   return dbUpdate<Broker | null>(brokerKey(id), (current) =>
     current === null ? null : { ...normalizeBroker(current), ...patch }
@@ -174,10 +184,11 @@ export async function getCurrentAdminEmail(): Promise<string | null> {
   return email && ADMIN_EMAILS.has(email) ? email : null;
 }
 
-/** Borrado definitivo de un corredor — sin cascada acá a propósito: el
- * caller (ver app/api/superadmin/brokers/[id]/route.ts, DELETE) borra
- * antes cada uno de sus casos con deleteCase + deleteCaseData, para no
- * acoplar este archivo a lib/cases.ts (que ya importa de este). */
+/** Borrado definitivo de un corredor — sin cascada acá a propósito, para
+ * no acoplar este archivo a lib/cases.ts (que ya importa de este). No
+ * llamarla directo desde una ruta: deleteBrokerCascade
+ * (lib/brokerDeletion.ts) borra antes sus casos y su suscripción, y
+ * termina llamando a esta. */
 export async function deleteBroker(id: string): Promise<boolean> {
   const existing = await dbGet<Broker>(brokerKey(id));
   if (!existing) return false;

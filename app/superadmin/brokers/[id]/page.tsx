@@ -46,7 +46,11 @@ export default async function AdminBrokerDetailPage({
     notFound();
   }
 
-  const cases = await listCasesForBroker(id);
+  // Sin la contraseña: AdminCaseCard es un Client Component, así que
+  // cualquier campo que reciba viaja en el payload RSC aunque la UI no lo
+  // muestre. La clave se pide aparte, a demanda, con reveal-password
+  // (SEP23-09, AUDITORIA-2026-09-23.md).
+  const cases = (await listCasesForBroker(id)).map((c) => ({ ...c, password: "" }));
   const summaryEntries = await Promise.all(cases.map(async (c) => [c.id, await getCaseSummary(c.id)] as const));
   const summaries = Object.fromEntries(summaryEntries);
 

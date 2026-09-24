@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isPrivateIp, isSafeExternalUrl, isSafeResolvedUrl } from "../lib/url-safety";
+import { fetchFollowingSafeRedirects, isPrivateIp, isSafeExternalUrl, isSafeResolvedUrl } from "../lib/url-safety";
 
 // SEC-02: este sandbox no tiene salida de red real (`fetch`/`dns.lookup`
 // contra un host real siempre falla acá, incluso para dominios legítimos
@@ -94,4 +94,83 @@ test("isSafeResolvedUrl: nunca llega a resolver si el host ya está bloqueado po
   const blocked = await isSafeResolvedUrl(new URL("http://localhost:3000"), fakeLookup);
   assert.equal(blocked, false);
   assert.equal(called, false, "no debería llamar a dns.lookup para un host ya bloqueado por regex");
+});
+
+// SEP23-03 (AUDITORIA-2026-09-23.md): /api/image seguía redirects con el
+// default de fetch, sin revisar a dónde llevaban. `fetch` se mockea por el
+// mismo motivo que el lookup (este sandbox no tiene red): lo que importa
+// es a qué URLs se le pide, no la respuesta real.
+const fakePublicDns = async (hostname: string) =>
+  hostname === "interno.example"
+    ? [{ address: "10.0.0.7", family: 4 as const }]
+    : [{ address: "93.184.216.34", family: 4 as const }];
+
+async function withMockFetch(
+  responses: Record<string, Response>,
+  run: (requested: string[]) => Promise<void>
+): Promise<void> {
+  const requested: string[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
+    assert.equal(init?.redirect, "manual", "tiene que seguir los redirects a mano");
+    requested.push(url.toString());
+    const res = responses[url.toString()];
+    if (!res) throw new Error(`fetch no mockeado: ${url}`);
+    return res;
+  }) as typeof fetch;
+  try {
+    await run(requested);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+test("fetchFollowingSafeRedirects: un redirect a una IP interna no se sigue", async () => {
+  await withMockFetch(
+    { "https://publico.example/foto.jpg": new Response(null, { status: 302, headers: { location: "http://127.0.0.1:8080/admin" } }) },
+    async (requested) => {
+      const res = await fetchFollowingSafeRedirects(new URL("https://publico.example/foto.jpg"), {}, fakePublicDns);
+      assert.equal(res, null);
+      assert.deepEqual(requested, ["https://publico.example/foto.jpg"]);
+    }
+  );
+});
+
+test("fetchFollowingSafeRedirects: un redirect a un dominio que resuelve a una IP privada tampoco", async () => {
+  await withMockFetch(
+    { "https://publico.example/a": new Response(null, { status: 301, headers: { location: "https://interno.example/b" } }) },
+    async (requested) => {
+      const res = await fetchFollowingSafeRedirects(new URL("https://publico.example/a"), {}, fakePublicDns);
+      assert.equal(res, null);
+      assert.deepEqual(requested, ["https://publico.example/a"]);
+    }
+  );
+});
+
+test("fetchFollowingSafeRedirects: sigue redirects entre hosts públicos, con Location relativo", async () => {
+  await withMockFetch(
+    {
+      "https://publico.example/a": new Response(null, { status: 302, headers: { location: "https://cdn.example/x" } }),
+      "https://cdn.example/x": new Response(null, { status: 307, headers: { location: "/foto.jpg" } }),
+      "https://cdn.example/foto.jpg": new Response("imagen", { status: 200, headers: { "content-type": "image/jpeg" } }),
+    },
+    async (requested) => {
+      const res = await fetchFollowingSafeRedirects(new URL("https://publico.example/a"), {}, fakePublicDns);
+      assert.equal(res?.status, 200);
+      assert.equal(await res?.text(), "imagen");
+      assert.equal(requested.length, 3);
+    }
+  );
+});
+
+test("fetchFollowingSafeRedirects: corta una cadena de redirects demasiado larga", async () => {
+  const loop: Record<string, Response> = {};
+  for (let i = 0; i < 10; i++) {
+    loop[`https://publico.example/${i}`] = new Response(null, { status: 302, headers: { location: `/${i + 1}` } });
+  }
+  await withMockFetch(loop, async (requested) => {
+    const res = await fetchFollowingSafeRedirects(new URL("https://publico.example/0"), {}, fakePublicDns);
+    assert.equal(res, null);
+    assert.ok(requested.length <= 6, `pidió ${requested.length} URLs`);
+  });
 });

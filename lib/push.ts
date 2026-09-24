@@ -1,5 +1,10 @@
 import webpush from "web-push";
 import { dbDelete, dbGet, dbSet, dbUpdate } from "./db";
+import { isKnownPushEndpoint } from "./url-safety";
+
+/** Una familia con varios dispositivos (celulares, tablet, compu) entra
+ * holgada — ver saveCaseSubscription. */
+export const MAX_SUBSCRIPTIONS_PER_CASE = 20;
 
 export interface StoredPushSubscription {
   endpoint: string;
@@ -56,6 +61,9 @@ export async function saveCaseSubscription(
   if (!subscription.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
     return;
   }
+  // Mismo chequeo que pushSubscribeSchema, acá también para que ningún
+  // otro camino pueda guardar un endpoint arbitrario (SEP23-06).
+  if (!isKnownPushEndpoint(subscription.endpoint)) return;
 
   const entry: StoredPushSubscription = {
     endpoint: subscription.endpoint,
@@ -70,7 +78,10 @@ export async function saveCaseSubscription(
     const list = current ?? [];
     // Evitar duplicados por endpoint
     const filtered = list.filter((s) => s.endpoint !== entry.endpoint);
-    return [...filtered, entry];
+    // Tope por caso, descartando la más vieja (SEP23-06): sin tope, una
+    // sesión podía registrar miles, y cada aviso del corredor se
+    // multiplicaba en miles de requests salientes.
+    return [...filtered, entry].slice(-MAX_SUBSCRIPTIONS_PER_CASE);
   });
 }
 
@@ -107,8 +118,14 @@ export async function notifyCaseClients(
 ): Promise<number> {
   if (caseId === "demo") return 0;
 
-  const subscriptions = (await dbGet<StoredPushSubscription[]>(pushKey(caseId))) ?? [];
-  if (subscriptions.length === 0) return 0;
+  const stored = (await dbGet<StoredPushSubscription[]>(pushKey(caseId))) ?? [];
+  // Mismo filtro y tope que saveCaseSubscription, también acá al enviar:
+  // las suscripciones guardadas antes de SEP23-06 no pasaron por ese
+  // chequeo, y seguirían recibiendo un POST del servidor en cada aviso.
+  // Las que no pasan se borran junto con las muertas, más abajo.
+  const subscriptions = stored.filter((s) => isKnownPushEndpoint(s.endpoint)).slice(-MAX_SUBSCRIPTIONS_PER_CASE);
+  const deadEndpoints: string[] = stored.filter((s) => !subscriptions.includes(s)).map((s) => s.endpoint);
+  if (subscriptions.length === 0 && deadEndpoints.length === 0) return 0;
 
   const { publicKey, privateKey } = await getVapidKeys();
   webpush.setVapidDetails(VAPID_SUBJECT, publicKey, privateKey);
@@ -119,7 +136,6 @@ export async function notifyCaseClients(
     url: payload.url || "/caso",
   });
 
-  const deadEndpoints: string[] = [];
   let sentCount = 0;
 
   await Promise.all(

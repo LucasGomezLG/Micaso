@@ -1,8 +1,9 @@
+import { randomInt } from "crypto";
 import { cache } from "react";
 import { DEV_BROKER_ID } from "./auth";
-import { getBroker, listAllBrokers } from "./brokers";
+import { getBroker, isBrokerDeleted, listAllBrokers } from "./brokers";
 import { decryptSecret, encryptSecret, timingSafeStringEqual } from "./crypto";
-import { dbDelete, dbGet, dbMultiGet, dbSet, dbUpdate } from "./db";
+import { dbDelete, dbGet, dbMultiGet, dbSet, dbUpdate, withLock } from "./db";
 import { DEMO_CASE_ID } from "./seed";
 import { Case, PLAN_CASE_LIMIT, TipoCaso } from "./types";
 
@@ -33,10 +34,15 @@ const caseUsernameKey = (username: string) => `case_username:${username}`;
 // compartir por WhatsApp.
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
+// `randomInt` de crypto, no Math.random(): el de V8 no es criptográfico y
+// su estado interno se puede recuperar a partir de suficientes salidas
+// seguidas — y un corredor ve las salidas de sus propias altas y
+// regeneraciones (SEP23-05, AUDITORIA-2026-09-23.md). La entropía de ~60
+// bits de la clave (ARQUITECTURA.md sección 9) supone un generador seguro.
 function randomCode(length: number): string {
   let out = "";
   for (let i = 0; i < length; i++) {
-    out += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+    out += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
   }
   return out;
 }
@@ -59,7 +65,7 @@ async function removeFromAllCaseIds(caseId: string): Promise<void> {
   await dbUpdate<string[]>(ALL_CASE_IDS_KEY, (current) => (current ?? []).filter((id) => id !== caseId));
 }
 
-/** Se asegura de que el caso demo (la búsqueda real de Lucas y Abril,
+/** Se asegura de que el caso demo (una búsqueda real con los datos cambiados,
  * migrada desde D:\Casa) siempre exista, con las mismas credenciales que
  * ya se usaban (usuario "casa", clave "1234") — así nadie queda afuera
  * la primera vez que corre este código nuevo. Ver ARQUITECTURA.md
@@ -77,12 +83,12 @@ async function ensureDemoCaseSeed(): Promise<Case> {
     return {
       id: DEMO_CASE_ID,
       brokerId: DEV_BROKER_ID,
-      titulo: "Lucas y Abril",
+      titulo: "Martín y Sofía",
       tipoCaso: "compra",
       estado: "activo",
       username: "casa",
       password: "1234",
-      people: ["Lucas", "Abril", "Carolina"],
+      people: ["Martín", "Sofía", "Valeria"],
       soloLecturaDesde: null,
       createdAt: now,
       updatedAt: now,
@@ -106,7 +112,13 @@ async function ensureDemoCaseSeed(): Promise<Case> {
  * imposible de crear por un dato faltante. */
 async function assertUnderCaseLimit(brokerId: string): Promise<void> {
   const broker = await getBroker(brokerId);
-  if (!broker) return;
+  if (!broker) {
+    // Un corredor dado de baja no es "sin corredor": un alta que esperaba
+    // el lock mientras corría su baja (lib/brokerDeletion.ts) llega acá
+    // con el corredor ya borrado, y crearía un caso huérfano (SEP23-02).
+    if (await isBrokerDeleted(brokerId)) throw new Error("El corredor fue dado de baja.");
+    return;
+  }
 
   if (broker.subscriptionStatus === "atrasada") {
     throw new Error("Suscripción atrasada. Por favor, regularizá tu plan para seguir creando casos.");
@@ -126,11 +138,27 @@ async function assertUnderCaseLimit(brokerId: string): Promise<void> {
   }
 }
 
+/** Contar los casos activos y después crear/reabrir son dos pasos: sin un
+ * lock entre los dos, dos altas simultáneas con el corredor en el tope
+ * menos uno pasaban las dos (SEP23-20, AUDITORIA-2026-09-23.md). */
+export function withCaseLimitLock<T>(brokerId: string, fn: () => Promise<T>): Promise<T> {
+  return withLock(`case-limit:${brokerId}`, fn);
+}
+
 export async function createCase(
   brokerId: string,
   titulo: string,
   tipoCaso: TipoCaso,
   people: string[] = []
+): Promise<Case> {
+  return withCaseLimitLock(brokerId, () => createCaseUnderLimit(brokerId, titulo, tipoCaso, people));
+}
+
+async function createCaseUnderLimit(
+  brokerId: string,
+  titulo: string,
+  tipoCaso: TipoCaso,
+  people: string[]
 ): Promise<Case> {
   await assertUnderCaseLimit(brokerId);
   const now = new Date().toISOString();
@@ -292,7 +320,13 @@ export async function regeneratePassword(caseId: string, brokerId: string): Prom
   const kase = await getCaseForBroker(caseId, brokerId);
   if (!kase) return null;
   const plainPassword = randomCode(12);
-  const updated = await updateCase(caseId, { password: encryptSecret(plainPassword) });
+  // Regenerar corta también las sesiones abiertas y los magic links ya
+  // compartidos, no solo la clave (SEP23-04, decisión de Lucas del 23
+  // sept 2026): el botón existe para cuando algo se filtró.
+  const updated = await updateCase(caseId, {
+    password: encryptSecret(plainPassword),
+    credencialesRotadasEn: new Date().toISOString(),
+  });
   return updated ? { ...updated, password: plainPassword } : null;
 }
 
@@ -319,9 +353,11 @@ export async function closeCase(caseId: string, brokerId: string): Promise<Case 
 export async function reopenCase(caseId: string, brokerId: string): Promise<Case | null> {
   const kase = await getCaseForBroker(caseId, brokerId);
   if (!kase) return null;
-  await assertUnderCaseLimit(kase.brokerId);
-  const updated = await updateCase(caseId, { estado: "activo", soloLecturaDesde: null });
-  return updated ? decryptCase(updated) : null;
+  return withCaseLimitLock(kase.brokerId, async () => {
+    await assertUnderCaseLimit(kase.brokerId);
+    const updated = await updateCase(caseId, { estado: "activo", soloLecturaDesde: null });
+    return updated ? decryptCase(updated) : null;
+  });
 }
 
 /** Borrado definitivo de un caso — a diferencia de closeCase (que solo

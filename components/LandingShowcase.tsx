@@ -175,7 +175,7 @@ export default function LandingShowcase() {
               </span>
             </div>
             <p className="mt-0.5 text-[10px]" style={{ color: "var(--ink-muted)" }}>
-              TNA 7,5% UVA · Plazo 240 meses · Banco BBVA
+              TNA 6,9% UVA · Plazo 240 meses · Banco ICBC
             </p>
 
             <div className="mt-3 flex items-center justify-between border-t pt-2 text-xs" style={{ borderColor: "var(--border)" }}>
@@ -263,11 +263,11 @@ export default function LandingShowcase() {
           <div className="flex items-center justify-between border-b px-3.5 py-2.5" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
             <div className="flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-bold" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>
-                C
+                V
               </span>
               <div className="leading-tight">
-                <p className="text-xs font-bold">Lucas y Abril</p>
-                <p className="text-[9px]" style={{ color: "var(--accent)" }}>Carolina Propiedades</p>
+                <p className="text-xs font-bold">Martín y Sofía</p>
+                <p className="text-[9px]" style={{ color: "var(--accent)" }}>Valeria Propiedades</p>
               </div>
             </div>
             <span className="text-[10px] font-bold" style={{ color: "var(--status-gusto)" }}>
@@ -283,7 +283,7 @@ export default function LandingShowcase() {
                 <span className="mono font-bold">USD 120.000</span>
               </div>
               <p className="mt-1 text-[10px]" style={{ color: "var(--ink-muted)" }}>
-                Aporte: USD 45.000 · Crédito BBVA pre-aprobado
+                Aporte: USD 40.000 · Crédito ICBC pre-aprobado
               </p>
             </div>
 

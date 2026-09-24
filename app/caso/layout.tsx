@@ -31,7 +31,7 @@ export default async function CasoLayout({ children }: LayoutProps<"/caso">) {
 
   return (
     <div className="flex min-h-full flex-col">
-      {!viewingAsBroker && !isDemo && <FamilyPing />}
+      {!viewingAsBroker && !isDemo && <FamilyPing caseId={caseId} />}
       <Nav
         caseTitle={kase?.titulo ?? "Tu caso"}
         tipoCaso={kase?.tipoCaso ?? "compra"}

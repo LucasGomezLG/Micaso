@@ -3,7 +3,7 @@ import { del } from "@vercel/blob";
 import { dbDelete, dbGet, dbUpdate } from "./db";
 import { DEMO_CASE_ID, SEED_CHECKLIST, SEED_CRITERIA, SEED_HOUSES } from "./seed";
 import { buildChecklistTemplate } from "./checklistTemplates";
-import { getCase } from "./cases";
+import { getCase, listCasesForBroker } from "./cases";
 import { deleteCaseSubscriptions } from "./push";
 import { isOverdue } from "./format";
 import { ChecklistItem, Criteria, House, HouseChecklistItem, HouseComment, HouseStatus, LoanInfo, PIPELINE_STATUSES, SearchBrief } from "./types";
@@ -19,24 +19,57 @@ const criteriaKey = (caseId: string) => `case:${caseId}:criteria`;
  * código llamaba a `del()` de @vercel/blob hasta ahora: cada foto subida
  * quedaba en el storage para siempre, incluso borrando la casa o el
  * caso entero — sin costo altísimo a esta escala, pero indefinidamente
- * creciente. */
-function ownBlobUrls(images: string[]): string[] {
+ * creciente.
+ *
+ * Solo las de ESTE caso (el prefijo con que las sube app/api/houses/photo):
+ * antes alcanzaba con que el dominio fuera de Blob, así que borrar una casa
+ * a la que se le había pegado la URL de una foto de otro caso borraba la
+ * foto de ese otro caso (SEP23-08, AUDITORIA-2026-09-23.md). El caso
+ * inverso (borrar en el caso dueño una foto que otro caso copió) lo cubre
+ * blobPhotosToDelete. Exportada solo para test/isolation.test.mts: del()
+ * de @vercel/blob usa undici por dentro, así que un test no puede
+ * interceptar a qué URLs le pegaría. */
+export function ownBlobUrls(caseId: string, images: string[]): string[] {
+  const prefix = `/case-photos/${caseId}/`;
   return images.filter((url) => {
     try {
-      return new URL(url).hostname.endsWith(".blob.vercel-storage.com");
+      const parsed = new URL(url);
+      return parsed.hostname.endsWith(".blob.vercel-storage.com") && parsed.pathname.startsWith(prefix);
     } catch {
       return false;
     }
   });
 }
 
+/** De `candidates`, las fotos que se pueden borrar de Blob: las de este
+ * caso (ownBlobUrls) que ninguna casa de OTRO caso del mismo corredor
+ * sigue usando — la misma propiedad mostrada a dos familias, con la foto
+ * copiada de un caso al otro (SEP23-08). Solo lee los otros casos si hay
+ * algo para borrar. Una foto que se conserva así queda huérfana en Blob si
+ * después se borra también el otro caso: prefijo ajeno, nadie la borra
+ * (costo de storage mínimo, a cambio de nunca romper una foto a la vista).
+ * Exportada también para los tests, por el mismo motivo que ownBlobUrls. */
+export async function blobPhotosToDelete(caseId: string, brokerId: string, candidates: string[]): Promise<string[]> {
+  const own = ownBlobUrls(caseId, candidates);
+  if (own.length === 0) return [];
+  const others = (await listCasesForBroker(brokerId)).filter((c) => c.id !== caseId);
+  // dbGet directo y no getHouses: getHouses inicializa la clave de un caso
+  // que todavía no tiene casas, y esto no debería escribir nada.
+  const otherHouses = await Promise.all(others.map((c) => dbGet<House[]>(housesKey(c.id))));
+  const usedElsewhere = new Set(otherHouses.flatMap((houses) => (houses ?? []).flatMap((h) => h.images)));
+  return own.filter((url) => !usedElsewhere.has(url));
+}
+
 /** Borra las casas, el checklist, los criterios y las suscripciones Web
  * Push de un caso — usado por el borrado definitivo desde /superadmin
  * (ver lib/cases.ts deleteCase, que borra el caso en sí; el caller llama
- * a las dos). Irreversible a propósito, no hay soft-delete acá. */
-export async function deleteCaseData(caseId: string): Promise<void> {
+ * a las dos). Irreversible a propósito, no hay soft-delete acá. Recibe el
+ * corredor porque para entonces el caso ya puede estar borrado
+ * (deleteCase va antes) y hace falta para no borrar fotos que otro de sus
+ * casos sigue usando. */
+export async function deleteCaseData(caseId: string, brokerId: string): Promise<void> {
   const houses = await getHouses(caseId).catch(() => []);
-  const blobUrls = ownBlobUrls(houses.flatMap((h) => h.images));
+  const blobUrls = await blobPhotosToDelete(caseId, brokerId, houses.flatMap((h) => h.images));
   await Promise.all([
     dbDelete(housesKey(caseId)),
     dbDelete(checklistKey(caseId)),
@@ -49,7 +82,7 @@ export async function deleteCaseData(caseId: string): Promise<void> {
 /** Un caso nuevo arranca sin criterios cargados — el corredor o la
  * familia los completa desde la misma pantalla de Criterios que ya
  * existe (ver ARQUITECTURA.md sección 6). Solo el caso demo arranca con
- * los datos reales de Lucas y Abril (SEED_CRITERIA). */
+ * datos de ejemplo (SEED_CRITERIA). */
 const EMPTY_CRITERIA: Criteria = {
   loan: {
     hasCredit: true,
@@ -306,10 +339,16 @@ export async function deleteHouse(caseId: string, id: string): Promise<void> {
   let removedImages: string[] = [];
   await mutateHouses(caseId, (houses) => {
     const target = houses.find((h) => h.id === id);
-    if (target) removedImages = target.images;
-    return houses.filter((house) => house.id !== id);
+    const remaining = houses.filter((house) => house.id !== id);
+    // Una foto que otra casa del mismo caso sigue usando no se borra
+    // (SEP23-08).
+    const stillUsed = new Set(remaining.flatMap((h) => h.images));
+    if (target) removedImages = target.images.filter((url) => !stillUsed.has(url));
+    return remaining;
   });
-  const blobUrls = ownBlobUrls(removedImages);
+  // ...ni una que usa otro caso del mismo corredor (blobPhotosToDelete).
+  const kase = removedImages.length > 0 ? await getCase(caseId) : null;
+  const blobUrls = kase ? await blobPhotosToDelete(caseId, kase.brokerId, removedImages) : [];
   if (blobUrls.length > 0) await del(blobUrls).catch(() => {});
 }
 

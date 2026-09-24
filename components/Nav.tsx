@@ -8,6 +8,7 @@ import { TipoCaso } from "@/lib/types";
 import { MicasoMark } from "@/components/MicasoMark";
 import ThemeToggle from "@/components/ThemeToggle";
 import InstallAppButton from "@/components/InstallAppButton";
+import { clearPrivateCaches } from "@/lib/offlineCache";
 
 const BASE_LINKS = [
   { href: "/caso", label: "Inicio", icon: Home },
@@ -81,6 +82,9 @@ export default function Nav({
     // vuelta a /caso apenas la landing intentaba cargar (no había forma
     // real de "salir" del demo). Mismo logout para los dos casos.
     await fetch("/api/caso/logout", { method: "POST" });
+    // Lo que el service worker guardó para ver el caso sin señal no se
+    // queda en el dispositivo (SEP23-16, ver lib/offlineCache.ts).
+    await clearPrivateCaches();
     router.push("/");
     router.refresh();
   }

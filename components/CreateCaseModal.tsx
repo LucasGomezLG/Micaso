@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import { Case, TipoCaso } from "@/lib/types";
 import { buildCaseShareMessage, openWhatsapp } from "@/lib/whatsapp";
 import { useModalScrollLock } from "@/lib/hooks";
 import Select from "@/components/Select";
+import { clearPrivateCaches } from "@/lib/offlineCache";
 
 export default function CreateCaseModal({ label = "+ Nuevo caso", disabledReason }: { label?: string; disabledReason?: string }) {
   const router = useRouter();
@@ -67,6 +68,8 @@ export default function CreateCaseModal({ label = "+ Nuevo caso", disabledReason
       toast.error("No se pudo entrar al caso.");
       return;
     }
+    // Mismo motivo que en LoginForm: no mezclar con otro caso guardado sin señal (SEP23-16).
+    await clearPrivateCaches();
     router.refresh();
     router.push("/caso");
   }
@@ -253,7 +256,7 @@ export default function CreateCaseModal({ label = "+ Nuevo caso", disabledReason
                     <label className="flex flex-col gap-1 text-sm">
                       <span className="eyebrow">Integrantes de la familia (opcional)</span>
                       <input
-                        placeholder="Ej. Lucas, Abril (separados por coma)"
+                        placeholder="Ej. Martín, Sofía (separados por coma)"
                         value={personas}
                         onChange={(e) => setPersonas(e.target.value)}
                         className="rounded-lg border px-3 py-2"

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { isKnownPushEndpoint } from "./url-safety";
 
 /** Parsea el body JSON de un Request contra un schema de Zod — reemplaza
  * el `try { body = await request.json() } catch {...}` + chequeos a mano
@@ -181,8 +182,18 @@ export const criteriaPatchSchema = z.object({
 // Caso — personas (app/api/case/people)
 // ---------------------------------------------------------------------
 
+// SEP23-12 (AUDITORIA-2026-09-23.md): sin tope, una sesión de caso podía
+// guardar un array enorme en `case:{id}:meta`, que proxy.ts lee en cada
+// request. Una familia real no se acerca a ninguno de los dos números.
+const PEOPLE_MAX = 30;
+const PERSON_NAME_MAX = 100;
+const personNameSchema = z.string().max(PERSON_NAME_MAX, `Cada nombre puede tener hasta ${PERSON_NAME_MAX} caracteres`);
+const peopleListSchema = z
+  .array(personNameSchema, { error: "Falta la lista de personas" })
+  .max(PEOPLE_MAX, `Hasta ${PEOPLE_MAX} personas por caso`);
+
 export const peoplePatchSchema = z.object({
-  people: z.array(z.string(), { error: "Falta la lista de personas" }),
+  people: peopleListSchema,
 });
 
 // ---------------------------------------------------------------------
@@ -214,7 +225,9 @@ export const caseLoginSchema = z.object({
 export const pushSubscribeSchema = z.object({
   subscription: z.object(
     {
-      endpoint: requiredString("Suscripción incompleta"),
+      endpoint: requiredString("Suscripción incompleta").refine(isKnownPushEndpoint, {
+        message: "Servicio de notificaciones no reconocido",
+      }),
       keys: z.object(
         {
           p256dh: requiredString("Suscripción incompleta"),
@@ -256,7 +269,18 @@ export const brokerProfilePatchSchema = z
 export const panelCaseCreateSchema = z.object({
   titulo: requiredTrimmedString("Falta el título del caso").max(300),
   tipoCaso: z.enum(["compra", "alquiler", "otro"]).optional(),
-  people: z.union([z.array(z.string()), z.string()]).optional(),
+  // Lista, o texto separado por comas (ver app/api/panel/cases) — mismo
+  // tope en los dos formatos.
+  people: z
+    .union([
+      peopleListSchema,
+      z
+        .string()
+        .max(PEOPLE_MAX * (PERSON_NAME_MAX + 1))
+        .refine((s) => s.split(",").filter((p) => p.trim()).length <= PEOPLE_MAX, `Hasta ${PEOPLE_MAX} personas por caso`)
+        .refine((s) => s.split(",").every((p) => p.trim().length <= PERSON_NAME_MAX), `Cada nombre puede tener hasta ${PERSON_NAME_MAX} caracteres`),
+    ])
+    .optional(),
 });
 
 export const caseRenameSchema = z.object({

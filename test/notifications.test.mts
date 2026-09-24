@@ -9,7 +9,7 @@ process.env.MICASO_LOCAL_DB_PATH = join(dbDir, "store.json");
 
 const { createCase, markCaseSeenByBroker, getCase } = await import("../lib/cases");
 const { addHouse, deleteCaseData, getCaseSummary } = await import("../lib/store");
-const { getCaseSubscriptions, removeCaseSubscription, saveCaseSubscription } = await import("../lib/push");
+const { getCaseSubscriptions, removeCaseSubscription, saveCaseSubscription, MAX_SUBSCRIPTIONS_PER_CASE } = await import("../lib/push");
 
 after(() => rmSync(dbDir, { recursive: true, force: true }));
 
@@ -81,7 +81,7 @@ test("deleteCaseData borra las suscripciones Web Push del caso, no deja push_sub
   await saveCaseSubscription(kase.id, sub);
   assert.deepEqual((await getCaseSubscriptions(kase.id)).map((s) => s.endpoint), [sub.endpoint]);
 
-  await deleteCaseData(kase.id);
+  await deleteCaseData(kase.id, kase.brokerId);
 
   assert.deepEqual(await getCaseSubscriptions(kase.id), [], "no debe quedar ninguna suscripción tras borrar el caso");
 });
@@ -104,4 +104,43 @@ test("el caso demo bloquea y rechaza suscripciones Web Push y no emite notificac
     body: "Test en demo",
   });
   assert.equal(sent, 0);
+});
+
+test("SEP23-06: no se guarda un endpoint que no sea de un servicio de push conocido", async () => {
+  const kase = await createCase("broker-notif", "Caso endpoint interno", "compra");
+  await saveCaseSubscription(kase.id, { endpoint: "http://127.0.0.1:6379/", keys: { p256dh: "k", auth: "a" } });
+  await saveCaseSubscription(kase.id, { endpoint: "https://intranet.example/hook", keys: { p256dh: "k", auth: "a" } });
+  assert.deepEqual(await getCaseSubscriptions(kase.id), []);
+});
+
+test("SEP23-06: un caso guarda como máximo MAX_SUBSCRIPTIONS_PER_CASE suscripciones, descartando las más viejas", async () => {
+  const kase = await createCase("broker-notif", "Caso muchas suscripciones", "compra");
+  const total = MAX_SUBSCRIPTIONS_PER_CASE + 5;
+  for (let i = 0; i < total; i++) {
+    await saveCaseSubscription(kase.id, {
+      endpoint: `https://fcm.googleapis.com/fcm/send/dispositivo-${i}`,
+      keys: { p256dh: "k", auth: "a" },
+    });
+  }
+  const saved = await getCaseSubscriptions(kase.id);
+  assert.equal(saved.length, MAX_SUBSCRIPTIONS_PER_CASE);
+  assert.equal(saved[0].endpoint, "https://fcm.googleapis.com/fcm/send/dispositivo-5", "tenía que descartar las 5 más viejas");
+  assert.equal(saved.at(-1)!.endpoint, `https://fcm.googleapis.com/fcm/send/dispositivo-${total - 1}`);
+});
+
+test("SEP23-06: las suscripciones guardadas antes del chequeo no reciben avisos y se limpian al enviar", async () => {
+  const { notifyCaseClients } = await import("../lib/push");
+  const { dbSet } = await import("../lib/db");
+  const kase = await createCase("broker-notif", "Caso con suscripciones viejas", "compra");
+  // Como las dejaba la versión anterior: sin validar el endpoint.
+  await dbSet(`case:${kase.id}:push_subscriptions`, [
+    { endpoint: "http://169.254.169.254/latest/meta-data", keys: { p256dh: "k", auth: "a" }, createdAt: "2026-09-01T00:00:00Z" },
+    { endpoint: "https://intranet.example/hook", keys: { p256dh: "k", auth: "a" }, createdAt: "2026-09-01T00:00:00Z" },
+  ]);
+
+  // Sin el filtro, web-push intentaría el POST (y un error que no es
+  // 404/410 no las borraría); con el filtro, no se envía nada y se limpian.
+  const sent = await notifyCaseClients(kase.id, { title: "Nueva casa", body: "x" });
+  assert.equal(sent, 0);
+  assert.deepEqual(await getCaseSubscriptions(kase.id), [], "tenía que borrar las suscripciones inválidas");
 });

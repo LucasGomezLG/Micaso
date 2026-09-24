@@ -45,18 +45,47 @@ export function createCaseSessionToken(caseId: string): string {
  * filtrar por tiempo de respuesta cuánto de la firma esperada acertó un
  * intento (mismo criterio que timingSafeStringEqual en lib/crypto.ts). */
 export function verifyCaseSessionToken(token: string): string | null {
+  return readCaseSessionToken(token)?.caseId ?? null;
+}
+
+/** Igual que verifyCaseSessionToken, pero devuelve también cuándo se
+ * emitió el token — proxy.ts lo necesita para rechazar sesiones
+ * anteriores a la última rotación de credenciales del caso (ver
+ * wasIssuedBeforeRotation). */
+export function readCaseSessionToken(token: string): SignedToken | null {
+  return readSignedToken(token, MAX_SESSION_AGE_MS, sign);
+}
+
+type SignedToken = { caseId: string; issuedAt: number };
+
+function readSignedToken(
+  token: string,
+  maxAgeMs: number,
+  signFn: (caseId: string, issuedAt: number) => string
+): SignedToken | null {
   const parts = token.split(".");
   if (parts.length !== 3) return null;
   const [caseId, issuedAtStr, signature] = parts;
   const issuedAt = Number(issuedAtStr);
-  if (!caseId || Number.isNaN(issuedAt) || Date.now() - issuedAt > MAX_SESSION_AGE_MS) return null;
+  if (!caseId || Number.isNaN(issuedAt) || Date.now() - issuedAt > maxAgeMs) return null;
 
-  const expected = sign(caseId, issuedAt);
+  const expected = signFn(caseId, issuedAt);
   const sigBuf = Buffer.from(signature);
   const expectedBuf = Buffer.from(expected);
   if (sigBuf.length !== expectedBuf.length) return null;
   if (!timingSafeEqual(sigBuf, expectedBuf)) return null;
-  return caseId;
+  return { caseId, issuedAt };
+}
+
+/** SEP23-04 (AUDITORIA-2026-09-23.md): la cookie de sesión y el magic
+ * link firman solo `caseId` + `issuedAt`, así que "Regenerar clave" no
+ * cortaba nada — un link filtrado seguía entrando hasta vencer (15 días,
+ * o 90 la cookie). regeneratePassword guarda `credencialesRotadasEn` en
+ * el caso, y todo token emitido antes de ese momento se rechaza, sin
+ * cambiar el formato del token (nadie se desloguea al desplegar esto). */
+export function wasIssuedBeforeRotation(issuedAt: number, credencialesRotadasEn: string | null | undefined): boolean {
+  if (!credencialesRotadasEn) return false;
+  return issuedAt < Date.parse(credencialesRotadasEn);
 }
 
 const MAGIC_LINK_MAX_AGE_MS = 15 * 24 * 60 * 60 * 1000; // 15 días para Magic Links
@@ -76,16 +105,11 @@ export function createMagicLinkToken(caseId: string): string {
 
 /** Valida el token del Magic Link y devuelve el caseId si es válido. */
 export function verifyMagicLinkToken(token: string): string | null {
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  const [caseId, issuedAtStr, signature] = parts;
-  const issuedAt = Number(issuedAtStr);
-  if (!caseId || Number.isNaN(issuedAt) || Date.now() - issuedAt > MAGIC_LINK_MAX_AGE_MS) return null;
+  return readMagicLinkToken(token)?.caseId ?? null;
+}
 
-  const expected = signMagicLink(caseId, issuedAt);
-  const sigBuf = Buffer.from(signature);
-  const expectedBuf = Buffer.from(expected);
-  if (sigBuf.length !== expectedBuf.length) return null;
-  if (!timingSafeEqual(sigBuf, expectedBuf)) return null;
-  return caseId;
+/** Igual que verifyMagicLinkToken, con `issuedAt` (ver
+ * wasIssuedBeforeRotation). */
+export function readMagicLinkToken(token: string): SignedToken | null {
+  return readSignedToken(token, MAGIC_LINK_MAX_AGE_MS, signMagicLink);
 }

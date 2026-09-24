@@ -35,7 +35,7 @@ test("el caso demo se siembra solo en el primer acceso y queda indexado", async 
   const kase = await getCase(DEMO_CASE_ID);
   assert.ok(kase);
   assert.equal(kase!.brokerId, DEV_BROKER_ID);
-  assert.equal(kase!.titulo, "Lucas y Abril");
+  assert.equal(kase!.titulo, "Martín y Sofía");
 
   const forDevBroker = await listCasesForBroker(DEV_BROKER_ID);
   assert.ok(forDevBroker.some((c) => c.id === DEMO_CASE_ID));

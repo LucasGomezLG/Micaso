@@ -48,6 +48,6 @@ export async function DELETE(
   }
 
   await deleteCase(id, broker.id);
-  await deleteCaseData(id);
+  await deleteCaseData(id, broker.id);
   return NextResponse.json({ ok: true });
 }

@@ -247,7 +247,7 @@ export default function BrokerOnboarding({ broker }: { broker: Broker }) {
                   type="text"
                   value={nombreMarca}
                   onChange={(e) => setNombreMarca(e.target.value)}
-                  placeholder="ej. Carolina Gómez Propiedades"
+                  placeholder="ej. Valeria Gómez Propiedades"
                   className="rounded-xl border px-3.5 py-2.5 text-base font-medium outline-none transition-colors"
                   style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
                 />
@@ -431,7 +431,7 @@ export default function BrokerOnboarding({ broker }: { broker: Broker }) {
                 autoFocus
                 value={tituloCaso}
                 onChange={(e) => setTituloCaso(e.target.value)}
-                placeholder="ej. Familia Martínez o Lucas y Abril"
+                placeholder="ej. Familia Martínez o Martín y Sofía"
                 className="rounded-xl border px-3.5 py-2.5 text-base font-medium outline-none transition-colors"
                 style={{ borderColor: "var(--border)", background: "var(--paper)", color: "var(--ink)" }}
               />

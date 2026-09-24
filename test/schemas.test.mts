@@ -8,6 +8,7 @@ import {
   caseLoginSchema,
   checklistItemCreateSchema,
   brokerProfilePatchSchema,
+  panelCaseCreateSchema,
 } from "../lib/schemas";
 
 test("COD-01: housePatchSchema rechaza priceUsd como string (el caso concreto del hallazgo)", () => {
@@ -84,10 +85,28 @@ test("pushSubscribeSchema rechaza una suscripción incompleta en cualquier nivel
   );
   assert.equal(
     pushSubscribeSchema.safeParse({
-      subscription: { endpoint: "x", keys: { p256dh: "a", auth: "b" } },
+      subscription: { endpoint: "https://fcm.googleapis.com/fcm/send/abc", keys: { p256dh: "a", auth: "b" } },
     }).success,
     true
   );
+});
+
+test("pushSubscribeSchema solo acepta endpoints https de servicios de push conocidos (SEP23-06)", () => {
+  const withEndpoint = (endpoint: string) =>
+    pushSubscribeSchema.safeParse({ subscription: { endpoint, keys: { p256dh: "a", auth: "b" } } }).success;
+
+  assert.equal(withEndpoint("https://fcm.googleapis.com/fcm/send/abc"), true);
+  assert.equal(withEndpoint("https://updates.push.services.mozilla.com/wpush/v2/abc"), true);
+  assert.equal(withEndpoint("https://wns2-bl2p.notify.windows.com/w/?token=abc"), true);
+  assert.equal(withEndpoint("https://web.push.apple.com/abc"), true);
+
+  assert.equal(withEndpoint("x"), false);
+  assert.equal(withEndpoint("http://fcm.googleapis.com/fcm/send/abc"), false, "sin https");
+  assert.equal(withEndpoint("https://127.0.0.1/admin"), false, "IP interna");
+  assert.equal(withEndpoint("https://169.254.169.254/latest/meta-data"), false, "metadata de la nube");
+  assert.equal(withEndpoint("https://fcm.googleapis.com.evil.com/x"), false, "sufijo engañoso");
+  assert.equal(withEndpoint("https://evilnotify.windows.com/x"), false, "sin el punto del subdominio");
+  assert.equal(withEndpoint("https://fcm.googleapis.com:8443/x"), false, "puerto no estándar");
 });
 
 test("caseLoginSchema rechaza usuario/contraseña vacíos sin filtrar cuál falta", () => {
@@ -107,4 +126,20 @@ test("brokerProfilePatchSchema rechaza un body vacío (\"Nada para actualizar\")
   const result = brokerProfilePatchSchema.safeParse({});
   assert.equal(result.success, false);
   if (!result.success) assert.match(result.error.issues[0].message, /Nada para actualizar/);
+});
+
+test("SEP23-12: la lista de personas tiene tope de cantidad y de largo, en los dos formatos", () => {
+  const names = (n: number) => Array.from({ length: n }, (_, i) => "Persona " + i);
+  assert.equal(peoplePatchSchema.safeParse({ people: names(30) }).success, true);
+  assert.equal(peoplePatchSchema.safeParse({ people: names(31) }).success, false);
+  assert.equal(peoplePatchSchema.safeParse({ people: ["a".repeat(100)] }).success, true);
+  assert.equal(peoplePatchSchema.safeParse({ people: ["a".repeat(101)] }).success, false);
+
+  const create = (people: unknown) => panelCaseCreateSchema.safeParse({ titulo: "Familia", people }).success;
+  assert.equal(create(names(30)), true);
+  assert.equal(create(names(31)), false);
+  assert.equal(create(names(30).join(", ")), true);
+  assert.equal(create(names(31).join(", ")), false, "texto separado por comas");
+  assert.equal(create("a".repeat(101)), false);
+  assert.equal(create("x,".repeat(5000)), false, "texto gigante");
 });

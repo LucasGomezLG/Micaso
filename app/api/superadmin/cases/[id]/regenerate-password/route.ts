@@ -21,5 +21,10 @@ export async function POST(
   }
 
   const updated = await regeneratePassword(id, kase.brokerId);
-  return NextResponse.json({ case: updated });
+  if (!updated) {
+    return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  }
+  // Sin la clave nueva: /superadmin la muestra solo a pedido, vía
+  // reveal-password (SEP23-09, AUDITORIA-2026-09-23.md).
+  return NextResponse.json({ case: { ...updated, password: "" } });
 }

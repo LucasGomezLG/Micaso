@@ -200,6 +200,12 @@ export interface Broker {
    * integración exista (ver ARQUITECTURA.md sección 7/12); mientras
    * tanto subscriptionStatus se edita a mano desde /superadmin. */
   mpPreapprovalId: string | null;
+  /** Suscripciones de Mercado Pago que este corredor ya reemplazó por una
+   * nueva (las más recientes al final). Si una de ellas vuelve a avisar
+   * que está autorizada es porque su cancelación falló: el webhook la
+   * vuelve a cancelar en vez de tomarla como vigente (ver
+   * app/api/mercadopago/webhook/route.ts). Ausente si nunca cambió. */
+  mpReplacedPreapprovalIds?: string[];
   createdAt: string;
 }
 
@@ -227,6 +233,11 @@ export interface Case {
    * necesita el momento real del cierre, no el de la última edición.
    * `null` mientras el caso está `activo`. Ver ARQUITECTURA.md sección 9. */
   soloLecturaDesde: string | null;
+  /** Última vez que se regeneró la clave (ISO) — toda cookie de sesión o
+   * magic link emitido antes queda revocado (SEP23-04, ver
+   * wasIssuedBeforeRotation en lib/sessionToken.ts). Ausente en casos que
+   * nunca rotaron. */
+  credencialesRotadasEn?: string | null;
   /** Cuándo inspeccionó el corredor este caso por última vez — para calcular
    * novedades y apagar el badge de cambios no leídos en el panel. */
   brokerLastSeenAt?: string | null;

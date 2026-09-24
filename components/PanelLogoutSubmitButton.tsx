@@ -2,6 +2,7 @@
 
 import { useFormStatus } from "react-dom";
 import { LogOut, Loader2 } from "lucide-react";
+import { clearPrivateCaches } from "@/lib/offlineCache";
 
 /** Separado de PanelLogoutButton.tsx (server component, tiene el <form>
  * con el server action inline) porque useFormStatus necesita ser un
@@ -15,6 +16,10 @@ export default function PanelLogoutSubmitButton() {
     <button
       type="submit"
       disabled={pending}
+      // Si el corredor entró a un caso, el service worker pudo guardarlo
+      // para verlo sin señal — se borra antes de salir (SEP23-16). El
+      // viaje al servidor del server action tarda más que esto.
+      onClick={() => void clearPrivateCaches()}
       title="Cerrar sesión"
       aria-label="Cerrar sesión"
       className="inline-flex items-center gap-1.5 text-sm font-medium hover:underline disabled:opacity-60 disabled:pointer-events-none"

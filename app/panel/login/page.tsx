@@ -2,11 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
 import { MicasoMark } from "@/components/MicasoMark";
+import { safeNextPath } from "@/lib/safeNextPath";
 import BrokerLoginForm from "./BrokerLoginForm";
 
 export default async function PanelLoginPage(props: PageProps<"/panel/login">) {
   const searchParams = await props.searchParams;
-  const next = typeof searchParams.next === "string" ? searchParams.next : "/panel";
+  // Mismo filtro que proxy.ts (SEP23-07): solo rutas de este sitio.
+  const next = safeNextPath(typeof searchParams.next === "string" ? searchParams.next : null, "/panel");
 
   const session = await auth();
   if (session?.user?.email) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCaseByCredentials, getCase, recordTermsAcceptance } from "@/lib/cases";
 import { CASE_COOKIE } from "@/lib/session";
-import { createCaseSessionToken, verifyMagicLinkToken } from "@/lib/sessionToken";
+import { createCaseSessionToken, readMagicLinkToken, wasIssuedBeforeRotation } from "@/lib/sessionToken";
 import { clearAttempts, isRateLimited, recordFailedAttempt } from "@/lib/rateLimit";
 import { caseLoginSchema, parseJsonBody } from "@/lib/schemas";
 
@@ -30,9 +30,12 @@ export async function POST(request: NextRequest) {
   let kase = null;
 
   if (body.token) {
-    const caseId = verifyMagicLinkToken(body.token);
-    if (caseId) {
-      kase = await getCase(caseId);
+    const magic = readMagicLinkToken(body.token);
+    if (magic) {
+      kase = await getCase(magic.caseId);
+      // Un link compartido antes de "Regenerar clave" ya no entra
+      // (SEP23-04, ver wasIssuedBeforeRotation).
+      if (kase && wasIssuedBeforeRotation(magic.issuedAt, kase.credencialesRotadasEn)) kase = null;
     }
   } else if (body.username && body.password) {
     kase = await getCaseByCredentials(body.username, body.password);
