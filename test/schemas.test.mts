@@ -23,6 +23,13 @@ test("houseCreateSchema exige addedBy y rechaza espacios en blanco (no solo stri
   if (ok.success) assert.equal(ok.data.addedBy, "Lucas"); // trim aplicado
 });
 
+test("houseCreateSchema descarta visitaConfirmada: una casa nace sin confirmar", () => {
+  const parsed = houseCreateSchema.safeParse({ title: "Casa", addedBy: "Test", visitaFecha: "2026-09-26T10:00", visitaConfirmada: true });
+  assert.equal(parsed.success, true);
+  assert.equal("visitaConfirmada" in parsed.data!, false);
+  assert.equal(housePatchSchema.safeParse({ visitaConfirmada: true }).success, true);
+});
+
 test("houseCreateSchema descarta id/author/createdAt de initialComments — solo se guarda el texto", () => {
   const result = houseCreateSchema.safeParse({
     addedBy: "Lucas",

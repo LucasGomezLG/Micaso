@@ -131,7 +131,8 @@ uno con su propio acceso.
 > - **Dato nuevo, `House.visitaConfirmada` (boolean).** Se marca a mano
 >   con el botón "Marcar confirmada" / "Confirmada" de cada visita próxima
 >   en `/caso/agenda` (`VisitConfirmToggle`). Lo puede tocar cualquiera con
->   acceso al caso, igual que el resto de los datos de una casa.
+>   acceso al caso, igual que el resto de los datos de una casa (cambiado
+>   el mismo día: ahora es solo del corredor, ver el ajuste de abajo).
 >   `updateHouse` (`lib/store.ts`) lo baja a `false` cuando cambia
 >   `visitaFecha`, porque la confirmación era de otro horario, salvo que el
 >   mismo patch la vuelva a marcar. Sin `visitaFecha` nunca queda en
@@ -150,6 +151,29 @@ uno con su propio acceso.
 > - Tests en `test/whatsapp.test.mts` (formato) y
 >   `test/visit-confirmation.test.mts` (cuándo se desconfirma). Probado
 >   en el navegador en 375, 640 y 1280 px, en claro y oscuro.
+>
+> **Ajuste (25 sept 2026, mismo día): confirmar es solo del corredor; el
+> aviso de visita, solo si cambia la fecha.** Decisión de Lucas:
+> - **Confirmar una visita lo hace solo el corredor del caso**, porque es
+>   él quien la coordina con la inmobiliaria o el dueño. La familia ve el
+>   estado ("Confirmada" en verde o "Sin confirmar" en gris) como un
+>   indicador, no como un botón. **Compartir el día lo puede hacer
+>   cualquiera**, y el mensaje lleva los ✅ igual.
+>   - Se controla en el servidor, no solo en la UI: el PATCH de
+>     `app/api/houses/[id]` responde 403 si trae `visitaConfirmada` y quien
+>     lo manda no es el corredor dueño del caso (mismo criterio que
+>     `viewingAsBroker` en `app/caso/layout.tsx`). La familia sigue
+>     pudiendo editar el resto de los datos de la casa. Si mueve la fecha
+>     de una visita, la confirmación se borra, igual que antes.
+>   - `houseCreateSchema` descarta `visitaConfirmada`: una casa siempre
+>     nace sin confirmar.
+> - **El aviso push "Visita agendada" se repetía:** salía en cada guardado
+>   de "Editar datos" en una casa con visita, porque ese formulario manda
+>   `visitaFecha` siempre, aunque no se haya tocado. Ahora sale solo si la
+>   fecha cambió, con `visitMoved` (`lib/store.ts`), la misma función que
+>   decide cuándo se borra la confirmación.
+> - Probado en el navegador con las dos sesiones, corredor y familia (la
+>   familia entra con su link), en 375, 640 y 1280 px.
 >
 > **Aclaración (18 sept 2026): la carga de propiedades no es una lista
 > cerrada de sitios soportados.** `app/api/scrape/route.ts` no tiene

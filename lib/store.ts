@@ -196,7 +196,8 @@ export async function addHouse(
     proximaAccion: input.proximaAccion ?? null,
     proximaAccionFecha: input.proximaAccionFecha ?? null,
     visitaFecha: input.visitaFecha ?? null,
-    visitaConfirmada: input.visitaFecha ? (input.visitaConfirmada ?? false) : false,
+    // Nace sin confirmar: confirmar es un PATCH aparte, solo del corredor.
+    visitaConfirmada: false,
     visitReview: input.visitReview ?? null,
     addedBy: input.addedBy,
     addedAt: input.addedAt ?? now,
@@ -204,6 +205,14 @@ export async function addHouse(
   };
   await mutateHouses(caseId, (houses) => [house, ...houses]);
   return house;
+}
+
+/** Si `patch` le cambia la fecha a la visita de `house` (moverla, ponerle
+ * una por primera vez o sacarla). "Editar datos" (EditHouseModal) manda
+ * `visitaFecha` en cada guardado aunque no se haya tocado, así que no
+ * alcanza con ver si el campo vino en el patch. */
+export function visitMoved(house: Pick<House, "visitaFecha">, patch: Partial<House>): boolean {
+  return "visitaFecha" in patch && (patch.visitaFecha ?? null) !== house.visitaFecha;
 }
 
 export async function updateHouse(
@@ -221,8 +230,7 @@ export async function updateHouse(
       // deja de valer (salvo que el mismo patch la vuelva a marcar), y sin
       // visita no hay nada que confirmar. Se compara adentro del lock,
       // contra el valor guardado.
-      const visitMoved = "visitaFecha" in safePatch && safePatch.visitaFecha !== house.visitaFecha;
-      if (!next.visitaFecha || (visitMoved && !("visitaConfirmada" in safePatch))) {
+      if (!next.visitaFecha || (visitMoved(house, safePatch) && !("visitaConfirmada" in safePatch))) {
         next.visitaConfirmada = false;
       }
       updated = next;

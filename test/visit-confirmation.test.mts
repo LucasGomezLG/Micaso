@@ -10,7 +10,7 @@ import { join } from "node:path";
 const dbDir = mkdtempSync(join(tmpdir(), "micaso-test-visita-"));
 process.env.MICASO_LOCAL_DB_PATH = join(dbDir, "store.json");
 
-const { addHouse, updateHouse } = await import("../lib/store");
+const { addHouse, updateHouse, visitMoved } = await import("../lib/store");
 
 after(() => rmSync(dbDir, { recursive: true, force: true }));
 
@@ -52,4 +52,15 @@ test("sin visita no hay nada confirmado", async () => {
   const house = await addHouse("case-visita-5", { url: "https://example.com/s", addedBy: "Test" });
   const forced = await updateHouse("case-visita-5", house.id, { visitaConfirmada: true });
   assert.equal(forced?.visitaConfirmada, false);
+});
+
+test("visitMoved: la misma fecha que ya tenía (como la reenvía Editar datos) no cuenta como mover", () => {
+  const withVisit = { visitaFecha: "2026-09-26T10:00" };
+  const withoutVisit = { visitaFecha: null };
+  assert.equal(visitMoved(withVisit, { visitaFecha: "2026-09-26T10:00", priceUsd: 150000 }), false);
+  assert.equal(visitMoved(withVisit, { priceUsd: 150000 }), false);
+  assert.equal(visitMoved(withoutVisit, { visitaFecha: null }), false);
+  assert.equal(visitMoved(withVisit, { visitaFecha: "2026-09-26T11:00" }), true);
+  assert.equal(visitMoved(withoutVisit, { visitaFecha: "2026-09-26T10:00" }), true);
+  assert.equal(visitMoved(withVisit, { visitaFecha: null }), true);
 });

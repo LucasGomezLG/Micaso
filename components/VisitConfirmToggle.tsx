@@ -8,8 +8,18 @@ import { apiErrorMessage } from "@/lib/http";
 
 /** Marca a mano si la inmobiliaria o el dueño ya confirmó una visita
  * (House.visitaConfirmada) — sale como ✅ en el mensaje de WhatsApp del
- * día (ShareVisitDayButton). */
-export default function VisitConfirmToggle({ houseId, confirmed }: { houseId: string; confirmed: boolean }) {
+ * día (ShareVisitDayButton). Solo el corredor del caso la cambia
+ * (`editable`, y el PATCH lo vuelve a chequear); la familia ve el estado
+ * como un indicador, no como un botón. */
+export default function VisitConfirmToggle({
+  houseId,
+  confirmed,
+  editable,
+}: {
+  houseId: string;
+  confirmed: boolean;
+  editable: boolean;
+}) {
   const router = useRouter();
   const [value, setValue] = useState(confirmed);
   const [saving, setSaving] = useState(false);
@@ -42,6 +52,29 @@ export default function VisitConfirmToggle({ houseId, confirmed }: { houseId: st
       return;
     }
     startRefresh(() => router.refresh());
+  }
+
+  if (!editable) {
+    return (
+      <span
+        // Mismo ancho confirmada o no: en mobile el botón Calendario de al
+        // lado queda alineado entre una tarjeta y la siguiente.
+        className="inline-flex min-w-[7.5rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold"
+        style={
+          confirmed
+            ? { background: "var(--status-gusto-bg)", color: "var(--status-gusto)" }
+            : { color: "var(--ink-faint)" }
+        }
+        title={
+          confirmed
+            ? "La inmobiliaria o el dueño ya confirmó esta visita"
+            : "Todavía no está confirmada por la inmobiliaria o el dueño"
+        }
+      >
+        {confirmed ? <Check size={14} className="shrink-0" /> : <CircleDashed size={14} className="shrink-0" />}
+        {confirmed ? "Confirmada" : "Sin confirmar"}
+      </span>
+    );
   }
 
   return (

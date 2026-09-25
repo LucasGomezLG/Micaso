@@ -3,6 +3,7 @@ import { CalendarDays, MapPin, Phone } from "lucide-react";
 import { getCriteria, getHouses } from "@/lib/store";
 import { getCaseId } from "@/lib/session";
 import { getCase } from "@/lib/cases";
+import { getCurrentBroker } from "@/lib/brokers";
 import { dayLabel, daysUntil, formatTime, formatUsd, todayAr } from "@/lib/format";
 import { House, LoanInfo, STATUS_LABEL } from "@/lib/types";
 import AddToCalendarButton from "@/components/AddToCalendarButton";
@@ -26,11 +27,16 @@ function groupByDay(list: VisitHouse[]): Record<string, VisitHouse[]> {
 
 export default async function AgendaPage() {
   const caseId = await getCaseId();
-  const [houses, criteria, kase] = await Promise.all([
+  const [houses, criteria, kase, viewer] = await Promise.all([
     getHouses(caseId),
     getCriteria(caseId),
     getCase(caseId),
+    getCurrentBroker(),
   ]);
+  // Confirmar una visita es del corredor del caso (mismo criterio que
+  // `viewingAsBroker` en app/caso/layout.tsx y que el PATCH de
+  // app/api/houses/[id]); la familia ve el estado sin poder cambiarlo.
+  const canConfirm = Boolean(viewer && kase && viewer.id === kase.brokerId);
   const loan = criteria.loan;
   const people = kase?.people ?? [];
   const today = todayAr();
@@ -99,7 +105,15 @@ export default async function AgendaPage() {
           ) : (
             <div className="flex flex-col gap-8">
               {Object.entries(proximasGroups).map(([day, dayHouses]) => (
-                <DayGroup key={day} day={day} today={today} houses={dayHouses} loan={loan} people={people} />
+                <DayGroup
+                  key={day}
+                  day={day}
+                  today={today}
+                  houses={dayHouses}
+                  loan={loan}
+                  people={people}
+                  canConfirm={canConfirm}
+                />
               ))}
             </div>
           )}
@@ -132,6 +146,7 @@ function DayGroup({
   loan,
   people,
   past = false,
+  canConfirm = false,
 }: {
   day: string;
   today: string;
@@ -139,6 +154,7 @@ function DayGroup({
   loan: LoanInfo;
   people: string[];
   past?: boolean;
+  canConfirm?: boolean;
 }) {
   const isToday = !past && day === today;
   const isTomorrow = !past && daysUntil(day) === 1;
@@ -246,7 +262,7 @@ function DayGroup({
                 className="flex w-full shrink-0 items-center gap-2 border-t pt-2.5 sm:w-auto sm:self-auto sm:border-t-0 sm:pt-0"
                 style={{ borderColor: "var(--border)" }}
               >
-                <VisitConfirmToggle houseId={house.id} confirmed={house.visitaConfirmada} />
+                <VisitConfirmToggle houseId={house.id} confirmed={house.visitaConfirmada} editable={canConfirm} />
                 <AddToCalendarButton
                   house={house}
                   title="Descargar evento .ics para agregar a tu calendario"

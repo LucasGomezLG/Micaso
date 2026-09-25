@@ -104,12 +104,17 @@ export const housePatchSchema = housePatchableSchema.partial();
  * acá (el resto de los requisitos de negocio, como "hace falta url o
  * title", se siguen chequeando aparte porque son una regla entre dos
  * campos, no la forma de uno solo). */
-export const houseCreateSchema = housePatchableSchema.partial().extend({
-  addedBy: requiredTrimmedString("Falta el campo obligatorio: addedBy"),
-  // Solo texto plano — lib/store.ts addHouse arma el HouseComment real
-  // (id/author/createdAt) del lado del servidor, ver el comentario ahí.
-  initialComments: z.array(z.string().trim().min(1).max(5000)).max(20).optional(),
-});
+export const houseCreateSchema = housePatchableSchema
+  // Una casa nace sin confirmar: confirmar es un PATCH aparte, solo del
+  // corredor (ver app/api/houses/[id]/route.ts). Si viene, se descarta.
+  .omit({ visitaConfirmada: true })
+  .partial()
+  .extend({
+    addedBy: requiredTrimmedString("Falta el campo obligatorio: addedBy"),
+    // Solo texto plano — lib/store.ts addHouse arma el HouseComment real
+    // (id/author/createdAt) del lado del servidor, ver el comentario ahí.
+    initialComments: z.array(z.string().trim().min(1).max(5000)).max(20).optional(),
+  });
 
 export const houseCommentCreateSchema = z.object({
   author: requiredString("Faltan campos obligatorios: author, text"),
