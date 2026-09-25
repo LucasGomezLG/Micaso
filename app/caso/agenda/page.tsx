@@ -8,6 +8,8 @@ import { House, LoanInfo, STATUS_LABEL } from "@/lib/types";
 import AddToCalendarButton from "@/components/AddToCalendarButton";
 import EmptyState from "@/components/EmptyState";
 import HouseQuickView from "@/components/HouseQuickView";
+import ShareVisitDayButton from "@/components/ShareVisitDayButton";
+import VisitConfirmToggle from "@/components/VisitConfirmToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -142,29 +144,46 @@ function DayGroup({
   const isTomorrow = !past && daysUntil(day) === 1;
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex items-center gap-2.5">
-        <h2 className="text-lg font-semibold" style={{ fontFamily: "var(--font-display)" }}>
-          {dayLabel(day)}
-        </h2>
-        {isToday && (
-          <span
-            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-xs animate-pulse"
-            style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-          >
-            Hoy
+      <div className="flex items-center justify-between gap-3">
+        {/* El título se parte en renglones y el botón queda fijo a la
+            derecha — con una fecha larga ("Miércoles, 30 de septiembre")
+            en mobile, el botón bajaba solo a un renglón propio. */}
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+          <h2 className="text-lg font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+            {dayLabel(day)}
+          </h2>
+          {isToday && (
+            <span
+              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-xs animate-pulse"
+              style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+            >
+              Hoy
+            </span>
+          )}
+          {isTomorrow && (
+            <span
+              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-xs"
+              style={{ background: "var(--gold-soft)", color: "var(--gold)" }}
+            >
+              Mañana
+            </span>
+          )}
+          <span className="text-xs" style={{ color: "var(--ink-faint)" }}>
+            · {houses.length} {houses.length === 1 ? "visita" : "visitas"}
           </span>
+        </div>
+        {!past && (
+          <ShareVisitDayButton
+            day={day}
+            visits={houses.map((h) => ({
+              title: h.title,
+              address: h.address,
+              zone: h.zone,
+              visitaFecha: h.visitaFecha,
+              visitaConfirmada: h.visitaConfirmada,
+            }))}
+          />
         )}
-        {isTomorrow && (
-          <span
-            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-xs"
-            style={{ background: "var(--gold-soft)", color: "var(--gold)" }}
-          >
-            Mañana
-          </span>
-        )}
-        <span className="text-xs" style={{ color: "var(--ink-faint)" }}>
-          · {houses.length} {houses.length === 1 ? "visita" : "visitas"}
-        </span>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -227,6 +246,7 @@ function DayGroup({
                 className="flex w-full shrink-0 items-center gap-2 border-t pt-2.5 sm:w-auto sm:self-auto sm:border-t-0 sm:pt-0"
                 style={{ borderColor: "var(--border)" }}
               >
+                <VisitConfirmToggle houseId={house.id} confirmed={house.visitaConfirmada} />
                 <AddToCalendarButton
                   house={house}
                   title="Descargar evento .ics para agregar a tu calendario"

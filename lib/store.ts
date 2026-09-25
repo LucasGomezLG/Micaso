@@ -99,6 +99,7 @@ const NEW_FIELD_DEFAULTS = {
   proximaAccion: null,
   proximaAccionFecha: null,
   visitaFecha: null,
+  visitaConfirmada: false,
   visitReview: null,
   checklist: [] as HouseChecklistItem[],
   aptoCredito: "no_se" as const,
@@ -195,6 +196,7 @@ export async function addHouse(
     proximaAccion: input.proximaAccion ?? null,
     proximaAccionFecha: input.proximaAccionFecha ?? null,
     visitaFecha: input.visitaFecha ?? null,
+    visitaConfirmada: input.visitaFecha ? (input.visitaConfirmada ?? false) : false,
     visitReview: input.visitReview ?? null,
     addedBy: input.addedBy,
     addedAt: input.addedAt ?? now,
@@ -214,8 +216,17 @@ export async function updateHouse(
   await mutateHouses(caseId, (houses) =>
     houses.map((house) => {
       if (house.id !== id) return house;
-      updated = { ...house, ...safePatch, id: house.id, updatedAt: new Date().toISOString() };
-      return updated;
+      const next: House = { ...house, ...safePatch, id: house.id, updatedAt: new Date().toISOString() };
+      // Una confirmación es de un horario puntual: si la visita se mueve
+      // deja de valer (salvo que el mismo patch la vuelva a marcar), y sin
+      // visita no hay nada que confirmar. Se compara adentro del lock,
+      // contra el valor guardado.
+      const visitMoved = "visitaFecha" in safePatch && safePatch.visitaFecha !== house.visitaFecha;
+      if (!next.visitaFecha || (visitMoved && !("visitaConfirmada" in safePatch))) {
+        next.visitaConfirmada = false;
+      }
+      updated = next;
+      return next;
     })
   );
   return updated;

@@ -91,6 +91,21 @@ export function formatWeekdayDate(isoDate: string): string {
   );
 }
 
+/** Día de la semana y fecha corta ("sábado 26/09/26") — para mensajes de
+ * texto plano como el de la agenda por WhatsApp (lib/whatsapp.ts). */
+export function formatWeekdayShortDate(isoDate: string): string {
+  const weekday = formatWith(isoDate.slice(0, 10), { weekday: "long" });
+  const date = formatWith(isoDate.slice(0, 10), { day: "2-digit", month: "2-digit", year: "2-digit" });
+  return `${weekday} ${date}`;
+}
+
+/** Hora en 24 h ("10:00", "13:30") — `formatTime` sigue el default de
+ * es-AR, que en Node sale en 12 h ("10:00 a. m."), y un "10:00 a. m.hs"
+ * no sirve para el mensaje de WhatsApp. */
+export function formatTime24(iso: string): string {
+  return formatWith(iso, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+}
+
 /** Fecha de hoy en huso de Argentina, como "YYYY-MM-DD" — mismo criterio
  * que ya usan isOverdue/daysUntil, expuesto para comparar contra
  * `visitaFecha`/`proximaAccionFecha` sin repetir el Intl.DateTimeFormat

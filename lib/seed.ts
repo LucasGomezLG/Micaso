@@ -83,6 +83,7 @@ type SeedFields =
   | "proximaAccion"
   | "proximaAccionFecha"
   | "visitaFecha"
+  | "visitaConfirmada"
   | "visitReview"
   | "aptoCredito"
   | "lat"
@@ -103,6 +104,7 @@ function h(partial: Omit<House, SeedFields> & {
   proximaAccion?: string | null;
   proximaAccionFecha?: string | null;
   visitaFecha?: string | null;
+  visitaConfirmada?: boolean;
   visitReview?: VisitReview | null;
   aptoCredito?: House["aptoCredito"];
 }): House {
@@ -116,6 +118,7 @@ function h(partial: Omit<House, SeedFields> & {
     proximaAccion: null,
     proximaAccionFecha: null,
     visitaFecha: null,
+    visitaConfirmada: false,
     visitReview: null,
     address: null,
     lat: null,

@@ -50,7 +50,9 @@ export async function PATCH(
     const fechaFormatted = String(patch.visitaFecha).slice(0, 10);
     notifyCaseClients(caseId, {
       title: "Micaso · Visita agendada",
-      body: `Visita confirmada: ${house.title || "Propiedad"} (${fechaFormatted})`,
+      // "agendada", no "confirmada": confirmada es otra cosa, que se marca
+      // aparte desde la Agenda (House.visitaConfirmada).
+      body: `Visita agendada: ${house.title || "Propiedad"} (${fechaFormatted})`,
       url: "/caso/agenda",
     }).catch(() => {});
   }

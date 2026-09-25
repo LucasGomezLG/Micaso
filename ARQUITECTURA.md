@@ -105,7 +105,7 @@ uno con su propio acceso.
 | **Criterios** | zonas de interés e imprescindibles en común a cualquier caso; el perfil financiero varía por tipo (ver abajo) |
 | **Casas** | pipeline de 7 estados de búsqueda + papelera recuperable, fotos, comentarios, revisión de visita, plata necesaria calculada contra el presupuesto del caso |
 | **Vistas** | comparación de destacadas, mapa aproximado por zona |
-| **Agenda** | visitas coordinadas agrupadas por día, en orden cronológico, con botón para descargar el evento al calendario del celular |
+| **Agenda** | visitas coordinadas agrupadas por día, en orden cronológico, con botón para descargar el evento al calendario del celular, marca de visita confirmada y botón para compartir el recorrido del día por WhatsApp |
 | **Checklist** | trámites y documentación, asignable entre los miembros del caso — plantilla distinta por tipo (ver abajo) |
 | **Carga de propiedades** | pegar un link de cualquier sitio autocompleta título, fotos, precio, ambientes, superficie y zona (si el sitio lo permite — ver abajo) |
 
@@ -123,6 +123,33 @@ uno con su propio acceso.
 > desaparecía de la lista, sin aviso ni forma de verla. Ahora se agrupan
 > en dos secciones, "Próximas" y "Visitas pasadas" (esta última, más
 > recientes primero), en vez de perderse.
+>
+> **Implementado (25 sept 2026): compartir el día por WhatsApp y marcar
+> visitas confirmadas.** Pedido de Lucas, a partir de un mensaje real
+> armado a mano: dirección y hora de cada visita del día, con ✅ en las que
+> ya confirmó la inmobiliaria o el dueño.
+> - **Dato nuevo, `House.visitaConfirmada` (boolean).** Se marca a mano
+>   con el botón "Marcar confirmada" / "Confirmada" de cada visita próxima
+>   en `/caso/agenda` (`VisitConfirmToggle`). Lo puede tocar cualquiera con
+>   acceso al caso, igual que el resto de los datos de una casa.
+>   `updateHouse` (`lib/store.ts`) lo baja a `false` cuando cambia
+>   `visitaFecha`, porque la confirmación era de otro horario, salvo que el
+>   mismo patch la vuelva a marcar. Sin `visitaFecha` nunca queda en
+>   `true`. Las casas guardadas antes arrancan en `false` (`normalizeHouse`).
+> - **Botón "Compartir" en cada día próximo** (`ShareVisitDayButton`). Arma
+>   el mensaje con `buildVisitDayMessage` (`lib/whatsapp.ts`) y lo abre con
+>   `openWhatsapp`, el mismo camino que ya evita la corrupción de emojis de
+>   `wa.me`. Formato: "🏠 VISITA(S) PROGRAMADA(S)", "📅 Fecha: sábado
+>   26/09/26", y por visita "📍 Ubicación: …" y "⌚ Hora: 10:00hs ✅".
+>   La ubicación es `address`; si no hay, `zone`, y si tampoco, el título.
+>   La hora sale en 24 h (`formatTime24` en `lib/format.ts`): `formatTime`
+>   sigue el default de es-AR, que da "10:00 a. m.".
+> - **Aviso push al agendar una visita:** decía "Visita confirmada: …" y
+>   ahora dice "Visita agendada: …", para no confundirlo con la
+>   confirmación de verdad. Confirmar una visita no manda aviso.
+> - Tests en `test/whatsapp.test.mts` (formato) y
+>   `test/visit-confirmation.test.mts` (cuándo se desconfirma). Probado
+>   en el navegador en 375, 640 y 1280 px, en claro y oscuro.
 >
 > **Aclaración (18 sept 2026): la carga de propiedades no es una lista
 > cerrada de sitios soportados.** `app/api/scrape/route.ts` no tiene

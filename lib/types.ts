@@ -117,6 +117,11 @@ export interface House {
   proximaAccionFecha: string | null;
   /** ISO datetime — when a coordinated visit is actually scheduled. */
   visitaFecha: string | null;
+  /** Si la inmobiliaria o el dueño ya confirmó la visita de `visitaFecha`
+   * — se marca a mano desde la Agenda y sale como ✅ en el mensaje de
+   * WhatsApp del día. Vuelve a false cuando cambia `visitaFecha` (ver
+   * updateHouse en lib/store.ts): la confirmación era de otro horario. */
+  visitaConfirmada: boolean;
   visitReview: VisitReview | null;
   addedBy: string;
   addedAt: string;

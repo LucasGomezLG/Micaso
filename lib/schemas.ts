@@ -92,6 +92,7 @@ const housePatchableFields = {
   proximaAccion: z.string().max(500).nullable(),
   proximaAccionFecha: z.string().max(20).nullable(),
   visitaFecha: z.string().max(40).nullable(),
+  visitaConfirmada: z.boolean(),
   visitReview: visitReviewSchema.nullable(),
 };
 
