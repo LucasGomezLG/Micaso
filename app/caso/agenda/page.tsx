@@ -194,7 +194,6 @@ function DayGroup({
             visits={houses.map((h) => ({
               title: h.title,
               address: h.address,
-              zone: h.zone,
               visitaFecha: h.visitaFecha,
               visitaConfirmada: h.visitaConfirmada,
             }))}

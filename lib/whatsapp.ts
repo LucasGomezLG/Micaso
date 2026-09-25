@@ -59,7 +59,6 @@ export function buildCaseShareMessage(kase: {
 export type VisitShareItem = {
   title: string;
   address: string | null;
-  zone: string | null;
   visitaFecha: string;
   visitaConfirmada: boolean;
 };
@@ -68,8 +67,9 @@ export type VisitShareItem = {
  * "Compartir" de cada día en app/caso/agenda) — el mismo formato del
  * mensaje que se armaba a mano: ubicación y hora de cada visita, con ✅ en
  * las que la inmobiliaria o el dueño ya confirmó. La ubicación es la
- * dirección exacta si está cargada; si no, la zona o, en último caso, el
- * título, para que ninguna visita quede sin decir adónde ir. */
+ * dirección exacta si está cargada; si no, el título de la casa. La zona
+ * sola ("Villa Ballester") no sirve para llegar ni para saber de qué casa
+ * se habla, así que no se usa. */
 export function buildVisitDayMessage(day: string, visits: VisitShareItem[]): string {
   const sorted = [...visits].sort((a, b) => (a.visitaFecha < b.visitaFecha ? -1 : a.visitaFecha > b.visitaFecha ? 1 : 0));
   const lines = [
@@ -77,7 +77,7 @@ export function buildVisitDayMessage(day: string, visits: VisitShareItem[]): str
     `📅 Fecha: ${formatWeekdayShortDate(day)}`,
   ];
   for (const visit of sorted) {
-    const ubicacion = visit.address?.trim() || visit.zone?.trim() || visit.title;
+    const ubicacion = visit.address?.trim() || visit.title;
     lines.push(
       "",
       `📍 Ubicación: ${ubicacion}`,

@@ -22,12 +22,12 @@ test("buildCaseShareMessage incluye título, URL, credenciales y texto formatead
   assert.ok(!msg.includes('\uFFFD'));
 });
 
-test("buildVisitDayMessage arma el día con ubicación, hora en 24 h y ✅ solo en las confirmadas", () => {
+test("buildVisitDayMessage arma el día con dirección (o título si no hay), hora en 24 h y ✅ solo en las confirmadas", () => {
   const msg = buildVisitDayMessage("2026-09-26", [
-    { title: "PH en Villa Urquiza", address: "Pelagio B. Luna 2763", zone: "Villa Urquiza", visitaFecha: "2026-09-26T12:15", visitaConfirmada: false },
-    { title: "Casa en Saavedra", address: "Catamarca 3368", zone: "Saavedra", visitaFecha: "2026-09-26T10:00", visitaConfirmada: true },
-    { title: "Depto en Coghlan", address: null, zone: "Coghlan", visitaFecha: "2026-09-26T13:30", visitaConfirmada: true },
-    { title: "Casa sin dirección", address: "  ", zone: null, visitaFecha: "2026-09-26T16:05", visitaConfirmada: false },
+    { title: "PH en Villa Urquiza", address: "Pelagio B. Luna 2763", visitaFecha: "2026-09-26T12:15", visitaConfirmada: false },
+    { title: "Casa en Saavedra", address: "Catamarca 3368", visitaFecha: "2026-09-26T10:00", visitaConfirmada: true },
+    { title: "Ph en venta en San Andrés 3 ambientes", address: null, visitaFecha: "2026-09-26T13:30", visitaConfirmada: true },
+    { title: "Casa en Villa Ballester", address: "  ", visitaFecha: "2026-09-26T16:05", visitaConfirmada: false },
   ]);
 
   assert.equal(
@@ -42,10 +42,10 @@ test("buildVisitDayMessage arma el día con ubicación, hora en 24 h y ✅ solo 
       "📍 Ubicación: Pelagio B. Luna 2763",
       "⌚ Hora: 12:15hs",
       "",
-      "📍 Ubicación: Coghlan",
+      "📍 Ubicación: Ph en venta en San Andrés 3 ambientes",
       "⌚ Hora: 13:30hs ✅",
       "",
-      "📍 Ubicación: Casa sin dirección",
+      "📍 Ubicación: Casa en Villa Ballester",
       "⌚ Hora: 16:05hs",
     ].join("\n")
   );
@@ -54,7 +54,7 @@ test("buildVisitDayMessage arma el día con ubicación, hora en 24 h y ✅ solo 
 
 test("buildVisitDayMessage usa el singular con una sola visita", () => {
   const msg = buildVisitDayMessage("2026-09-28", [
-    { title: "Casa", address: "D. Pombo 3245", zone: null, visitaFecha: "2026-09-28T11:30", visitaConfirmada: false },
+    { title: "Casa", address: "D. Pombo 3245", visitaFecha: "2026-09-28T11:30", visitaConfirmada: false },
   ]);
   assert.ok(msg.startsWith("🏠 VISITA PROGRAMADA\n📅 Fecha: lunes 28/09/26\n"));
 });

@@ -142,7 +142,9 @@ uno con su propio acceso.
 >   `openWhatsapp`, el mismo camino que ya evita la corrupción de emojis de
 >   `wa.me`. Formato: "🏠 VISITA(S) PROGRAMADA(S)", "📅 Fecha: sábado
 >   26/09/26", y por visita "📍 Ubicación: …" y "⌚ Hora: 10:00hs ✅".
->   La ubicación es `address`; si no hay, `zone`, y si tampoco, el título.
+>   La ubicación es `address`; si no hay, el título de la casa (ajustado
+>   el mismo día: antes caía primero en `zone`, y un barrio solo, como
+>   "Villa Ballester", no dice adónde ir ni de qué casa se habla).
 >   La hora sale en 24 h (`formatTime24` en `lib/format.ts`): `formatTime`
 >   sigue el default de es-AR, que da "10:00 a. m.".
 > - **Aviso push al agendar una visita:** decía "Visita confirmada: …" y
