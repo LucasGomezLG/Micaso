@@ -495,6 +495,31 @@ datos es resolver un problema que todavía no existe.
 > referenciamos un ID); y el storage de imágenes guarda archivos sueltos,
 > no reemplaza a Redis ni lo complementa con más tablas.
 
+> **Auditoría de carga (25 sept 2026): ¿aguanta 100, 1.000 o 10.000
+> usuarios?** El informe completo, con método, mediciones y plan de
+> acción, está en `AUDITORIA-CARGA-2026-09-25.md`. Se midió `main` en
+> local, con la app en modo producción y un servidor falso de Upstash que
+> cuenta comandos y simula latencia. No se le apuntó carga a producción.
+> Confirma lo de arriba: el límite no es Redis ni su costo (unos USD 35
+> por mes con 10.000 usuarios), sino cómo se guardan los datos. Pesan los
+> arrays que se reescriben enteros y, sobre todo, las listas globales
+> (`all_case_ids` y las demás) detrás del lock de spin de `dbUpdate`.
+> - **100 usuarios:** sí.
+> - **1.000 usuarios:** sí, con cambios. Hace falta Upstash pago y
+>   Vercel Pro, mergear la rama de la auditoría del 23/9, pasar las
+>   listas globales a sets de Redis y cambiar Nominatim por un geocoder
+>   comercial.
+> - **10.000 usuarios:** no tal como está. Además hacen falta resúmenes
+>   del panel precalculados, fotos fuera de las funciones, cron por lotes
+>   y escrituras atómicas (una clave o un hash por casa, como propone el
+>   párrafo de arriba).
+> - **Hallazgo más serio:** con 20 altas de casos simultáneas falló entre
+>   el 3% y el 8% por el lock de `all_case_ids`, y cada falla dejó un caso
+>   a medio crear: visible en el panel, pero fuera de `all_case_ids`, así
+>   que ni el cron ni el backup lo ven.
+> - **Escala real al 25 sept:** 1 caso real, así que nada de esto es
+>   urgente. Cada punto tiene su disparador en `PENDIENTES.md`.
+
 ## 6. Panel del corredor
 
 Tres momentos distintos: la landing lo convence, el alta lo registra, el

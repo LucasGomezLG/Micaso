@@ -31,6 +31,14 @@ confirmarlo ahí o contra el código.
   [artifact con diseño visual](https://claude.ai/code/artifact/613d03c0-8366-4fbd-b641-a59eb5383997)
   (ese artifact quedó congelado en el diseño original — para el estado
   real y actualizado, `ARQUITECTURA.md` manda).
+- [`PENDIENTES.md`](PENDIENTES.md) — todo lo que falta hacer o decidir,
+  en un solo lugar: chequeos de producción, la rama de seguridad sin
+  mergear, bugs conocidos y mejoras de escala, cada una con cuándo
+  conviene hacerla. Es una lista viva: lo que se hace se borra de ahí.
+- [`AUDITORIA-CARGA-2026-09-25.md`](AUDITORIA-CARGA-2026-09-25.md) — cuánta
+  gente aguanta Micaso (100, 1.000 o 10.000 usuarios), medido en local
+  con un servidor falso de Upstash. Las herramientas para repetir la
+  medición están en [`scripts/load-test/`](scripts/load-test/README.md).
 - [`brand/logo.html`](brand/logo.html) — propuesta de logo y wordmark
   (ícono de casa con ventana iluminada + wordmark en Fraunces). También
   publicado como [artifact](https://claude.ai/code/artifact/ba1a3f32-80b1-4137-8db7-5014456ec12c).

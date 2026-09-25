@@ -20,6 +20,9 @@ Identificar qué dominio o disciplina requiere la tarea solicitada y adoptar ese
 Siempre leer y comprender el contexto antes de proponer cambios:
 - Leer `ARQUITECTURA.md` (es la fuente de verdad del sistema).
 - Leer `README.md` para entender la estructura del repo.
+- Leer `PENDIENTES.md`: lo que falta hacer o decidir, con cuándo conviene
+  hacer cada cosa. Si la tarea resuelve algo de ahí, borrarlo de la
+  lista; si aparece algo nuevo pendiente, sumarlo.
 - Revisar los archivos relevantes a la tarea (`lib/`, `app/`, `components/`, etc.).
 - Entender qué ya existe y qué falta, para no duplicar ni contradecir decisiones tomadas.
 
